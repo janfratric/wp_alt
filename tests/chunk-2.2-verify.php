@@ -822,13 +822,13 @@ try {
         $csp = $headers['Content-Security-Policy'] ?? '';
 
         $hasXFrame = ($xFrame === 'DENY');
-        $hasTinyCdn = str_contains($csp, 'cdn.tiny.cloud');
+        $hasTinyCdn = str_contains($csp, 'cdn.jsdelivr.net');
         $hasSelf = str_contains($csp, "default-src 'self'");
 
         if ($hasXFrame && $hasTinyCdn && $hasSelf) {
-            test_pass('Edit response has X-Frame-Options: DENY and CSP allowing cdn.tiny.cloud');
+            test_pass('Edit response has X-Frame-Options: DENY and CSP allowing cdn.jsdelivr.net');
         } else {
-            test_fail('Security headers on edit', "xframe={$xFrame}, tinyCdn={$hasTinyCdn}, self={$hasSelf}");
+            test_fail('Security headers on edit', "xframe={$xFrame}, jsdelivr={$hasTinyCdn}, self={$hasSelf}");
         }
     } else {
         test_skip('Security headers — no content ID available');

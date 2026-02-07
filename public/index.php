@@ -15,6 +15,7 @@ use App\Auth\CsrfMiddleware;
 use App\Auth\AuthMiddleware;
 use App\Auth\AuthController;
 use App\Admin\DashboardController;
+use App\Admin\ContentController;
 
 // Bootstrap
 $app = new App();
@@ -72,16 +73,16 @@ $router->group('/admin', function($router) use ($app) {
     // Dashboard
     $router->get('/dashboard', [DashboardController::class, 'index']);
 
+    // Content CRUD routes
+    $router->get('/content', [ContentController::class, 'index']);
+    $router->get('/content/create', [ContentController::class, 'create']);
+    $router->post('/content', [ContentController::class, 'store']);
+    $router->get('/content/{id}/edit', [ContentController::class, 'edit']);
+    $router->put('/content/{id}', [ContentController::class, 'update']);
+    $router->delete('/content/{id}', [ContentController::class, 'delete']);
+    $router->post('/content/bulk', [ContentController::class, 'bulk']);
+
     // Placeholder routes for sidebar links (to be replaced in future chunks)
-    $router->get('/content', function($request) use ($app) {
-        return new Response(
-            $app->template()->render('admin/placeholder', [
-                'title' => 'Content',
-                'activeNav' => 'content',
-                'message' => 'Content management is coming in Chunk 2.2.',
-            ])
-        );
-    });
     $router->get('/media', function($request) use ($app) {
         return new Response(
             $app->template()->render('admin/placeholder', [

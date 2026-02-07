@@ -14,18 +14,21 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
 | 1 | [http://localhost:8000/](http://localhost:8000/) | Public homepage — shows "Welcome to LiteCMS" with HTML layout |
 | 2 | [http://localhost:8000/admin/login](http://localhost:8000/admin/login) | Login page — centered card with username/password form and CSRF token |
 | 3 | [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard) | Admin dashboard — styled sidebar nav, topbar, stats cards (Total Content, Published, Drafts, Users, Media Files), and recent content table. Redirects to `/admin/login` if not authenticated |
-| 4 | [http://localhost:8000/admin/content](http://localhost:8000/admin/content) | Content placeholder — "Coming soon" message, sidebar highlights "Content" |
-| 5 | [http://localhost:8000/admin/media](http://localhost:8000/admin/media) | Media placeholder — "Coming soon" message, sidebar highlights "Media" |
-| 6 | [http://localhost:8000/admin/users](http://localhost:8000/admin/users) | Users placeholder — "Coming soon" message, sidebar highlights "Users" |
-| 7 | [http://localhost:8000/admin/settings](http://localhost:8000/admin/settings) | Settings placeholder — "Coming soon" message, sidebar highlights "Settings" |
-| 8 | [http://localhost:8000/nonexistent](http://localhost:8000/nonexistent) | 404 page — shows "404 Not Found" (no route matches) |
+| 4 | [http://localhost:8000/admin/content](http://localhost:8000/admin/content) | Content list — filterable/searchable table with type and status filters, pagination, bulk actions, and "+ New Content" button |
+| 5 | [http://localhost:8000/admin/content/create](http://localhost:8000/admin/content/create) | Content editor (create mode) — two-column layout with title, slug, TinyMCE body editor, excerpt, and sidebar with publish/SEO/image fields |
+| 6 | [http://localhost:8000/admin/content/create?type=post](http://localhost:8000/admin/content/create?type=post) | Content editor (create mode) — pre-selects "Post" type in the sidebar |
+| 7 | [http://localhost:8000/admin/content/1/edit](http://localhost:8000/admin/content/1/edit) | Content editor (edit mode) — loads existing content, shows "Update" button instead of "Create", includes `_method=PUT` hidden field |
+| 8 | [http://localhost:8000/admin/media](http://localhost:8000/admin/media) | Media placeholder — "Coming soon" message, sidebar highlights "Media" |
+| 9 | [http://localhost:8000/admin/users](http://localhost:8000/admin/users) | Users placeholder — "Coming soon" message, sidebar highlights "Users" |
+| 10 | [http://localhost:8000/admin/settings](http://localhost:8000/admin/settings) | Settings placeholder — "Coming soon" message, sidebar highlights "Settings" |
+| 11 | [http://localhost:8000/nonexistent](http://localhost:8000/nonexistent) | 404 page — shows "404 Not Found" (no route matches) |
 
 ### Authentication Flow
 
@@ -45,6 +48,23 @@ After logging in, the admin panel features:
 - **Responsive design** — sidebar collapses on mobile (<=768px) with hamburger toggle
 - **Security headers** — `X-Frame-Options: DENY` and `Content-Security-Policy` on dashboard responses
 - **Flash messages** — styled alerts (success/error) that auto-dismiss after 5 seconds
+
+### Content Management (Chunk 2.2)
+
+The content management section (`/admin/content`) provides full CRUD for pages and posts:
+- **Content list** — sortable table with title, type badge, status badge, author, and date columns
+- **Search** — filter content by title via search input
+- **Type filter** — dropdown to show only pages or posts
+- **Status filter** — dropdown to show only draft, published, or archived items
+- **Pagination** — page navigation with "Prev/Next" links, preserves active filters across pages
+- **Bulk actions** — select multiple items with checkboxes, then delete or change status in batch
+- **Content editor** — two-column layout: main area (title, auto-generated slug, TinyMCE WYSIWYG body, excerpt) + sidebar (type, status, publish date, sort order, SEO meta fields, featured image URL)
+- **TinyMCE WYSIWYG** — loaded from CDN, full toolbar with formatting, lists, links, images, tables, and code view
+- **Slug auto-generation** — slug auto-populates from title as you type; manual edits are preserved
+- **Draft/publish workflow** — set status to draft, published, or archived; `published_at` auto-sets when publishing without a date
+- **Validation** — title required, type and status must be valid values; errors flash and redirect back
+- **Security headers** — CSP allows `cdn.tiny.cloud` for TinyMCE on editor pages; `X-Frame-Options: DENY` on all content pages
+- **Delete confirmation** — delete buttons use `data-confirm` attribute for browser confirmation dialog
 
 ---
 

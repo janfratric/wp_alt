@@ -1,6 +1,6 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD)
 >
 > **Last updated**: 2026-02-07
 
@@ -43,7 +43,7 @@ php -S localhost:8000 -t public
 2. **Expected**: Shows "404 Not Found"
 3. Try: `/admin`, `/login`
 4. **Expected**: Both return 404 (these routes aren't registered)
-5. Note: `/admin/content`, `/admin/media`, `/admin/users`, `/admin/settings` now have placeholder pages (not 404)
+5. Note: `/admin/content` is now a full content list (Chunk 2.2); `/admin/media`, `/admin/users`, `/admin/settings` still have placeholder pages
 
 ### A5. Query strings don't break routing
 1. Open [http://localhost:8000/?foo=bar](http://localhost:8000/?foo=bar)
@@ -430,7 +430,7 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 ### K3. All sidebar links work (no 404s)
 1. Click each of the 5 sidebar links in order
 2. **Verify**: All pages load (no 404 errors)
-3. **Verify**: Content, Media, Users, Settings show a "coming soon" placeholder message
+3. **Verify**: Content shows a content list with filters and "+ New Content" button (Chunk 2.2); Media, Users, Settings show "coming soon" placeholder messages
 4. **Verify**: Dashboard shows the full stats dashboard
 
 ### K4. Sidebar user info and logout
@@ -488,6 +488,222 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 
 ---
 
+## Test Group N: Content List — Display & Filters (Chunk 2.2)
+
+### N1. Content list loads (empty state)
+1. Log in as admin (fresh database, no content yet)
+2. Open [http://localhost:8000/admin/content](http://localhost:8000/admin/content)
+3. **Verify**: Page loads with "Content" heading and "+ New Content" button
+4. **Verify**: Empty state message "No content found." with "Create your first page" link
+5. **Verify**: Filter bar is present with Search, Type, Status dropdowns and Filter/Reset buttons
+6. **Verify**: Sidebar highlights "Content" nav link
+
+### N2. Content list shows items after creation
+1. Create a page and a post (see Test Group O)
+2. Open [http://localhost:8000/admin/content](http://localhost:8000/admin/content)
+3. **Verify**: Both items appear in the table with title, type badge, status badge, author, and date
+4. **Verify**: Title links to the edit page (`/admin/content/{id}/edit`)
+5. **Verify**: Slug is shown below the title in muted text
+
+### N3. Filter by type
+1. With both pages and posts in the database
+2. Select "Page" from Type dropdown, click "Filter"
+3. **Verify**: Only pages appear in the list
+4. Select "Post" — only posts appear
+5. Click "Reset" — all items appear again
+6. **Verify**: The selected filter value persists in the dropdown after filtering
+
+### N4. Filter by status
+1. With items in various statuses (draft, published, archived)
+2. Select "Draft" from Status dropdown, click "Filter"
+3. **Verify**: Only draft items appear
+4. Select "Published" — only published items appear
+5. **Verify**: Filters can be combined (e.g., type=page AND status=draft)
+
+### N5. Search by title
+1. Type a partial title in the search box (e.g., "About")
+2. Click "Filter"
+3. **Verify**: Only items with matching titles appear
+4. **Verify**: Search term is preserved in the input field after filtering
+5. Clear search and click "Filter" — all items return
+
+### N6. Pagination
+1. Create 12+ content items (items_per_page defaults to 10)
+2. Open [http://localhost:8000/admin/content](http://localhost:8000/admin/content)
+3. **Verify**: First page shows 10 items, "Next" link appears
+4. Click "Next" — page 2 shows remaining items, "Prev" link appears
+5. **Verify**: "Page X of Y" info is displayed between nav links
+6. **Verify**: Applying a filter and then paginating preserves the filter (check URL query params)
+
+### N7. Bulk actions — delete
+1. Select 2–3 items using checkboxes
+2. Select "Delete" from the bulk actions dropdown
+3. Click "Apply" — browser shows confirmation dialog
+4. Confirm — items are removed, flash message shows "{N} item(s) deleted."
+
+### N8. Bulk actions — status change
+1. Select items, choose "Set Published" from bulk actions, click "Apply"
+2. **Verify**: Selected items change to "Published" status
+3. Repeat with "Set Draft" and "Set Archived"
+
+### N9. Select-all checkbox
+1. Click the checkbox in the table header row
+2. **Verify**: All row checkboxes become checked
+3. Uncheck the header checkbox — all row checkboxes uncheck
+
+---
+
+## Test Group O: Content Editor — Create & Edit (Chunk 2.2)
+
+### O1. Create content form loads
+1. Click "+ New Content" on the content list, or visit [http://localhost:8000/admin/content/create](http://localhost:8000/admin/content/create)
+2. **Verify**: Two-column layout: main area (title, slug, body, excerpt) and sidebar (publish, SEO, featured image)
+3. **Verify**: Title field is empty, slug field is empty with "/" prefix
+4. **Verify**: Type defaults to "Page", Status defaults to "Draft"
+5. **Verify**: Submit button reads "Create"
+
+### O2. Create with type=post preset
+1. Visit [http://localhost:8000/admin/content/create?type=post](http://localhost:8000/admin/content/create?type=post)
+2. **Verify**: Type dropdown pre-selects "Post"
+
+### O3. TinyMCE loads in the body field
+1. Open the create/edit form
+2. **Verify**: After a moment, the plain `<textarea>` is replaced by the TinyMCE WYSIWYG editor
+3. **Verify**: Toolbar includes formatting buttons (bold, italic, lists, links, code, etc.)
+4. Type and format some text in the editor
+5. **Note**: A small "This domain is not registered..." banner from TinyMCE is expected (using `no-api-key`)
+
+### O4. Slug auto-generates from title
+1. Start typing in the Title field (e.g., "My Test Page")
+2. **Verify**: Slug field auto-populates with "my-test-page" as you type
+3. Clear the slug field and type a custom value (e.g., "custom-slug")
+4. Change the title — slug should NOT change (manual edit is preserved)
+
+### O5. Create a published page
+1. Enter title: "About Us"
+2. Enter some body text in TinyMCE
+3. Set Type to "Page", Status to "Published"
+4. Click "Create"
+5. **Expected**: Redirected to the edit page for the new item (`/admin/content/{id}/edit`)
+6. **Verify**: Flash success message "Content created successfully."
+7. **Verify**: Slug was auto-generated as "about-us"
+
+### O6. Edit existing content
+1. From the content list, click "Edit" on an existing item
+2. **Verify**: Form loads with all existing data populated (title, slug, body in TinyMCE, excerpt, type, status, SEO fields)
+3. **Verify**: Submit button reads "Update"
+4. **Verify**: Form action points to `/admin/content/{id}` with `_method=PUT` hidden field
+5. Change the title and body, click "Update"
+6. **Expected**: Flash success message "Content updated successfully."
+7. **Verify**: Changes are persisted (refresh the page to confirm)
+
+### O7. Duplicate slug uniqueness
+1. Create a new item with the same title as an existing one (e.g., another "About Us")
+2. **Verify**: Slug is auto-generated as "about-us-2" (or next available number)
+3. Create a third — slug becomes "about-us-3"
+
+### O8. published_at auto-set
+1. Create a new item with Status = "Published" and leave "Publish Date" empty
+2. After saving, edit the item
+3. **Verify**: "Publish Date" field now shows the current date/time (auto-set on publish)
+
+### O9. Scheduled publishing
+1. Create a new item with Status = "Published" and set "Publish Date" to a future date
+2. After saving, edit the item
+3. **Verify**: The future date is preserved in the "Publish Date" field
+
+### O10. SEO fields persist
+1. Create or edit content, fill in "Meta Title" and "Meta Description" in the SEO sidebar card
+2. Save and re-open the editor
+3. **Verify**: SEO field values are preserved
+
+### O11. Featured image field
+1. Enter a URL in the "Image URL" field (e.g., `/assets/uploads/photo.jpg`)
+2. Save and re-open
+3. **Verify**: Value persists
+4. **Note**: "Media browser coming in a future update." hint text is shown
+
+---
+
+## Test Group P: Content — Delete & Validation (Chunk 2.2)
+
+### P1. Delete single item
+1. On the content list, click "Delete" on an item
+2. **Verify**: Browser confirmation dialog appears ("Are you sure you want to delete this content?")
+3. Confirm — item is removed from the list
+4. **Verify**: Flash message "Content deleted."
+
+### P2. Delete non-existent item
+1. Visit `/admin/content/99999/edit` (non-existent ID)
+2. **Expected**: Redirected to `/admin/content` with error flash "Content not found."
+
+### P3. Validation — empty title rejected
+1. Open create form, leave title empty, click "Create"
+2. **Expected**: Redirected back to create form with error flash "Title is required."
+3. **Verify**: No new row was inserted in the database
+
+### P4. Validation — invalid type rejected
+1. Using browser dev tools, change the type `<select>` value to "invalid"
+2. Submit the form
+3. **Expected**: Error flash "Invalid content type." — no row inserted
+
+### P5. Validation — invalid status rejected
+1. Using browser dev tools, change the status `<select>` value to "unknown"
+2. Submit the form
+3. **Expected**: Error flash "Invalid status." — no row inserted
+
+---
+
+## Test Group Q: Content — Security & Headers (Chunk 2.2)
+
+### Q1. CSRF protection on content forms
+1. Open the content create form, view page source
+2. **Verify**: `_csrf_token` hidden input is present in the form
+3. **Verify**: Edit form also has `_csrf_token`
+4. **Verify**: Bulk action form also has `_csrf_token`
+
+### Q2. Method override on edit form
+1. Open the edit form for an existing item, view page source
+2. **Verify**: `<input type="hidden" name="_method" value="PUT">` is present
+3. **Verify**: Delete buttons on the content list have `_method=DELETE` hidden inputs
+
+### Q3. Security headers on content pages
+1. Open browser DevTools > Network tab
+2. Visit [http://localhost:8000/admin/content](http://localhost:8000/admin/content)
+3. **Verify**: `X-Frame-Options: DENY` header is present
+4. **Verify**: `Content-Security-Policy` header includes `cdn.tiny.cloud` allowances for script-src, style-src, connect-src, font-src
+
+### Q4. XSS prevention
+1. Create content with title: `<script>alert('xss')</script>`
+2. **Verify**: On the content list, the title is displayed as escaped text (visible tags), NOT executed as JavaScript
+3. **Verify**: The slug is generated safely from the title
+
+---
+
+## Test Group R: Content — Responsive & CSS (Chunk 2.2)
+
+### R1. Editor layout — desktop
+1. Open the content editor on a wide viewport (>768px)
+2. **Verify**: Two-column layout: main area on the left, sidebar (320px) on the right
+3. **Verify**: TinyMCE editor fills the main column width
+
+### R2. Editor layout — mobile
+1. Resize browser to <=768px (or use DevTools responsive mode)
+2. **Verify**: Editor switches to single-column layout (sidebar stacks below main area)
+3. **Verify**: All form fields remain accessible and usable
+
+### R3. Filter bar — responsive
+1. On mobile width, check the content list filter bar
+2. **Verify**: Filter inputs stack vertically instead of horizontally
+
+### R4. Dashboard stats update with content
+1. Create several pages and posts with different statuses
+2. Visit [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard)
+3. **Verify**: Stats cards reflect the correct counts (Total Content, Published, Drafts, pages, posts)
+4. **Verify**: Recent content table shows the latest items with correct author name
+
+---
+
 ## Summary Checklist
 
 | # | Test | Status |
@@ -534,3 +750,36 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | L3 | Stats grid responds to width | ☐ |
 | M1 | Flash messages use CSS classes | ☐ |
 | M2 | Flash messages auto-dismiss | ☐ |
+| N1 | Content list loads (empty state) | ☐ |
+| N2 | Content list shows items | ☐ |
+| N3 | Filter by type | ☐ |
+| N4 | Filter by status | ☐ |
+| N5 | Search by title | ☐ |
+| N6 | Pagination | ☐ |
+| N7 | Bulk delete | ☐ |
+| N8 | Bulk status change | ☐ |
+| N9 | Select-all checkbox | ☐ |
+| O1 | Create form loads | ☐ |
+| O2 | Create with type=post preset | ☐ |
+| O3 | TinyMCE loads | ☐ |
+| O4 | Slug auto-generates from title | ☐ |
+| O5 | Create a published page | ☐ |
+| O6 | Edit existing content | ☐ |
+| O7 | Duplicate slug uniqueness | ☐ |
+| O8 | published_at auto-set | ☐ |
+| O9 | Scheduled publishing | ☐ |
+| O10 | SEO fields persist | ☐ |
+| O11 | Featured image field | ☐ |
+| P1 | Delete single item | ☐ |
+| P2 | Delete non-existent item | ☐ |
+| P3 | Empty title rejected | ☐ |
+| P4 | Invalid type rejected | ☐ |
+| P5 | Invalid status rejected | ☐ |
+| Q1 | CSRF on content forms | ☐ |
+| Q2 | Method override on edit form | ☐ |
+| Q3 | Security headers on content pages | ☐ |
+| Q4 | XSS prevention | ☐ |
+| R1 | Editor layout — desktop | ☐ |
+| R2 | Editor layout — mobile | ☐ |
+| R3 | Filter bar — responsive | ☐ |
+| R4 | Dashboard stats update with content | ☐ |
