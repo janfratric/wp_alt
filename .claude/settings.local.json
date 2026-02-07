@@ -8,7 +8,8 @@
       "Bash(\"$PHP\" --ini)",
       "Read(//c/!Agents/wp_alt/**)",
       "WebFetch(domain:www.anthropic.com)",
-      "Bash(git -C \"c:\\\\!Agents\\\\wp_alt\" log --oneline)"
+      "Bash(git -C \"c:\\\\!Agents\\\\wp_alt\" log --oneline)",
+      "Bash(php tests/run-all.php:*)"
     ]
   }
 }

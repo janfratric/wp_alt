@@ -1,6 +1,6 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System)
 >
 > **Last updated**: 2026-02-07
 
@@ -26,23 +26,29 @@ php -S localhost:8000 -t public
 3. **Verify**: Page has proper HTML structure (`<html>`, `<head>`, `<body>`)
 4. **Verify**: Title includes "LiteCMS"
 
-### A2. Admin dashboard loads
-1. Open [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard)
-2. **Expected**: Page renders with "Dashboard" heading
-3. **Verify**: Shows "Welcome to the LiteCMS admin panel"
-4. **Verify**: Uses a different layout than the public homepage
+### A2. Admin dashboard redirects to login when not authenticated
+1. Clear cookies / use incognito window
+2. Open [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard)
+3. **Expected**: Redirected to `/admin/login` (not dashboard)
+4. **Verify**: Login form is displayed with username and password fields
 
-### A3. 404 for unknown routes
+### A3. Login page loads
+1. Open [http://localhost:8000/admin/login](http://localhost:8000/admin/login)
+2. **Expected**: Centered card with "LiteCMS" heading and "Sign in to your account" subtitle
+3. **Verify**: Form has username, password fields and a "Sign In" button
+4. **Verify**: Page source contains a hidden `_csrf_token` field
+
+### A4. 404 for unknown routes
 1. Open [http://localhost:8000/this-does-not-exist](http://localhost:8000/this-does-not-exist)
 2. **Expected**: Shows "404 Not Found"
 3. Try a few more: `/admin`, `/admin/settings`, `/login`
 4. **Expected**: All return 404 (these routes aren't registered yet)
 
-### A4. Query strings don't break routing
+### A5. Query strings don't break routing
 1. Open [http://localhost:8000/?foo=bar](http://localhost:8000/?foo=bar)
 2. **Expected**: Homepage loads normally (query string is stripped from route matching)
-3. Open [http://localhost:8000/admin/dashboard?debug=1](http://localhost:8000/admin/dashboard?debug=1)
-4. **Expected**: Dashboard loads normally
+3. Open [http://localhost:8000/admin/login?debug=1](http://localhost:8000/admin/login?debug=1)
+4. **Expected**: Login page loads normally
 
 ---
 
@@ -272,14 +278,118 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 
 ---
 
+## Test Group F: Authentication — Login & Logout
+
+### F1. Default admin user is auto-created on first visit
+1. Delete `storage/database.sqlite` if it exists
+2. Open [http://localhost:8000/](http://localhost:8000/) to trigger bootstrap
+3. Run:
+   ```bash
+   sqlite3 storage/database.sqlite "SELECT username, email, role, password_hash FROM users;"
+   ```
+4. **Expected**: One row: `admin|admin@localhost|admin|$2y$...` (bcrypt hash, NOT plaintext "admin")
+
+### F2. Login with default credentials
+1. Open [http://localhost:8000/admin/login](http://localhost:8000/admin/login)
+2. Enter username: `admin`, password: `admin`
+3. Click "Sign In"
+4. **Expected**: Redirected to `/admin/dashboard`
+5. **Verify**: Dashboard shows "Welcome to the LiteCMS admin panel"
+6. **Verify**: Sidebar shows username "admin" and a "Logout" button
+
+### F3. Session persists across requests
+1. After logging in (F2), refresh the dashboard page
+2. **Expected**: Still on dashboard (not redirected to login)
+3. Open [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard) in a new tab
+4. **Expected**: Dashboard loads (session is shared)
+
+### F4. Logout destroys session
+1. After logging in, click "Logout" in the sidebar
+2. **Expected**: Redirected to `/admin/login`
+3. Open [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard) directly
+4. **Expected**: Redirected to `/admin/login` (session was destroyed)
+
+### F5. Login with invalid credentials shows error
+1. Open [http://localhost:8000/admin/login](http://localhost:8000/admin/login)
+2. Enter username: `admin`, password: `wrongpassword`
+3. Click "Sign In"
+4. **Expected**: Redirected back to login page
+5. **Verify**: Error message "Invalid username or password." is displayed
+
+### F6. Already-logged-in user visiting login page redirects to dashboard
+1. Log in as admin
+2. Navigate to [http://localhost:8000/admin/login](http://localhost:8000/admin/login)
+3. **Expected**: Redirected to `/admin/dashboard` (not shown the login form again)
+
+---
+
+## Test Group G: Authentication — CSRF Protection
+
+### G1. POST without CSRF token returns 403
+1. Using curl or browser dev tools, send a POST to `/admin/login` without `_csrf_token`:
+   ```bash
+   curl -X POST http://localhost:8000/admin/login -d "username=admin&password=admin" -v
+   ```
+2. **Expected**: HTTP 403 response with "Invalid or missing CSRF token"
+
+### G2. POST with invalid CSRF token returns 403
+1. Send a POST with a fake token:
+   ```bash
+   curl -X POST http://localhost:8000/admin/login -d "username=admin&password=admin&_csrf_token=fake" -v
+   ```
+2. **Expected**: HTTP 403 response
+
+### G3. Login form includes valid CSRF token
+1. Open [http://localhost:8000/admin/login](http://localhost:8000/admin/login)
+2. View page source
+3. **Verify**: Hidden input `_csrf_token` has a 64-character hex value
+4. Submit the form normally with username/password
+5. **Expected**: Login processes (not blocked by CSRF)
+
+---
+
+## Test Group H: Authentication — Rate Limiting
+
+### H1. Rate limiting after 5 failed attempts
+1. Open [http://localhost:8000/admin/login](http://localhost:8000/admin/login)
+2. Enter wrong password 5 times in a row
+3. **Verify**: Each attempt shows "Invalid username or password."
+4. On the 6th attempt (even with correct password `admin`):
+5. **Expected**: Error message "Too many failed login attempts. Please try again in 15 minutes."
+6. **Verify**: A JSON file exists in `storage/cache/rate_limit/` with `locked_until` set
+
+### H2. Rate limit clears after lockout expires
+1. After being rate-limited, manually delete the file in `storage/cache/rate_limit/`
+2. Try logging in with correct credentials
+3. **Expected**: Login succeeds
+
+---
+
+## Test Group I: Authentication — Admin Layout Updates
+
+### I1. Admin layout shows user info and logout
+1. Log in as admin
+2. **Verify**: Sidebar shows "admin" username text
+3. **Verify**: Sidebar has a "Logout" button/link
+4. **Verify**: Logout button is inside a form with CSRF token (view source)
+
+### I2. Flash messages display correctly
+1. Log in with wrong credentials
+2. **Verify**: Red error alert appears on login page
+3. Refresh the page
+4. **Verify**: Error message is gone (flash messages are consumed on read)
+
+---
+
 ## Summary Checklist
 
 | # | Test | Status |
 |---|------|--------|
 | A1 | Homepage loads | ☐ |
-| A2 | Admin dashboard loads | ☐ |
-| A3 | 404 for unknown routes | ☐ |
-| A4 | Query strings don't break routing | ☐ |
+| A2 | Admin dashboard redirects to login | ☐ |
+| A3 | Login page loads | ☐ |
+| A4 | 404 for unknown routes | ☐ |
+| A5 | Query strings don't break routing | ☐ |
 | B1 | Database auto-created | ☐ |
 | B2 | All 7+1 tables exist | ☐ |
 | B3 | Migration tracking works | ☐ |
@@ -290,3 +400,16 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | C4 | Indexes exist | ☐ |
 | D1–D10 | Query builder CRUD operations | ☐ |
 | E1 | Migration files for all 3 drivers exist | ☐ |
+| F1 | Default admin auto-created with bcrypt hash | ☐ |
+| F2 | Login with default credentials | ☐ |
+| F3 | Session persists across requests | ☐ |
+| F4 | Logout destroys session | ☐ |
+| F5 | Login with invalid credentials shows error | ☐ |
+| F6 | Already-logged-in user redirected from login | ☐ |
+| G1 | POST without CSRF returns 403 | ☐ |
+| G2 | POST with invalid CSRF returns 403 | ☐ |
+| G3 | Login form includes valid CSRF token | ☐ |
+| H1 | Rate limiting after 5 failures | ☐ |
+| H2 | Rate limit clears after expiry | ☐ |
+| I1 | Admin layout shows user + logout | ☐ |
+| I2 | Flash messages display and clear | ☐ |

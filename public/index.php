@@ -9,6 +9,11 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Database\Connection;
 use App\Database\Migrator;
+use App\Database\QueryBuilder;
+use App\Auth\Session;
+use App\Auth\CsrfMiddleware;
+use App\Auth\AuthMiddleware;
+use App\Auth\AuthController;
 
 // Bootstrap
 $app = new App();
@@ -21,11 +26,33 @@ $app->register('db', $db);
 $migrator = new Migrator($db);
 $migrator->migrate();
 
+// --- Session bootstrap ---
+Session::start();
+
+// --- First-run admin bootstrap ---
+// If no users exist, create the default admin account.
+$userCount = QueryBuilder::query('users')->select()->count();
+if ($userCount === 0) {
+    QueryBuilder::query('users')->insert([
+        'username'      => 'admin',
+        'email'         => 'admin@localhost',
+        'password_hash' => password_hash('admin', PASSWORD_BCRYPT),
+        'role'          => 'admin',
+    ]);
+}
+
+// --- Register global middleware ---
+// Order matters: first added = first executed (outermost).
+// 1. CSRF: validates tokens on POST/PUT/DELETE for ALL routes
+// 2. Auth: protects /admin/* routes (except /admin/login)
+$app->addMiddleware([CsrfMiddleware::class, 'handle']);
+$app->addMiddleware([AuthMiddleware::class, 'handle']);
+
 // --- Register routes ---
-// (For Chunk 1.1, register demo routes to prove the framework works)
 
 $router = $app->router();
 
+// Public routes
 $router->get('/', function($request) use ($app) {
     return new Response(
         $app->template()->render('public/home', [
@@ -34,7 +61,12 @@ $router->get('/', function($request) use ($app) {
     );
 });
 
-// Demo: admin group with placeholder
+// Auth routes
+$router->get('/admin/login', [AuthController::class, 'showLogin']);
+$router->post('/admin/login', [AuthController::class, 'handleLogin']);
+$router->post('/admin/logout', [AuthController::class, 'logout']);
+
+// Admin routes (protected by AuthMiddleware)
 $router->group('/admin', function($router) use ($app) {
     $router->get('/dashboard', function($request) use ($app) {
         return new Response(
@@ -44,9 +76,6 @@ $router->group('/admin', function($router) use ($app) {
         );
     });
 });
-
-// --- Register global middleware ---
-// (Example: a simple timing/logging middleware for testing)
 
 // --- Run ---
 $app->run($request);

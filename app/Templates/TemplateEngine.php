@@ -85,4 +85,13 @@ class TemplateEngine
     {
         return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
     }
+
+    /**
+     * Output a hidden CSRF token field for forms.
+     */
+    public function csrfField(): string
+    {
+        $token = $_SESSION['csrf_token'] ?? '';
+        return '<input type="hidden" name="_csrf_token" value="' . $this->e($token) . '">';
+    }
 }
