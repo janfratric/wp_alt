@@ -74,10 +74,20 @@ foreach ($available as $chunkId => $path) {
     echo "--- Chunk {$chunkId}" . ($isSmoke ? ' (smoke)' : '') . " ---\n";
 
     // Run the test file as a subprocess to isolate state
-    $cmd = 'php ' . escapeshellarg($path);
+    // On Windows, cmd.exe may have delayed expansion enabled which interprets !
+    // in paths. We disable it with /V:OFF to prevent path mangling.
+    if (PHP_OS_FAMILY === 'Windows') {
+        $cmd = 'cmd /V:OFF /C php "' . $path . '"';
+    } else {
+        $cmd = 'php ' . escapeshellarg($path);
+    }
     if ($isSmoke) {
         // Pass smoke flag as environment variable
-        $cmd = (PHP_OS_FAMILY === 'Windows' ? "set LITECMS_TEST_SMOKE=1 && " : "LITECMS_TEST_SMOKE=1 ") . $cmd;
+        if (PHP_OS_FAMILY === 'Windows') {
+            $cmd = 'cmd /V:OFF /C "set LITECMS_TEST_SMOKE=1 && php "' . $path . '""';
+        } else {
+            $cmd = "LITECMS_TEST_SMOKE=1 php " . escapeshellarg($path);
+        }
     }
 
     $output = [];

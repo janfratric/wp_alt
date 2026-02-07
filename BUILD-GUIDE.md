@@ -8,11 +8,13 @@ This guide explains how to use the agent infrastructure in this repo to build th
 
 The project is split into **13 chunks** across 5 phases (see `PLAN.md`). Before implementing each chunk, you need three things:
 
-1. A **detailed plan** (`CHUNK-X.X-PLAN.md`) — full spec with code templates
-2. A **condensed prompt** (`chunks/X.X-prompt.md`) — what the implementing agent reads
-3. An **automated test script** (`tests/chunk-X.X-verify.php`) — pass/fail gate
+1. A **detailed plan** (`CHUNK-{N.N}-PLAN.md`) — full spec with code templates
+2. A **condensed prompt** (`chunks/{N.N}-prompt.md`) — what the implementing agent reads
+3. An **automated test script** (`tests/chunk-{N.N}-verify.php`) — pass/fail gate
 
-Currently only **chunk 1.1** has all three. For every other chunk, you prepare these first, then implement. The cycle is: **prepare → implement → verify → repeat**.
+> **`{N.N}` = the next chunk to implement.** To find it, open `STATUS.md` and pick the first chunk that is NOT checked `[x]` and is marked `ready`. For example, if 1.1 is `[x]` and 1.2 is `ready`, then `{N.N}` = `1.2`.
+
+For every chunk, you prepare these three files first, then implement. The cycle is: **prepare → implement → verify → repeat**.
 
 ---
 
@@ -32,17 +34,18 @@ This shows which chunks are done `[x]`, ready `[~]`, or blocked `[ ]`. Pick the 
 
 Check if the three files exist for your chunk. If not, create them:
 
-#### a) Detailed plan — `CHUNK-X.X-PLAN.md`
+#### a) Detailed plan — `CHUNK-{N.N}-PLAN.md`
 
 Ask an agent to write the detailed plan. Use this prompt:
 
 ```
 Read PLAN.md and PROMPT.md for the full project specification.
-Read STATUS.md for current project state.
+Read STATUS.md for current project state — find the first chunk not marked [x] and
+marked "ready". That is the chunk to plan (referred to as {N.N} below).
 Read CHUNK-1.1-PLAN.md as an example of the format and level of detail expected.
 
-Write a detailed implementation plan for Chunk X.X (description from PLAN.md)
-to the file CHUNK-X.X-PLAN.md. Include:
+Write a detailed implementation plan for the next ready chunk from STATUS.md
+to the file CHUNK-{N.N}-PLAN.md. Include:
 - File creation order with dependency reasoning
 - Complete class specifications (properties, constructor, all methods with signatures)
 - Full code templates for every file
@@ -53,15 +56,16 @@ The plan must account for code already implemented in previous chunks.
 Do not duplicate or rewrite existing code — build on top of it.
 ```
 
-#### b) Condensed prompt — `chunks/X.X-prompt.md`
+#### b) Condensed prompt — `chunks/{N.N}-prompt.md`
 
 Ask an agent to condense the detailed plan. Use this prompt:
 
 ```
-Read CHUNK-X.X-PLAN.md (the detailed plan).
+Read STATUS.md to identify the next ready chunk ({N.N}).
+Read CHUNK-{N.N}-PLAN.md (the detailed plan for that chunk).
 Read chunks/1.1-prompt.md as an example of the condensed format.
 
-Create chunks/X.X-prompt.md — a condensed agent prompt containing:
+Create chunks/{N.N}-prompt.md — a condensed agent prompt containing:
 - Goal (2-3 sentences)
 - Context files to read
 - File table (what to create/modify, in order)
@@ -73,16 +77,17 @@ Create chunks/X.X-prompt.md — a condensed agent prompt containing:
 Target ~150 lines. Strip code templates — keep only signatures and constraints.
 ```
 
-#### c) Test script — `tests/chunk-X.X-verify.php`
+#### c) Test script — `tests/chunk-{N.N}-verify.php`
 
 Ask an agent to write the automated tests. Use this prompt:
 
 ```
-Read CHUNK-X.X-PLAN.md, specifically the acceptance test section.
+Read STATUS.md to identify the next ready chunk ({N.N}).
+Read CHUNK-{N.N}-PLAN.md, specifically the acceptance test section.
 Read tests/chunk-1.1-verify.php as an example of the format and conventions.
 
-Write tests/chunk-X.X-verify.php — an automated test script that verifies
-all acceptance criteria for chunk X.X. Follow these conventions:
+Write tests/chunk-{N.N}-verify.php — an automated test script that verifies
+all acceptance criteria for the chunk. Follow these conventions:
 - Output [PASS], [FAIL], or [SKIP] per test (standardized format)
 - Exit code 0 if all pass, 1 if any fail
 - Support smoke mode via LITECMS_TEST_SMOKE=1 env var (run only 2-3 core tests)
@@ -95,8 +100,9 @@ all acceptance criteria for chunk X.X. Follow these conventions:
 Once all three files exist, give the condensed prompt to an implementing agent:
 
 ```
-Read chunks/X.X-prompt.md and implement everything it specifies.
-After implementation, run: php tests/chunk-X.X-verify.php
+Read STATUS.md to identify the next ready chunk ({N.N}).
+Read chunks/{N.N}-prompt.md and implement everything it specifies.
+After implementation, run: php tests/chunk-{N.N}-verify.php
 Fix any [FAIL] results. Then run: php tests/run-all.php --full
 ```
 
@@ -106,7 +112,7 @@ Once all tests pass:
 
 ```bash
 php tests/run-all.php --full
-git add -A && git commit -m "feat: chunk X.X — Description"
+git add -A && git commit -m "feat: chunk {N.N} — Description"
 ```
 
 Go back to step 1. `STATUS.md` is updated automatically by the test runner — no manual editing needed.
@@ -123,7 +129,7 @@ The build loop handles steps 1, 3, and 4 automatically — but it requires the c
 ./build-loop.sh --parallel   # Implement all ready chunks at once
 ```
 
-The loop will refuse to run a chunk if its `chunks/X.X-prompt.md` doesn't exist. Prepare the chunk first.
+The loop will refuse to run a chunk if its `chunks/{N.N}-prompt.md` doesn't exist. Prepare the chunk first.
 
 ---
 
@@ -173,10 +179,10 @@ These can run in parallel (read-only). Fix any Critical/High findings, then the 
 | `STATUS.md` | Current build progress — auto-generated by test runner |
 | `LEARNINGS.md` | Design rationale for this build infrastructure |
 | `BUILD-GUIDE.md` | This file |
-| `chunks/X.X-prompt.md` | Condensed agent prompt per chunk (you create these) |
-| `CHUNK-X.X-PLAN.md` | Detailed plan per chunk (you create these) |
+| `chunks/{N.N}-prompt.md` | Condensed agent prompt per chunk (you create these) |
+| `CHUNK-{N.N}-PLAN.md` | Detailed plan per chunk (you create these) |
 | `tests/run-all.php` | Cumulative test runner (`--quick` or `--full`) |
-| `tests/chunk-X.X-verify.php` | Automated tests per chunk (you create these) |
+| `tests/chunk-{N.N}-verify.php` | Automated tests per chunk (you create these) |
 | `review/*.md` | Post-build specialist review prompts (ready to use) |
 | `build-loop.sh` | Autonomous build orchestrator |
 
@@ -186,6 +192,6 @@ These can run in parallel (read-only). Fix any Critical/High findings, then the 
 
 - **Always run `php tests/run-all.php --full` before committing.** Catches regressions.
 - **Use `--quick` during iteration.** Smoke-tests previous chunks, fully tests the current one.
-- **If implementation fails repeatedly**, point the agent at the detailed plan (`CHUNK-X.X-PLAN.md`) — it has full code templates.
+- **If implementation fails repeatedly**, point the agent at the detailed plan (`CHUNK-{N.N}-PLAN.md`) — it has full code templates.
 - **Don't skip chunks.** The dependency graph exists for a reason.
 - **Preparation is the real work.** A well-written detailed plan and test script means the implementing agent mostly just executes. Invest time in step 2.

@@ -1,0 +1,13 @@
+# Deny access to everything in the project root
+# The web server should be pointed at the public/ directory
+# This is a safety net in case the server is misconfigured
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^ public/index.php [L]
+</IfModule>
+
+# Block access to sensitive files
+<FilesMatch "\.(php|sql|md|json|lock|env)$">
+    Require all denied
+</FilesMatch>
