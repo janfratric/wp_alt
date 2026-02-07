@@ -3,9 +3,23 @@
 // Autoloader
 require_once __DIR__ . '/../vendor/autoload.php';
 
+use App\Core\App;
+use App\Core\Config;
+use App\Core\Request;
+use App\Core\Response;
+use App\Database\Connection;
+use App\Database\Migrator;
+
 // Bootstrap
-$app = new App\Core\App();
-$request = new App\Core\Request();
+$app = new App();
+$request = new Request();
+
+// --- Database bootstrap ---
+$db = Connection::getInstance();
+$app->register('db', $db);
+
+$migrator = new Migrator($db);
+$migrator->migrate();
 
 // --- Register routes ---
 // (For Chunk 1.1, register demo routes to prove the framework works)
@@ -13,9 +27,9 @@ $request = new App\Core\Request();
 $router = $app->router();
 
 $router->get('/', function($request) use ($app) {
-    return new App\Core\Response(
+    return new Response(
         $app->template()->render('public/home', [
-            'title' => App\Core\Config::getString('site_name'),
+            'title' => Config::getString('site_name'),
         ])
     );
 });
@@ -23,7 +37,7 @@ $router->get('/', function($request) use ($app) {
 // Demo: admin group with placeholder
 $router->group('/admin', function($router) use ($app) {
     $router->get('/dashboard', function($request) use ($app) {
-        return new App\Core\Response(
+        return new Response(
             $app->template()->render('admin/dashboard', [
                 'title' => 'Dashboard',
             ])
