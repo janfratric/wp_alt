@@ -39,6 +39,7 @@ $chunks = [
     '5.1' => 'chunk-5.1-verify.php',
     '5.2' => 'chunk-5.2-verify.php',
     '5.3' => 'chunk-5.3-verify.php',
+    '5.4' => 'chunk-5.4-verify.php',
 ];
 
 // Discover which test files actually exist
@@ -170,7 +171,8 @@ function updateStatusFile(
         '4.2' => 'AI Chat Panel Frontend',
         '5.1' => 'Custom Content Types',
         '5.2' => 'Settings Panel & Site Configuration',
-        '5.3' => 'Final Polish, Error Handling & Documentation',
+        '5.3' => 'AI Page Generator',
+        '5.4' => 'Final Polish, Error Handling & Documentation',
     ];
 
     // Dependency graph: chunk => prerequisites
@@ -189,6 +191,7 @@ function updateStatusFile(
         '5.1' => ['4.2'],
         '5.2' => ['5.1'],
         '5.3' => ['5.2'],
+        '5.4' => ['5.3'],
     ];
 
     // Determine which chunks passed

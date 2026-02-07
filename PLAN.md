@@ -446,7 +446,44 @@ Each chunk below is designed to be implemented in a single focused session with 
 
 ---
 
-### Chunk 5.3: Final Polish, Error Handling & Documentation
+### Chunk 5.3: AI Page Generator
+
+**Description**: Build a conversational AI agent flow accessible from the admin panel that guides users through creating a new webpage. The agent asks iterative questions (purpose, sections, style, content details), generates HTML content and metadata, and inserts a complete content record into the database. The result is immediately editable via the standard content editor and AI chat companion.
+
+**Input Prerequisites**: Chunks 4.1, 5.1, 5.2 complete (Claude API, custom types, settings)
+
+**Key Files to Create**:
+- `app/AIAssistant/PageGeneratorController.php` — Multi-step wizard endpoint (manages conversation state, calls Claude, creates content record on completion)
+- `app/AIAssistant/GeneratorPrompts.php` — System prompts for the generator (requirement gathering prompt, HTML generation prompt, metadata extraction prompt)
+- `templates/admin/generator/index.php` — Generator wizard UI (chat-style interface with progress steps, preview pane, "Create Page" button)
+- `public/assets/js/page-generator.js` — Frontend logic (step management, API calls, live preview, content creation trigger)
+- Update `templates/admin/layout.php` — Add "Generate Page" link to sidebar nav
+
+**Features**:
+- Conversational requirement gathering (what's the page for, what sections, what content, any style preferences)
+- Smart iteration — agent identifies missing info and asks follow-up questions
+- Supports all content types (pages, posts, and custom types from 5.1)
+- Generates: title, slug, HTML body, excerpt, meta_title, meta_description
+- Optionally generates custom field values for custom content types
+- Live HTML preview before committing
+- "Create as Draft" and "Create & Publish" options
+- Generated content opens in the standard editor afterward for refinement
+- Conversation context includes site name, existing pages (for nav consistency), and content type field definitions
+
+**Output Deliverables**: Admin can click "Generate Page", have a guided conversation with the AI about what they need, preview the result, and create a fully-formed content record that's immediately editable in the standard editor.
+
+**Acceptance Tests**:
+1. Start generator, describe a simple "About Us" page — AI asks clarifying questions (company name, key info, tone)
+2. After providing info, AI generates complete HTML with title, slug, excerpt, SEO fields
+3. Preview shows rendered HTML before creation
+4. Click "Create as Draft" — content record appears in content list as draft
+5. Open the created page in editor — all fields populated, body editable in TinyMCE
+6. Generator works with custom content types — custom fields are populated
+7. Generated HTML is clean, semantic, and uses no inline styles (works with the site's CSS)
+
+---
+
+### Chunk 5.4: Final Polish, Error Handling & Documentation
 
 **Description**: Final pass over the entire codebase — comprehensive error handling and logging, input validation tightening, performance verification, security audit, and production of README.md with installation guide.
 
@@ -499,10 +536,11 @@ Each chunk below is designed to be implemented in a single focused session with 
                                └── 4.2 AI Chat Panel Frontend
                                     └── 5.1 Custom Content Types
                                          └── 5.2 Settings Panel
-                                              └── 5.3 Final Polish & Docs
+                                              └── 5.3 AI Page Generator
+                                                   └── 5.4 Final Polish & Docs
 ```
 
-**Total: 13 chunks across 5 phases**
+**Total: 15 chunks across 5 phases**
 
 ## Parallel Execution Strategy
 
@@ -515,7 +553,7 @@ Step 1 (sequential):  1.1 → 1.2 → 1.3 → 2.1
 Step 2 (parallel A):  2.2 + 2.4           ← both depend only on 2.1, no shared files
 Step 3 (parallel B):  2.3 + 3.1           ← 2.3 depends on 2.2; 3.1 depends on 2.1
 Step 4 (parallel C):  3.2 + 4.1           ← 3.2 is public frontend; 4.1 is admin backend
-Step 5 (sequential):  4.2 → 5.1 → 5.2 → 5.3
+Step 5 (sequential):  4.2 → 5.1 → 5.2 → 5.3 → 5.4
 ```
 
 ### Why These Groups Are Safe

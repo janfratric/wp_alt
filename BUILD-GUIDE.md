@@ -6,7 +6,7 @@ This guide explains how to use the agent infrastructure in this repo to build th
 
 ## Quick Overview
 
-The project is split into **13 chunks** across 5 phases (see `PLAN.md`). Before implementing each chunk, you need three things:
+The project is split into **15 chunks** across 5 phases (see `PLAN.md`). Before implementing each chunk, you need three things:
 
 1. A **detailed plan** (`CHUNK-{N.N}-PLAN.md`) — full spec with code templates
 2. A **condensed prompt** (`chunks/{N.N}-prompt.md`) — what the implementing agent reads
