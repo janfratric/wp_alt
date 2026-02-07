@@ -1,6 +1,6 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management)
 >
 > **Last updated**: 2026-02-07
 
@@ -43,7 +43,7 @@ php -S localhost:8000 -t public
 2. **Expected**: Shows "404 Not Found"
 3. Try: `/admin`, `/login`
 4. **Expected**: Both return 404 (these routes aren't registered)
-5. Note: `/admin/content` is now a full content list (Chunk 2.2); `/admin/media`, `/admin/users`, `/admin/settings` still have placeholder pages
+5. Note: `/admin/content` is now a full content list (Chunk 2.2); `/admin/media` is now the media library (Chunk 2.3); `/admin/users`, `/admin/settings` still have placeholder pages
 
 ### A5. Query strings don't break routing
 1. Open [http://localhost:8000/?foo=bar](http://localhost:8000/?foo=bar)
@@ -430,7 +430,7 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 ### K3. All sidebar links work (no 404s)
 1. Click each of the 5 sidebar links in order
 2. **Verify**: All pages load (no 404 errors)
-3. **Verify**: Content shows a content list with filters and "+ New Content" button (Chunk 2.2); Media, Users, Settings show "coming soon" placeholder messages
+3. **Verify**: Content shows a content list with filters and "+ New Content" button (Chunk 2.2); Media shows the media library with upload form (Chunk 2.3); Users, Settings show "coming soon" placeholder messages
 4. **Verify**: Dashboard shows the full stats dashboard
 
 ### K4. Sidebar user info and logout
@@ -704,7 +704,163 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 
 ---
 
+## Test Group S: Media Library — Upload & Display (Chunk 2.3)
+
+### S1. Media library loads (empty state)
+1. Log in as admin (fresh database, no media yet)
+2. Open [http://localhost:8000/admin/media](http://localhost:8000/admin/media)
+3. **Verify**: Page loads with "Media Library" heading and "0 file(s)" count
+4. **Verify**: Upload form with drag & drop zone is visible
+5. **Verify**: Empty state message "No media files uploaded yet."
+6. **Verify**: Sidebar highlights "Media" nav link
+
+### S2. Upload a JPG image
+1. Go to /admin/media
+2. Click the upload zone, select a .jpg file under 5MB
+3. Click "Upload"
+4. **Verify**: Flash message "File uploaded successfully." appears
+5. **Verify**: Image appears in the media grid with correct thumbnail
+6. **Verify**: File exists on disk at `public/assets/uploads/YYYY/MM/{hash}.jpg`
+7. **Verify**: Card shows original filename, MIME type (image/jpeg), and uploader (admin)
+
+### S3. Upload a .php file — rejected
+1. Attempt to upload a file named "test.php"
+2. **Verify**: Error message "File type not allowed. Allowed: jpg, jpeg, png, gif, webp, pdf"
+3. **Verify**: No file saved to disk, no record in media table
+
+### S4. Upload a faked extension — rejected by MIME check
+1. Rename a PHP file to "malicious.jpg"
+2. Attempt to upload it
+3. **Verify**: Error message "File content does not match its extension."
+4. **Verify**: No file saved
+
+### S5. Upload file too large — rejected
+1. Attempt to upload a file larger than 5MB
+2. **Verify**: Error message includes "File is too large. Maximum size: 5 MB"
+
+### S6. Delete a media item
+1. Upload an image
+2. Click "Delete" on the media card. Confirm the dialog
+3. **Verify**: Flash message "Media deleted."
+4. **Verify**: File removed from disk
+5. **Verify**: Item removed from the grid
+
+### S7. Upload preview
+1. Click the upload zone and select an image
+2. **Verify**: Upload zone hides, preview area appears with image thumbnail, filename, and file size
+3. **Verify**: "Upload" and "Cancel" buttons are visible
+4. Click "Cancel"
+5. **Verify**: Preview hides, upload zone reappears
+
+### S8. Drag and drop upload
+1. Drag an image file from the desktop onto the upload zone
+2. **Verify**: Upload zone highlights with border color change
+3. **Verify**: After drop, preview area appears with file info
+
+### S9. Media pagination
+1. Upload 12+ images (items_per_page defaults to 10)
+2. Open /admin/media
+3. **Verify**: First page shows 10 items, "Next →" link appears
+4. Click "Next" — page 2 shows remaining items, "← Prev" link appears
+5. **Verify**: "Page X of Y" info is displayed
+
+### S10. View button opens file
+1. Upload an image
+2. Click "View" on the media card
+3. **Verify**: Image opens in a new browser tab at `/assets/uploads/YYYY/MM/{hash}.ext`
+
+---
+
+## Test Group T: Media Browser Modal & Content Integration (Chunk 2.3)
+
+### T1. TinyMCE media browser button
+1. Go to Content → Create
+2. In the TinyMCE toolbar, find the media browser button (image icon labeled "Insert from Media Library")
+3. Click it
+4. **Verify**: Modal opens with "Select Media" header
+5. **Verify**: Modal shows uploaded images in a grid (or "No images found" if empty)
+
+### T2. Insert image from media browser into TinyMCE
+1. Upload some images first (via /admin/media)
+2. Go to Content → Create, click the media browser toolbar button
+3. Click an image in the modal grid
+4. **Verify**: Image gets a blue border (selected state)
+5. Click "Select"
+6. **Verify**: `<img>` tag is inserted into the TinyMCE editor body
+7. **Verify**: Modal closes
+
+### T3. Featured image — Browse Media
+1. Go to Content → Create
+2. In the sidebar "Featured Image" card, click "Browse Media"
+3. Select an image from the modal
+4. **Verify**: Image preview appears in the Featured Image card
+5. **Verify**: "Remove" button appears
+6. **Verify**: Hidden input contains the image URL (check with browser dev tools)
+
+### T4. Featured image — Remove
+1. After selecting a featured image (T3), click "Remove"
+2. **Verify**: Preview disappears
+3. **Verify**: Hidden input value is cleared
+
+### T5. Featured image persists after save
+1. Create content with a featured image selected
+2. Save the content, then edit it again
+3. **Verify**: Featured image preview is still shown with the correct URL
+4. **Verify**: "Remove" button is visible
+
+### T6. TinyMCE drag-and-drop image upload
+1. Go to Content → Edit an existing item
+2. Drag an image file from the desktop into the TinyMCE editor area
+3. **Verify**: Image is uploaded via AJAX to `/admin/media/upload`
+4. **Verify**: Image appears inline in the editor
+5. **Verify**: New file appears in the media library
+
+### T7. Media browser modal — Cancel and close
+1. Open the media browser modal
+2. Click "Cancel" — modal closes
+3. Open again, click the × button — modal closes
+4. Open again, click the dark overlay — modal closes
+5. **Verify**: No image was inserted in any case
+
+---
+
+## Test Group U: Media — Security & Headers (Chunk 2.3)
+
+### U1. CSRF on upload form
+1. Open /admin/media, view page source
+2. **Verify**: Upload form has `_csrf_token` hidden input
+
+### U2. CSRF on delete form
+1. With media items present, view page source of /admin/media
+2. **Verify**: Each delete form has `_csrf_token` hidden input and `_method=DELETE`
+
+### U3. Security headers on media pages
+1. Open browser DevTools > Network tab
+2. Visit /admin/media
+3. **Verify**: `X-Frame-Options: DENY` header is present
+4. **Verify**: `Content-Security-Policy` header includes `cdn.jsdelivr.net` allowances
+
+### U4. Uploads directory .htaccess
+1. Navigate to `public/assets/uploads/.htaccess`
+2. **Verify**: Contains `php_flag engine off` or `FilesMatch` deny for PHP files
+3. **Verify**: Contains `X-Content-Type-Options: nosniff` header
+
+### U5. Randomized filenames on disk
+1. Upload an image named "my-photo.jpg"
+2. Check `public/assets/uploads/YYYY/MM/` directory
+3. **Verify**: File is stored as a 32-character hex string + extension (e.g., `a1b2c3d4...f0.jpg`)
+4. **Verify**: Original filename "my-photo.jpg" is NOT used on disk
+
+### U6. Dashboard media files count updates
+1. Upload several media files
+2. Visit /admin/dashboard
+3. **Verify**: "Media Files" stat card shows the correct count
+
+---
+
 ## Summary Checklist
+
+(continued from previous chunks)
 
 | # | Test | Status |
 |---|------|--------|
@@ -783,3 +939,26 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | R2 | Editor layout — mobile | ☐ |
 | R3 | Filter bar — responsive | ☐ |
 | R4 | Dashboard stats update with content | ☐ |
+| S1 | Media library loads (empty state) | ☐ |
+| S2 | Upload a JPG image | ☐ |
+| S3 | Upload .php file rejected | ☐ |
+| S4 | Faked extension rejected by MIME check | ☐ |
+| S5 | Upload file too large rejected | ☐ |
+| S6 | Delete a media item | ☐ |
+| S7 | Upload preview | ☐ |
+| S8 | Drag and drop upload | ☐ |
+| S9 | Media pagination | ☐ |
+| S10 | View button opens file | ☐ |
+| T1 | TinyMCE media browser button | ☐ |
+| T2 | Insert image from media browser | ☐ |
+| T3 | Featured image — Browse Media | ☐ |
+| T4 | Featured image — Remove | ☐ |
+| T5 | Featured image persists after save | ☐ |
+| T6 | TinyMCE drag-and-drop upload | ☐ |
+| T7 | Media browser modal — Cancel/close | ☐ |
+| U1 | CSRF on upload form | ☐ |
+| U2 | CSRF on delete form | ☐ |
+| U3 | Security headers on media pages | ☐ |
+| U4 | Uploads directory .htaccess | ☐ |
+| U5 | Randomized filenames on disk | ☐ |
+| U6 | Dashboard media files count updates | ☐ |

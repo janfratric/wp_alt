@@ -16,6 +16,7 @@ use App\Auth\AuthMiddleware;
 use App\Auth\AuthController;
 use App\Admin\DashboardController;
 use App\Admin\ContentController;
+use App\Admin\MediaController;
 
 // Bootstrap
 $app = new App();
@@ -82,16 +83,13 @@ $router->group('/admin', function($router) use ($app) {
     $router->delete('/content/{id}', [ContentController::class, 'delete']);
     $router->post('/content/bulk', [ContentController::class, 'bulk']);
 
+    // Media management routes
+    $router->get('/media', [MediaController::class, 'index']);
+    $router->get('/media/browse', [MediaController::class, 'browse']);
+    $router->post('/media/upload', [MediaController::class, 'upload']);
+    $router->delete('/media/{id}', [MediaController::class, 'delete']);
+
     // Placeholder routes for sidebar links (to be replaced in future chunks)
-    $router->get('/media', function($request) use ($app) {
-        return new Response(
-            $app->template()->render('admin/placeholder', [
-                'title' => 'Media',
-                'activeNav' => 'media',
-                'message' => 'Media management is coming in Chunk 2.3.',
-            ])
-        );
-    });
     $router->get('/users', function($request) use ($app) {
         return new Response(
             $app->template()->render('admin/placeholder', [

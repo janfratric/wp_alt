@@ -14,7 +14,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
@@ -25,7 +25,8 @@ This starts PHP's built-in development server with `public/` as the document roo
 | 5 | [http://localhost:8000/admin/content/create](http://localhost:8000/admin/content/create) | Content editor (create mode) — two-column layout with title, slug, TinyMCE body editor, excerpt, and sidebar with publish/SEO/image fields |
 | 6 | [http://localhost:8000/admin/content/create?type=post](http://localhost:8000/admin/content/create?type=post) | Content editor (create mode) — pre-selects "Post" type in the sidebar |
 | 7 | [http://localhost:8000/admin/content/1/edit](http://localhost:8000/admin/content/1/edit) | Content editor (edit mode) — loads existing content, shows "Update" button instead of "Create", includes `_method=PUT` hidden field |
-| 8 | [http://localhost:8000/admin/media](http://localhost:8000/admin/media) | Media placeholder — "Coming soon" message, sidebar highlights "Media" |
+| 8 | [http://localhost:8000/admin/media](http://localhost:8000/admin/media) | Media library — upload form with drag & drop zone, media grid with thumbnails, pagination, delete buttons. Sidebar highlights "Media" |
+| 8a | [http://localhost:8000/admin/media/browse?type=image](http://localhost:8000/admin/media/browse?type=image) | JSON endpoint — returns paginated list of image media items (used by media browser modal) |
 | 9 | [http://localhost:8000/admin/users](http://localhost:8000/admin/users) | Users placeholder — "Coming soon" message, sidebar highlights "Users" |
 | 10 | [http://localhost:8000/admin/settings](http://localhost:8000/admin/settings) | Settings placeholder — "Coming soon" message, sidebar highlights "Settings" |
 | 11 | [http://localhost:8000/nonexistent](http://localhost:8000/nonexistent) | 404 page — shows "404 Not Found" (no route matches) |
@@ -65,6 +66,21 @@ The content management section (`/admin/content`) provides full CRUD for pages a
 - **Validation** — title required, type and status must be valid values; errors flash and redirect back
 - **Security headers** — CSP allows `cdn.tiny.cloud` for TinyMCE on editor pages; `X-Frame-Options: DENY` on all content pages
 - **Delete confirmation** — delete buttons use `data-confirm` attribute for browser confirmation dialog
+
+### Media Management (Chunk 2.3)
+
+The media management section (`/admin/media`) provides file upload and library browsing:
+- **Upload zone** — drag & drop or click-to-select file upload with preview before submitting
+- **File validation** — extension whitelist (jpg, jpeg, png, gif, webp, pdf), MIME type check via `finfo_file()`, and configurable size limit (default 5MB)
+- **Randomized filenames** — uploaded files stored as `public/assets/uploads/YYYY/MM/{hash}.{ext}` with 32-char hex names
+- **Media grid** — card-based layout showing thumbnails for images, file icon for PDFs, with original filename, MIME type, and uploader
+- **Pagination** — page navigation with "Prev/Next" links when items exceed page size
+- **Delete** — removes file from disk and database record, with browser confirmation dialog
+- **Media browser modal** — accessible from TinyMCE toolbar button and Featured Image "Browse Media" button; shows image grid, click to select, insert into editor or set as featured image
+- **TinyMCE image upload** — drag-and-drop images into the editor triggers AJAX upload to `/admin/media/upload`
+- **Featured image picker** — Browse Media button opens modal, selected image shows preview, Remove button clears it; stored as hidden input URL
+- **Security** — `.htaccess` in uploads directory disables PHP execution; CSP headers on all media pages; CSRF required on POST/DELETE
+- **AJAX support** — upload and delete return JSON for AJAX requests, redirect with flash for form submissions
 
 ---
 

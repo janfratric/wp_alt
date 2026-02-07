@@ -124,13 +124,28 @@
                 <div class="card-header">Featured Image</div>
                 <div class="card-body">
                     <div class="form-group mb-0">
-                        <label for="featured_image">Image URL</label>
-                        <input type="text" id="featured_image" name="featured_image"
-                               value="<?= $this->e($content['featured_image'] ?? '') ?>"
-                               placeholder="Enter image URL or path">
-                        <small class="text-muted mt-1" style="display:block;">
-                            Media browser coming in a future update.
-                        </small>
+                        <?php
+                        $featuredImg = $content['featured_image'] ?? '';
+                        $hasImage = ($featuredImg !== '' && $featuredImg !== null);
+                        ?>
+                        <div class="featured-image-preview"
+                             style="<?= $hasImage ? '' : 'display:none;' ?>">
+                            <img id="featured-image-preview-img"
+                                 src="<?= $this->e((string)$featuredImg) ?>"
+                                 alt="Featured image preview">
+                        </div>
+                        <input type="hidden" id="featured_image" name="featured_image"
+                               value="<?= $this->e((string)$featuredImg) ?>">
+                        <div class="featured-image-actions">
+                            <button type="button" class="btn btn-sm" id="featured-image-browse">
+                                Browse Media
+                            </button>
+                            <button type="button" class="btn btn-sm"
+                                    id="featured-image-remove"
+                                    style="<?= $hasImage ? '' : 'display:none;' ?>">
+                                Remove
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

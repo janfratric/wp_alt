@@ -14,5 +14,6 @@ return [
     'items_per_page' => (int)(getenv('ITEMS_PER_PAGE') ?: 10),
     'claude_api_key' => getenv('CLAUDE_API_KEY') ?: '',
     'claude_model'   => getenv('CLAUDE_MODEL') ?: 'claude-sonnet-4-20250514',
+    'max_upload_size' => (int)(getenv('MAX_UPLOAD_SIZE') ?: 5242880), // 5MB in bytes
     'app_secret'     => getenv('APP_SECRET') ?: 'change-this-to-a-random-string',
 ];

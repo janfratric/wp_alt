@@ -99,6 +99,27 @@ class Request
     }
 
     /**
+     * Get uploaded file data by input name.
+     * Returns the $_FILES entry array or null if not present.
+     */
+    public function file(string $key): ?array
+    {
+        $file = $_FILES[$key] ?? null;
+        if ($file === null || $file['error'] === UPLOAD_ERR_NO_FILE) {
+            return null;
+        }
+        return $file;
+    }
+
+    /**
+     * Check if a file was uploaded for the given input name.
+     */
+    public function hasFile(string $key): bool
+    {
+        return $this->file($key) !== null;
+    }
+
+    /**
      * Recursively trim all string values in an array.
      */
     private function trimStrings(array $data): array
