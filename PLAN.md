@@ -269,7 +269,7 @@ Each chunk below is designed to be implemented in a single focused session with 
 
 ### Chunk 3.2: Public Templates & Styling
 
-**Description**: Build all remaining public-facing page templates (home, page, blog index, blog post, contact, archive) and the complete public CSS stylesheet. This makes the public site fully presentable.
+**Description**: Build all remaining public-facing page templates (home, page, blog index, blog post, contact, archive), the complete public CSS stylesheet, an EU cookie consent banner (GDPR/ePrivacy compliance), and conditional Google Analytics script injection. This makes the public site fully presentable and legally compliant out of the box.
 
 **Input Prerequisites**: Chunk 3.1 complete (front controller, layout, navigation working)
 
@@ -280,7 +280,9 @@ Each chunk below is designed to be implemented in a single focused session with 
 - `templates/public/blog-post.php` — Single blog post (title, meta info, featured image, body, author)
 - `templates/public/contact.php` — Contact page with form (stores submissions or sends email via `mail()`)
 - `templates/public/archive.php` — Generic content type listing
+- `templates/public/partials/cookie-consent.php` — Cookie consent banner partial (included in layout)
 - `public/assets/css/style.css` — Complete public site stylesheet (mobile-first responsive, semantic HTML5)
+- `public/assets/js/cookie-consent.js` — Cookie consent logic (accept/decline, remembers choice, triggers GA load)
 
 **Features**:
 - Homepage with configurable hero section (from settings or a specific page)
@@ -289,8 +291,10 @@ Each chunk below is designed to be implemented in a single focused session with 
 - Contact form with CSRF protection (submissions stored in a simple table or emailed)
 - Responsive mobile-first design using CSS custom properties
 - All templates work without JavaScript for core functionality
+- **EU Cookie Consent Banner**: Fixed-position banner shown to first-time visitors with Accept/Decline buttons. Choice stored in a cookie (e.g., `litecms_consent=accepted|declined`, 365-day expiry). Banner does not reappear after choice is made. Consent text configurable from admin settings (Chunk 5.2). No tracking cookies set until user explicitly accepts.
+- **Google Analytics (conditional)**: If GA is enabled in admin settings and a GA Measurement ID is configured (Chunk 5.2), the gtag.js script is injected into the public layout — but ONLY after the user accepts cookies via the consent banner. If consent is declined or not yet given, no GA scripts are loaded. Uses Google's gtag.js loaded from CDN.
 
-**Output Deliverables**: A fully styled, responsive public website. Visitors can browse the homepage, read pages, browse blog posts with pagination, read individual posts, and submit a contact form.
+**Output Deliverables**: A fully styled, responsive public website with GDPR-compliant cookie consent. Visitors can browse the homepage, read pages, browse blog posts with pagination, read individual posts, and submit a contact form. Google Analytics tracking activates only after explicit consent.
 
 **Acceptance Tests**:
 1. Homepage renders with hero section and featured/recent content
@@ -299,6 +303,10 @@ Each chunk below is designed to be implemented in a single focused session with 
 4. Contact form submits successfully with CSRF protection; submission is stored/emailed
 5. Site is responsive — renders correctly on mobile viewport (375px wide)
 6. All pages use semantic HTML5 and pass basic accessibility checks (headings hierarchy, alt text)
+7. First visit shows cookie consent banner; no GA script in page source before acceptance
+8. Clicking "Accept" dismisses banner, sets consent cookie, and loads GA script (if GA is configured)
+9. Clicking "Decline" dismisses banner, sets consent cookie, GA script is NOT loaded
+10. Returning visitor who already accepted — no banner shown, GA loads automatically
 
 ---
 
@@ -421,9 +429,10 @@ Each chunk below is designed to be implemented in a single focused session with 
 - General: site name, site URL, tagline, timezone, items per page
 - AI: Claude API key (encrypted), model selection, system prompt customization
 - SEO: default meta description, Open Graph default image
+- **Cookie Consent & Analytics**: enable/disable cookie consent banner, consent banner text (customizable message), consent banner link (e.g., link to privacy policy page), Google Analytics enable/disable toggle, GA Measurement ID field (e.g., `G-XXXXXXXXXX`)
 - Advanced: enable/disable registration, maintenance mode
 
-**Output Deliverables**: Admin can configure all site settings through a web interface. Settings persist in the database and take effect immediately.
+**Output Deliverables**: Admin can configure all site settings through a web interface, including cookie consent text and Google Analytics integration. Settings persist in the database and take effect immediately.
 
 **Acceptance Tests**:
 1. Change site name in settings — public site reflects the new name immediately
@@ -431,6 +440,9 @@ Each chunk below is designed to be implemented in a single focused session with 
 3. API key field shows masked value (not the actual key)
 4. Timezone setting affects displayed dates on the public site
 5. Settings survive application restart (persisted in database, not session)
+6. Enable Google Analytics and enter a Measurement ID — GA script appears on public site (after cookie consent)
+7. Disable Google Analytics toggle — GA script no longer injected regardless of consent
+8. Change cookie consent banner text — updated text appears on public site for new visitors
 
 ---
 
@@ -477,12 +489,13 @@ Each chunk below is designed to be implemented in a single focused session with 
  └── 1.2 Database Layer
       └── 1.3 Authentication
            └── 2.1 Admin Layout & Dashboard
-                ├── 2.2 Content CRUD
-                │    └── 2.3 Media Management
-                ├── 2.4 User Management
-                └── 3.1 Template Engine & Front Controller
-                     └── 3.2 Public Templates & Styling
-                          └── 4.1 Claude API Client & Backend
+                ├── 2.2 Content CRUD ──────┐
+                │    └── 2.3 Media ────────┤ (parallel group B)
+                ├── 2.4 User Management    │ (parallel with 2.2)
+                └── 3.1 Front Controller ──┘
+                     └── 3.2 Public Templates ─┐
+                          │                    │ (parallel group C)
+                          4.1 AI Backend ──────┘
                                └── 4.2 AI Chat Panel Frontend
                                     └── 5.1 Custom Content Types
                                          └── 5.2 Settings Panel
@@ -491,12 +504,62 @@ Each chunk below is designed to be implemented in a single focused session with 
 
 **Total: 13 chunks across 5 phases**
 
-Note: Chunks 2.2, 2.3, 2.4 can be partially parallelized (2.4 only depends on 2.1, not on 2.2). Similarly, 4.1 could start as soon as Phase 2 is complete if Phase 3 is done concurrently. The graph above shows the recommended sequential order.
+## Parallel Execution Strategy
+
+Sequential chunks MUST be completed in order. Parallel groups can run simultaneously with separate agents on git branches, merging back to `main` when done.
+
+### Execution Timeline
+
+```
+Step 1 (sequential):  1.1 → 1.2 → 1.3 → 2.1
+Step 2 (parallel A):  2.2 + 2.4           ← both depend only on 2.1, no shared files
+Step 3 (parallel B):  2.3 + 3.1           ← 2.3 depends on 2.2; 3.1 depends on 2.1
+Step 4 (parallel C):  3.2 + 4.1           ← 3.2 is public frontend; 4.1 is admin backend
+Step 5 (sequential):  4.2 → 5.1 → 5.2 → 5.3
+```
+
+### Why These Groups Are Safe
+
+| Group | Agent A | Agent B | File Overlap | Conflict Risk |
+|-------|---------|---------|-------------|---------------|
+| A | 2.2: ContentController, content templates | 2.4: UserController, user templates | None — different controllers, templates, routes | Low |
+| B | 2.3: MediaController, media templates, editor.js update | 3.1: FrontController, public templates | None — admin vs public | Low |
+| C | 3.2: Public CSS, public templates, cookie-consent | 4.1: ClaudeClient, AIController, ConversationManager | None — public frontend vs admin backend | Low |
+
+### Coordination Mechanism
+
+When running parallel agents, use lock files to claim chunks:
+
+```
+current_tasks/
+  chunk-2.2.lock   # "agent-1, started 2026-02-07T10:00:00Z, branch: chunk/2.2"
+  chunk-2.4.lock   # "agent-2, started 2026-02-07T10:00:00Z, branch: chunk/2.4"
+```
+
+Each agent:
+1. Creates a lock file before starting work
+2. Works on a dedicated git branch (`chunk/X.X`)
+3. Runs `php tests/run-all.php --full` before merging
+4. Merges to `main` and removes the lock file
+5. If merge conflicts occur, the second agent resolves them
+
+### When NOT to Parallelize
+
+- Phase 1 (1.1 → 1.2 → 1.3): Each chunk directly extends the previous. Must be sequential.
+- Step 5 (4.2 → 5.1 → 5.2 → 5.3): Heavy cross-cutting concerns. Must be sequential.
+- If unsure about file overlap: run sequentially. The time saved by parallelism is lost if agents overwrite each other.
 
 ## Verification Strategy
 
-After each chunk implementation, we will:
-1. Run the manual acceptance tests listed in that chunk
-2. Verify no regressions in previously implemented chunks (visit key pages, test core flows)
+After each chunk implementation, the agent will:
+1. Run `php tests/chunk-X.X-verify.php` — all tests must show `[PASS]`
+2. Run `php tests/run-all.php --full` — cumulative regression check, all previous chunks must still pass
 3. Check that `composer install` still works cleanly
 4. Confirm code follows the constraints: strict_types, no framework imports, parameterized queries
+
+Test scripts live in `tests/` with standardized output:
+- `[PASS] Description` — test passed
+- `[FAIL] Description — reason` — test failed (agent must fix before proceeding)
+- `[SKIP] Description` — test skipped (e.g., optional dependency not available)
+
+Agents should use `--quick` mode during iterative development and `--full` before declaring a chunk complete.

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where:*)",
+      "Bash(cmd.exe /c \"where php 2>&1\")",
+      "Bash(powershell:*)",
+      "Bash(winget install:*)",
+      "Bash(\"$PHP\" --ini)",
+      "Read(//c/!Agents/wp_alt/**)",
+      "WebFetch(domain:www.anthropic.com)",
+      "Bash(git -C \"c:\\\\!Agents\\\\wp_alt\" log --oneline)"
+    ]
+  }
+}
