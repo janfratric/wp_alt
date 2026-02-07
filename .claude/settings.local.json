@@ -12,7 +12,8 @@
       "Bash(php tests/run-all.php:*)",
       "Bash(php:*)",
       "Bash(cmd /V:OFF /C \"set LITECMS_TEST_SMOKE=1 && php tests/chunk-2.1-verify.php\")",
-      "Bash(set LITECMS_TEST_SMOKE=1)"
+      "Bash(set LITECMS_TEST_SMOKE=1)",
+      "Bash(ls \"c:\\\\!Agents\\\\wp_alt\\\\app\\\\Admin\"\" 2>nul || echo \"Directory does not exist \")"
     ]
   }
 }

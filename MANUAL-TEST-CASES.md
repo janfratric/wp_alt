@@ -1,6 +1,6 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard)
 >
 > **Last updated**: 2026-02-07
 
@@ -41,8 +41,9 @@ php -S localhost:8000 -t public
 ### A4. 404 for unknown routes
 1. Open [http://localhost:8000/this-does-not-exist](http://localhost:8000/this-does-not-exist)
 2. **Expected**: Shows "404 Not Found"
-3. Try a few more: `/admin`, `/admin/settings`, `/login`
-4. **Expected**: All return 404 (these routes aren't registered yet)
+3. Try: `/admin`, `/login`
+4. **Expected**: Both return 404 (these routes aren't registered)
+5. Note: `/admin/content`, `/admin/media`, `/admin/users`, `/admin/settings` now have placeholder pages (not 404)
 
 ### A5. Query strings don't break routing
 1. Open [http://localhost:8000/?foo=bar](http://localhost:8000/?foo=bar)
@@ -294,8 +295,8 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 2. Enter username: `admin`, password: `admin`
 3. Click "Sign In"
 4. **Expected**: Redirected to `/admin/dashboard`
-5. **Verify**: Dashboard shows "Welcome to the LiteCMS admin panel"
-6. **Verify**: Sidebar shows username "admin" and a "Logout" button
+5. **Verify**: Dashboard shows stats cards (Total Content, Published, Drafts, Users, Media Files)
+6. **Verify**: Sidebar shows username "admin", role "Admin", and a "Logout" button
 
 ### F3. Session persists across requests
 1. After logging in (F2), refresh the dashboard page
@@ -381,6 +382,112 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 
 ---
 
+## Test Group J: Admin Dashboard — Stats & Layout (Chunk 2.1)
+
+### J1. Dashboard loads with stats cards
+1. Log in as admin
+2. Open [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard)
+3. **Verify**: 5 stat cards are visible: Total Content, Published, Drafts, Users, Media Files
+4. **Verify**: On fresh install — Total Content = 0, Published = 0, Drafts = 0, Users = 1, Media Files = 0
+5. **Verify**: Total Content card shows "0 pages, 0 posts" detail line
+
+### J2. Dashboard recent content table (empty state)
+1. On a fresh install with no content
+2. **Verify**: "Recent Content" section shows "No content yet. Start by creating your first page or post."
+3. **Verify**: No table is rendered when there is no content
+
+### J3. Admin CSS and JS loaded
+1. Open [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard)
+2. **Verify**: Page source includes `<link rel="stylesheet" href="/assets/css/admin.css">`
+3. **Verify**: Page source includes `<script src="/assets/js/admin.js"></script>`
+4. **Verify**: Page is styled (dark sidebar, white topbar, card-based stats)
+
+### J4. Security headers on dashboard
+1. Open browser DevTools → Network tab
+2. Navigate to [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard)
+3. Click on the request and check response headers
+4. **Verify**: `X-Frame-Options: DENY` header is present
+5. **Verify**: `Content-Security-Policy` header contains `default-src 'self'` and `script-src 'self'`
+
+---
+
+## Test Group K: Sidebar Navigation (Chunk 2.1)
+
+### K1. All 5 navigation links present
+1. Log in and visit dashboard
+2. **Verify**: Sidebar contains these links: Dashboard, Content, Media, Users, Settings
+3. **Verify**: Links are grouped under section labels: "Main", "Content", "System"
+4. **Verify**: Each link has a Unicode icon (square, pencil, camera, people, gear)
+
+### K2. Active state highlighting
+1. Visit [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard)
+2. **Verify**: "Dashboard" link in sidebar is highlighted (has `active` class)
+3. Click "Content" link
+4. **Verify**: "Content" link is now highlighted, "Dashboard" is not
+5. Click "Media", "Users", "Settings" in turn
+6. **Verify**: Each page highlights its respective nav link
+
+### K3. All sidebar links work (no 404s)
+1. Click each of the 5 sidebar links in order
+2. **Verify**: All pages load (no 404 errors)
+3. **Verify**: Content, Media, Users, Settings show a "coming soon" placeholder message
+4. **Verify**: Dashboard shows the full stats dashboard
+
+### K4. Sidebar user info and logout
+1. **Verify**: Sidebar footer shows username "admin"
+2. **Verify**: Sidebar footer shows role "Admin"
+3. **Verify**: "Logout" button is present in the sidebar footer
+4. Click "Logout"
+5. **Verify**: Redirected to `/admin/login` (session destroyed)
+
+### K5. Top bar
+1. Visit dashboard
+2. **Verify**: Top bar shows the page title ("Dashboard")
+3. **Verify**: Top bar has a "View Site" link that opens the homepage in a new tab
+4. Click "Content" in sidebar
+5. **Verify**: Top bar title changes to "Content"
+
+---
+
+## Test Group L: Responsive Design (Chunk 2.1)
+
+### L1. Desktop layout (>768px)
+1. Open dashboard on a desktop browser (wide viewport)
+2. **Verify**: Sidebar is visible on the left, fixed position
+3. **Verify**: Hamburger toggle button (three lines) is NOT visible
+4. **Verify**: Content area is beside the sidebar, not overlapping
+
+### L2. Mobile layout (<=768px)
+1. Resize browser window to <=768px wide (or use DevTools responsive mode)
+2. **Verify**: Sidebar slides off-screen (hidden)
+3. **Verify**: Hamburger toggle button (three lines / ☰) appears in the top bar
+4. Click the hamburger button
+5. **Verify**: Sidebar slides in from the left
+6. **Verify**: A semi-transparent overlay appears behind the sidebar
+7. Click the overlay
+8. **Verify**: Sidebar slides back out and overlay disappears
+
+### L3. Stats grid responds to width
+1. On desktop — stats cards display in a row (up to 5 across)
+2. On mobile — stats cards stack (1-2 per row)
+3. **Verify**: Cards remain readable at all widths
+
+---
+
+## Test Group M: Flash Messages (Chunk 2.1)
+
+### M1. Flash messages use CSS classes
+1. Log in with wrong credentials to trigger an error flash
+2. **Verify**: Error message appears with a styled alert box (red background, border)
+3. **Verify**: Page source shows `class="alert alert-error"` — NO inline `style=` attribute on the alert div
+
+### M2. Flash messages auto-dismiss
+1. Trigger a flash message (e.g., failed login, then correct login to see success flash)
+2. **Verify**: After ~5 seconds, the flash message fades out and disappears
+3. **Verify**: The message is removed from the DOM (not just hidden)
+
+---
+
 ## Summary Checklist
 
 | # | Test | Status |
@@ -413,3 +520,17 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | H2 | Rate limit clears after expiry | ☐ |
 | I1 | Admin layout shows user + logout | ☐ |
 | I2 | Flash messages display and clear | ☐ |
+| J1 | Dashboard loads with stats cards | ☐ |
+| J2 | Dashboard recent content (empty state) | ☐ |
+| J3 | Admin CSS and JS loaded | ☐ |
+| J4 | Security headers on dashboard | ☐ |
+| K1 | All 5 navigation links present | ☐ |
+| K2 | Active state highlighting | ☐ |
+| K3 | All sidebar links work (no 404s) | ☐ |
+| K4 | Sidebar user info and logout | ☐ |
+| K5 | Top bar title and View Site link | ☐ |
+| L1 | Desktop layout (sidebar visible) | ☐ |
+| L2 | Mobile layout (sidebar toggles) | ☐ |
+| L3 | Stats grid responds to width | ☐ |
+| M1 | Flash messages use CSS classes | ☐ |
+| M2 | Flash messages auto-dismiss | ☐ |

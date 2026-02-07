@@ -14,6 +14,7 @@ use App\Auth\Session;
 use App\Auth\CsrfMiddleware;
 use App\Auth\AuthMiddleware;
 use App\Auth\AuthController;
+use App\Admin\DashboardController;
 
 // Bootstrap
 $app = new App();
@@ -68,10 +69,43 @@ $router->post('/admin/logout', [AuthController::class, 'logout']);
 
 // Admin routes (protected by AuthMiddleware)
 $router->group('/admin', function($router) use ($app) {
-    $router->get('/dashboard', function($request) use ($app) {
+    // Dashboard
+    $router->get('/dashboard', [DashboardController::class, 'index']);
+
+    // Placeholder routes for sidebar links (to be replaced in future chunks)
+    $router->get('/content', function($request) use ($app) {
         return new Response(
-            $app->template()->render('admin/dashboard', [
-                'title' => 'Dashboard',
+            $app->template()->render('admin/placeholder', [
+                'title' => 'Content',
+                'activeNav' => 'content',
+                'message' => 'Content management is coming in Chunk 2.2.',
+            ])
+        );
+    });
+    $router->get('/media', function($request) use ($app) {
+        return new Response(
+            $app->template()->render('admin/placeholder', [
+                'title' => 'Media',
+                'activeNav' => 'media',
+                'message' => 'Media management is coming in Chunk 2.3.',
+            ])
+        );
+    });
+    $router->get('/users', function($request) use ($app) {
+        return new Response(
+            $app->template()->render('admin/placeholder', [
+                'title' => 'Users',
+                'activeNav' => 'users',
+                'message' => 'User management is coming in Chunk 2.4.',
+            ])
+        );
+    });
+    $router->get('/settings', function($request) use ($app) {
+        return new Response(
+            $app->template()->render('admin/placeholder', [
+                'title' => 'Settings',
+                'activeNav' => 'settings',
+                'message' => 'Settings panel is coming in Chunk 5.2.',
             ])
         );
     });
