@@ -112,16 +112,10 @@
                                 <td>
                                     <a href="/admin/content/<?= (int)$item['id'] ?>/edit"
                                        class="btn btn-sm">Edit</a>
-                                    <form method="POST"
-                                          action="/admin/content/<?= (int)$item['id'] ?>/delete"
-                                          style="display:inline;">
-                                        <?= $this->csrfField() ?>
-                                        <input type="hidden" name="_method" value="DELETE">
-                                        <button type="submit" class="btn btn-sm btn-danger"
-                                                data-confirm="Are you sure you want to delete this content?">
-                                            Delete
-                                        </button>
-                                    </form>
+                                    <button type="button" class="btn btn-sm btn-danger delete-btn"
+                                            data-id="<?= (int)$item['id'] ?>">
+                                        Delete
+                                    </button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -130,6 +124,12 @@
             </div>
         <?php endif; ?>
     </div>
+</form>
+
+<!-- Standalone delete form (outside bulk form to avoid nested-form bug) -->
+<form method="POST" id="delete-form" style="display:none;">
+    <?= $this->csrfField() ?>
+    <input type="hidden" name="_method" value="DELETE">
 </form>
 
 <!-- Pagination -->

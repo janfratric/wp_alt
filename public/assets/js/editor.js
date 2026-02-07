@@ -90,4 +90,18 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // --- Delete Buttons (standalone form to avoid nested-form bug) ---
+    // Note: admin.js handles data-confirm for all other buttons (e.g. bulk Apply).
+    // Delete buttons don't use data-confirm — this handler manages its own confirm().
+    var deleteForm = document.getElementById('delete-form');
+    var deleteButtons = document.querySelectorAll('.delete-btn');
+    for (var i = 0; i < deleteButtons.length; i++) {
+        deleteButtons[i].addEventListener('click', function() {
+            if (confirm('Are you sure you want to delete this content?')) {
+                deleteForm.action = '/admin/content/' + this.getAttribute('data-id');
+                deleteForm.submit();
+            }
+        });
+    }
 });
