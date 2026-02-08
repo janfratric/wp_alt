@@ -20,6 +20,7 @@ Follow `BUILD-GUIDE.md` for the chunk-based workflow. Read `STATUS.md` to see cu
 - Retrying the same failed approach without changing something
 - Batching unrelated changes into one commit
 - Generating boilerplate explanations instead of acting
+- Never use `2>nul` or `>nul` in bash commands. These create literal files named "nul" on this system. Instead, use `2>$null` or simply omit error redirection.
 
 ## Key Commands
 - `composer install` — install autoloader

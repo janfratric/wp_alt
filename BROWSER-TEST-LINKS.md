@@ -14,11 +14,11 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
-| 1 | [http://localhost:8000/](http://localhost:8000/) | Public homepage — shows "Welcome to LiteCMS" with HTML layout |
+| 1 | [http://localhost:8000/](http://localhost:8000/) | Public homepage — shows "Welcome to LiteCMS" with navigation, recent blog posts, and SEO meta tags |
 | 2 | [http://localhost:8000/admin/login](http://localhost:8000/admin/login) | Login page — centered card with username/password form and CSRF token |
 | 3 | [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard) | Admin dashboard — styled sidebar nav, topbar, stats cards (Total Content, Published, Drafts, Users, Media Files), and recent content table. Redirects to `/admin/login` if not authenticated |
 | 4 | [http://localhost:8000/admin/content](http://localhost:8000/admin/content) | Content list — filterable/searchable table with type and status filters, pagination, bulk actions, and "+ New Content" button |
@@ -31,7 +31,10 @@ This starts PHP's built-in development server with `public/` as the document roo
 | 9a | [http://localhost:8000/admin/users/create](http://localhost:8000/admin/users/create) | Create user form — username, email, role select, password fields. Admin-only |
 | 9b | [http://localhost:8000/admin/users/1/edit](http://localhost:8000/admin/users/1/edit) | Edit user form — pre-filled fields, `_method=PUT`, current password required for own password change, role field disabled when editing self |
 | 10 | [http://localhost:8000/admin/settings](http://localhost:8000/admin/settings) | Settings placeholder — "Coming soon" message, sidebar highlights "Settings" |
-| 11 | [http://localhost:8000/nonexistent](http://localhost:8000/nonexistent) | 404 page — shows "404 Not Found" (no route matches) |
+| 11 | [http://localhost:8000/blog](http://localhost:8000/blog) | Blog index — paginated listing of published posts with author, date, excerpts. Pagination via `?page=N` |
+| 11a | [http://localhost:8000/blog/hello-world](http://localhost:8000/blog/hello-world) | Single blog post — full post content with author name, date, featured image, and article-type OG tags |
+| 12 | [http://localhost:8000/about](http://localhost:8000/about) | Single page — renders published page by slug with SEO meta tags (create an "about" page first via admin) |
+| 13 | [http://localhost:8000/nonexistent](http://localhost:8000/nonexistent) | Styled 404 page — "404 — Page Not Found" with navigation and "Return to homepage" link |
 
 ### Authentication Flow
 
@@ -99,6 +102,23 @@ The user management section (`/admin/users`) provides admin-only user CRUD:
 - **Delete with reassignment** — deleting a user who has content prompts to reassign content to another user via modal
 - **Validation** — username (alphanumeric+underscore, max 50, unique), email (valid format, unique), password (min 6 chars, required on create)
 - **Security headers** — `X-Frame-Options: DENY` and `Content-Security-Policy` on all user management pages
+
+### Public Website — Front Controller (Chunk 3.1)
+
+The public-facing website is now functional with content-driven routing:
+- **Homepage** (`/`) — displays "Welcome to LiteCMS" with recent published blog posts, author names, dates, and excerpts
+- **Blog index** (`/blog`) — paginated listing of all published posts, ordered by publish date descending. Pagination via `?page=N`
+- **Blog post** (`/blog/{slug}`) — single post with full content, author name, publish date, featured image, and article-type OG tags
+- **Page** (`/{slug}`) — single published page with content, featured image, and website-type OG tags
+- **404 page** — styled "Page Not Found" page with navigation and "Return to homepage" link
+- **Auto-generated navigation** — header nav includes Home link, published pages sorted by sort_order, and Blog link
+- **Active state** — current page is highlighted in navigation
+- **SEO meta tags** — every page includes `<meta name="description">`, `<link rel="canonical">`, Open Graph tags (title, description, type, url, image)
+- **Article OG tags** — blog posts additionally include `article:author` and `article:published_time` meta tags
+- **Content scheduling** — content only visible if status='published' AND (published_at IS NULL OR published_at <= now)
+- **Draft/archived protection** — draft and archived content returns 404 to public visitors
+- **Canonical redirects** — posts accessed via `/{slug}` are 301-redirected to `/blog/{slug}`
+- **Section/yield template system** — child templates can define named sections (head, scripts) that the layout yields
 
 ---
 

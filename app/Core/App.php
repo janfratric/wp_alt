@@ -52,7 +52,8 @@ class App
         $match = $this->router->dispatch($request->method(), $request->uri());
 
         if ($match === null) {
-            $response = Response::html('<h1>404 Not Found</h1>', 404);
+            $controller = new \App\Templates\FrontController($this);
+            $response = $controller->notFound($request);
             $response->send();
             return;
         }

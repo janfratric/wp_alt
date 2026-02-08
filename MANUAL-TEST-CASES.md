@@ -1,6 +1,6 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller)
 >
 > **Last updated**: 2026-02-08
 
@@ -20,11 +20,14 @@ php -S localhost:8000 -t public
 
 ## Test Group A: Browser — Pages & Routing
 
-### A1. Homepage loads
+### A1. Homepage loads with navigation and recent posts
 1. Open [http://localhost:8000/](http://localhost:8000/)
 2. **Expected**: Page renders with "Welcome to LiteCMS" heading
 3. **Verify**: Page has proper HTML structure (`<html>`, `<head>`, `<body>`)
 4. **Verify**: Title includes "LiteCMS"
+5. **Verify**: Navigation bar shows Home, Blog, and any published pages
+6. **Verify**: Recent published posts are displayed (if any exist)
+7. **Verify**: Page source includes `<meta property="og:type" content="website">`
 
 ### A2. Admin dashboard redirects to login when not authenticated
 1. Clear cookies / use incognito window
@@ -38,12 +41,13 @@ php -S localhost:8000 -t public
 3. **Verify**: Form has username, password fields and a "Sign In" button
 4. **Verify**: Page source contains a hidden `_csrf_token` field
 
-### A4. 404 for unknown routes
+### A4. Styled 404 for unknown routes
 1. Open [http://localhost:8000/this-does-not-exist](http://localhost:8000/this-does-not-exist)
-2. **Expected**: Shows "404 Not Found"
-3. Try: `/admin`, `/login`
-4. **Expected**: Both return 404 (these routes aren't registered)
-5. Note: `/admin/content` is now a full content list (Chunk 2.2); `/admin/media` is now the media library (Chunk 2.3); `/admin/users` is now the user management section (Chunk 2.4); `/admin/settings` still has a placeholder page
+2. **Expected**: Shows styled "404 — Page Not Found" page with navigation and "Return to homepage" link
+3. **Verify**: Page uses the public layout (has header, nav, footer)
+4. Try: `/admin`, `/login`
+5. **Expected**: Both return styled 404 page (these routes aren't registered)
+6. Note: `/admin/content` is now a full content list (Chunk 2.2); `/admin/media` is now the media library (Chunk 2.3); `/admin/users` is now the user management section (Chunk 2.4); `/admin/settings` still has a placeholder page
 
 ### A5. Query strings don't break routing
 1. Open [http://localhost:8000/?foo=bar](http://localhost:8000/?foo=bar)
@@ -1042,6 +1046,118 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 
 ---
 
+## Test Group Z: Public Website — Homepage & Navigation (Chunk 3.1)
+
+### Z1. Homepage shows recent published posts
+1. Create several published posts via admin (with published_at in the past)
+2. Open [http://localhost:8000/](http://localhost:8000/)
+3. **Verify**: Recent posts are displayed with title, date, author, and excerpt
+4. **Verify**: "Read more" links point to `/blog/{slug}`
+5. **Verify**: Future-scheduled posts are NOT shown
+6. **Verify**: Draft/archived posts are NOT shown
+
+### Z2. Navigation includes Home, pages, and Blog
+1. Create published pages "About" (sort_order=1) and "Services" (sort_order=2) via admin
+2. Open any public page
+3. **Verify**: Navigation shows: Home, About, Services, Blog — in that order
+4. **Verify**: Draft and archived pages are NOT shown in navigation
+
+### Z3. Navigation active state
+1. Open [http://localhost:8000/about](http://localhost:8000/about)
+2. **Verify**: "About" link in navigation has `class="active"`
+3. Open [http://localhost:8000/](http://localhost:8000/)
+4. **Verify**: "Home" link has `class="active"`
+5. Open [http://localhost:8000/blog](http://localhost:8000/blog)
+6. **Verify**: "Blog" link has `class="active"`
+
+### Z4. Navigation sort order changes dynamically
+1. Change "Services" sort_order to 0 (via admin content edit)
+2. Refresh any public page
+3. **Verify**: Services now appears before About in navigation
+
+---
+
+## Test Group AA: Public Website — Blog (Chunk 3.1)
+
+### AA1. Blog index with pagination
+1. Create 15 published posts
+2. Open [http://localhost:8000/blog](http://localhost:8000/blog)
+3. **Verify**: First 10 posts shown (items_per_page=10)
+4. **Verify**: "Next" pagination link visible, "Previous" not visible
+5. Open [http://localhost:8000/blog?page=2](http://localhost:8000/blog?page=2)
+6. **Verify**: Remaining 5 posts shown, "Previous" link visible
+
+### AA2. Blog post displays with OG tags
+1. Create a published post with author
+2. Open [http://localhost:8000/blog/{slug}](http://localhost:8000/blog/{slug})
+3. **Verify**: Post title, body, author name, and publish date are displayed
+4. **Verify**: Page source contains `og:type` with value `article`
+5. **Verify**: Page source contains `article:author` and `article:published_time`
+
+### AA3. Future-scheduled post returns 404
+1. Create a post with status="published" and published_at set to tomorrow
+2. Open [http://localhost:8000/blog/{slug}](http://localhost:8000/blog/{slug})
+3. **Expected**: Styled 404 page (post not yet visible)
+4. Change published_at to yesterday, refresh
+5. **Expected**: Post is now visible (HTTP 200)
+
+### AA4. Draft/archived post returns 404
+1. Create a post with status="draft"
+2. Open [http://localhost:8000/blog/{slug}](http://localhost:8000/blog/{slug})
+3. **Expected**: 404 page
+4. Repeat with status="archived" — also 404
+
+---
+
+## Test Group AB: Public Website — Pages & SEO (Chunk 3.1)
+
+### AB1. Published page accessible by slug
+1. Create a published page with slug "about" via admin
+2. Open [http://localhost:8000/about](http://localhost:8000/about)
+3. **Verify**: HTTP 200, page title and body content displayed
+4. **Verify**: Page wrapped in public layout with navigation
+
+### AB2. Page SEO meta tags
+1. Create a published page with meta_title="Professional Services | MyBiz", meta_description="We offer services.", featured_image="/assets/uploads/test.jpg"
+2. Open [http://localhost:8000/services](http://localhost:8000/services)
+3. **Verify**: `<title>` contains "Professional Services | MyBiz"
+4. **Verify**: `<meta name="description">` contains the meta_description
+5. **Verify**: `<meta property="og:title">` contains the meta_title
+6. **Verify**: `<meta property="og:type">` is "website"
+7. **Verify**: `<link rel="canonical">` points to the correct URL
+8. **Verify**: `<meta property="og:image">` references the featured image
+
+### AB3. Post accessed via /{slug} redirects to /blog/{slug}
+1. Create a published post with slug "my-post"
+2. Open [http://localhost:8000/my-post](http://localhost:8000/my-post)
+3. **Expected**: HTTP 301 redirect to [http://localhost:8000/blog/my-post](http://localhost:8000/blog/my-post)
+4. **Verify**: Browser follows the redirect and loads the blog post
+
+### AB4. Draft page returns 404
+1. Create a page with status="draft"
+2. Open [http://localhost:8000/{slug}](http://localhost:8000/{slug})
+3. **Expected**: Styled 404 page
+
+### AB5. Archived page returns 404
+1. Create a page with status="archived"
+2. Open [http://localhost:8000/{slug}](http://localhost:8000/{slug})
+3. **Expected**: Styled 404 page
+
+### AB6. Non-existent slug returns styled 404
+1. Open [http://localhost:8000/nonexistent-page-xyz](http://localhost:8000/nonexistent-page-xyz)
+2. **Verify**: HTTP 404 status
+3. **Verify**: Styled 404 page with navigation and "Return to homepage" link
+4. **Verify**: Page uses the same layout as other public pages
+
+### AB7. Admin routes still work after public catch-all
+1. Log in as admin
+2. Open [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard)
+3. **Verify**: Dashboard loads correctly (catch-all route doesn't intercept admin routes)
+4. Visit /admin/content, /admin/media, /admin/users
+5. **Verify**: All admin sections work correctly
+
+---
+
 ## Summary Checklist
 
 (continued from previous chunks)
@@ -1175,3 +1291,18 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | Y3 | Security headers on user pages | ☐ |
 | Y4 | XSS prevention | ☐ |
 | Y5 | Dashboard users count updates | ☐ |
+| Z1 | Homepage shows recent published posts | ☐ |
+| Z2 | Navigation includes Home, pages, and Blog | ☐ |
+| Z3 | Navigation active state | ☐ |
+| Z4 | Navigation sort order changes dynamically | ☐ |
+| AA1 | Blog index with pagination | ☐ |
+| AA2 | Blog post displays with OG tags | ☐ |
+| AA3 | Future-scheduled post returns 404 | ☐ |
+| AA4 | Draft/archived post returns 404 | ☐ |
+| AB1 | Published page accessible by slug | ☐ |
+| AB2 | Page SEO meta tags | ☐ |
+| AB3 | Post /{slug} redirects to /blog/{slug} | ☐ |
+| AB4 | Draft page returns 404 | ☐ |
+| AB5 | Archived page returns 404 | ☐ |
+| AB6 | Non-existent slug returns styled 404 | ☐ |
+| AB7 | Admin routes still work after catch-all | ☐ |

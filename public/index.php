@@ -18,6 +18,7 @@ use App\Admin\DashboardController;
 use App\Admin\ContentController;
 use App\Admin\MediaController;
 use App\Admin\UserController;
+use App\Templates\FrontController;
 
 // Bootstrap
 $app = new App();
@@ -56,14 +57,10 @@ $app->addMiddleware([AuthMiddleware::class, 'handle']);
 
 $router = $app->router();
 
-// Public routes
-$router->get('/', function($request) use ($app) {
-    return new Response(
-        $app->template()->render('public/home', [
-            'title' => Config::getString('site_name'),
-        ])
-    );
-});
+// Public routes (order matters — specific routes before catch-all)
+$router->get('/', [FrontController::class, 'homepage']);
+$router->get('/blog', [FrontController::class, 'blogIndex']);
+$router->get('/blog/{slug}', [FrontController::class, 'blogPost']);
 
 // Auth routes
 $router->get('/admin/login', [AuthController::class, 'showLogin']);
@@ -109,6 +106,9 @@ $router->group('/admin', function($router) use ($app) {
         );
     });
 });
+
+// Catch-all for pages by slug (MUST be last)
+$router->get('/{slug}', [FrontController::class, 'page']);
 
 // --- Run ---
 $app->run($request);
