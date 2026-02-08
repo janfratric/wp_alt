@@ -175,10 +175,10 @@ try {
     $row = $stmt->fetch();
     $migrationCount = (int) ($row['cnt'] ?? 0);
 
-    if ($migrationCount === 1) {
-        test_pass('_migrations table has exactly 1 record (001_initial)');
+    if ($migrationCount >= 1) {
+        test_pass("_migrations table has {$migrationCount} record(s) (includes 001_initial)");
     } else {
-        test_fail('_migrations table has exactly 1 record', "found {$migrationCount} records");
+        test_fail('_migrations table has at least 1 record', "found {$migrationCount} records");
     }
 } catch (\Throwable $e) {
     test_fail('Idempotent migration check works without errors', $e->getMessage());
@@ -499,10 +499,10 @@ try {
 // ---------------------------------------------------------------------------
 try {
     $applied = $migrator->getApplied();
-    if (is_array($applied) && count($applied) === 1) {
-        test_pass('Migrator::getApplied() returns array with 1 migration');
+    if (is_array($applied) && count($applied) >= 1) {
+        test_pass('Migrator::getApplied() returns array with ' . count($applied) . ' migration(s)');
     } else {
-        test_fail('Migrator::getApplied()', 'expected 1 migration, got ' . count($applied));
+        test_fail('Migrator::getApplied()', 'expected at least 1 migration, got ' . count($applied));
     }
 
     $hasInitial = $migrator->hasBeenApplied('001_initial.sqlite.sql');

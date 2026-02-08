@@ -11,6 +11,7 @@ use App\Database\QueryBuilder;
 class FrontController
 {
     private App $app;
+    private ?array $settingsCache = null;
 
     public function __construct(App $app)
     {
@@ -170,16 +171,161 @@ class FrontController
     }
 
     /**
+     * Contact page (GET) — show the contact form.
+     */
+    public function contactPage(Request $request): Response
+    {
+        $meta = [
+            'title'       => 'Contact — ' . Config::getString('site_name', 'LiteCMS'),
+            'description' => 'Get in touch with us.',
+            'canonical'   => Config::getString('site_url', '') . '/contact',
+            'og_type'     => 'website',
+            'og_url'      => Config::getString('site_url', '') . '/contact',
+        ];
+
+        $success = $_SESSION['flash_success'] ?? '';
+        unset($_SESSION['flash_success']);
+
+        return $this->renderPublic('public/contact', [
+            'title'   => 'Contact',
+            'meta'    => $meta,
+            'old'     => [],
+            'success' => $success,
+            'error'   => '',
+        ]);
+    }
+
+    /**
+     * Contact form submission (POST) — validate and store.
+     */
+    public function contactSubmit(Request $request): Response
+    {
+        $name    = trim((string) $request->input('name', ''));
+        $email   = trim((string) $request->input('email', ''));
+        $subject = trim((string) $request->input('subject', ''));
+        $message = trim((string) $request->input('message', ''));
+
+        // Server-side validation
+        $errors = [];
+        if ($name === '' || mb_strlen($name) > 100) {
+            $errors[] = 'Name is required (max 100 characters).';
+        }
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 255) {
+            $errors[] = 'A valid email address is required.';
+        }
+        if (mb_strlen($subject) > 255) {
+            $errors[] = 'Subject must be 255 characters or fewer.';
+        }
+        if ($message === '' || mb_strlen($message) > 5000) {
+            $errors[] = 'Message is required (max 5000 characters).';
+        }
+
+        if (!empty($errors)) {
+            $meta = [
+                'title'     => 'Contact — ' . Config::getString('site_name', 'LiteCMS'),
+                'canonical' => Config::getString('site_url', '') . '/contact',
+                'og_type'   => 'website',
+            ];
+            return $this->renderPublic('public/contact', [
+                'title'   => 'Contact',
+                'meta'    => $meta,
+                'old'     => ['name' => $name, 'email' => $email, 'subject' => $subject, 'message' => $message],
+                'error'   => implode(' ', $errors),
+                'success' => '',
+            ]);
+        }
+
+        // Store submission
+        QueryBuilder::query('contact_submissions')->insert([
+            'name'       => $name,
+            'email'      => $email,
+            'subject'    => $subject,
+            'message'    => $message,
+            'ip_address' => $request->server('REMOTE_ADDR', ''),
+        ]);
+
+        // Redirect with flash message (PRG pattern)
+        $_SESSION['flash_success'] = 'Thank you for your message! We will get back to you soon.';
+        return Response::redirect('/contact');
+    }
+
+    /**
+     * Archive listing for a custom content type.
+     */
+    public function archive(Request $request, string $typeSlug): Response
+    {
+        // Look up the content type
+        $contentType = QueryBuilder::query('content_types')
+            ->select()
+            ->where('slug', $typeSlug)
+            ->where('has_archive', 1)
+            ->first();
+
+        if ($contentType === null) {
+            return $this->notFound($request);
+        }
+
+        $perPage = Config::getInt('items_per_page', 10);
+        $page = max(1, (int) ($request->query('page', '1')));
+        $offset = ($page - 1) * $perPage;
+        $now = gmdate('Y-m-d H:i:s');
+
+        $total = QueryBuilder::query('content')
+            ->select()
+            ->where('type', $typeSlug)
+            ->where('status', 'published')
+            ->whereRaw('(published_at IS NULL OR published_at <= :now)', [':now' => $now])
+            ->count();
+
+        $totalPages = (int) ceil($total / $perPage);
+
+        $items = QueryBuilder::query('content')
+            ->select('content.*', 'users.username as author_name')
+            ->leftJoin('users', 'users.id', '=', 'content.author_id')
+            ->where('content.type', $typeSlug)
+            ->where('content.status', 'published')
+            ->whereRaw('(content.published_at IS NULL OR content.published_at <= :now)', [':now' => $now])
+            ->orderBy('content.published_at', 'DESC')
+            ->limit($perPage)
+            ->offset($offset)
+            ->get();
+
+        $meta = [
+            'title'       => $contentType['name'] . ' — ' . Config::getString('site_name', 'LiteCMS'),
+            'description' => 'Browse all ' . strtolower($contentType['name']),
+            'canonical'   => Config::getString('site_url', '') . '/' . $typeSlug,
+            'og_type'     => 'website',
+            'og_url'      => Config::getString('site_url', '') . '/' . $typeSlug,
+        ];
+
+        return $this->renderPublic('public/archive', [
+            'title'        => $contentType['name'],
+            'archiveTitle' => $contentType['name'],
+            'archiveSlug'  => $typeSlug,
+            'items'        => $items,
+            'currentPage'  => $page,
+            'totalPages'   => $totalPages,
+            'total'        => $total,
+            'meta'         => $meta,
+        ]);
+    }
+
+    /**
      * 404 Not Found page.
      */
     public function notFound(Request $request): Response
     {
+        $settings = $this->getPublicSettings();
+
         $html = $this->app->template()->render('public/404', [
             'title'       => 'Page Not Found',
             'navPages'    => $this->getNavPages(),
             'siteName'    => Config::getString('site_name', 'LiteCMS'),
             'siteUrl'     => Config::getString('site_url', ''),
             'currentSlug' => '',
+            'consentText' => $settings['cookie_consent_text'] ?? '',
+            'consentLink' => $settings['cookie_consent_link'] ?? '',
+            'gaId'        => ($settings['ga_enabled'] ?? '') === '1' ? ($settings['ga_measurement_id'] ?? '') : '',
             'meta'        => [
                 'title' => 'Page Not Found — ' . Config::getString('site_name', 'LiteCMS'),
             ],
@@ -275,22 +421,68 @@ class FrontController
     }
 
     /**
-     * Common render helper — merges in navigation and global data.
+     * Common render helper — merges in navigation, global data, and settings.
      */
     private function renderPublic(string $template, array $data): Response
     {
+        $settings = $this->getPublicSettings();
+
         $data = array_merge([
             'navPages'    => $this->getNavPages(),
             'siteName'    => Config::getString('site_name', 'LiteCMS'),
             'siteUrl'     => Config::getString('site_url', ''),
             'currentSlug' => '',
+            'tagline'     => $settings['site_tagline'] ?? '',
+            'consentText' => $settings['cookie_consent_text'] ?? '',
+            'consentLink' => $settings['cookie_consent_link'] ?? '',
+            'gaId'        => ($settings['ga_enabled'] ?? '') === '1' ? ($settings['ga_measurement_id'] ?? '') : '',
         ], $data);
 
         if (isset($data['content']['slug'])) {
             $data['currentSlug'] = $data['content']['slug'];
         }
 
+        // Clear flash messages after reading
+        if (isset($_SESSION['flash_success'])) {
+            $data['success'] = $data['success'] ?? $_SESSION['flash_success'];
+            unset($_SESSION['flash_success']);
+        }
+
         $html = $this->app->template()->render($template, $data);
         return Response::html($html);
+    }
+
+    /**
+     * Fetch public-relevant settings from the settings table.
+     * Returns an associative array of key => value.
+     * Gracefully returns empty array if settings table is empty.
+     */
+    private function getPublicSettings(): array
+    {
+        if ($this->settingsCache !== null) {
+            return $this->settingsCache;
+        }
+
+        try {
+            $rows = QueryBuilder::query('settings')
+                ->select('key', 'value')
+                ->whereRaw("key IN (:k1, :k2, :k3, :k4, :k5)", [
+                    ':k1' => 'site_tagline',
+                    ':k2' => 'cookie_consent_text',
+                    ':k3' => 'cookie_consent_link',
+                    ':k4' => 'ga_enabled',
+                    ':k5' => 'ga_measurement_id',
+                ])
+                ->get();
+
+            $this->settingsCache = [];
+            foreach ($rows as $row) {
+                $this->settingsCache[$row['key']] = $row['value'];
+            }
+        } catch (\Throwable $e) {
+            $this->settingsCache = [];
+        }
+
+        return $this->settingsCache;
     }
 }

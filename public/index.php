@@ -61,6 +61,8 @@ $router = $app->router();
 $router->get('/', [FrontController::class, 'homepage']);
 $router->get('/blog', [FrontController::class, 'blogIndex']);
 $router->get('/blog/{slug}', [FrontController::class, 'blogPost']);
+$router->get('/contact', [FrontController::class, 'contactPage']);
+$router->post('/contact', [FrontController::class, 'contactSubmit']);
 
 // Auth routes
 $router->get('/admin/login', [AuthController::class, 'showLogin']);

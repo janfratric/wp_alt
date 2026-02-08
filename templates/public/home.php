@@ -1,7 +1,11 @@
 <?php $this->layout('public/layout'); ?>
 
 <div class="homepage">
-    <h1>Welcome to <?= $this->e($siteName ?? $title) ?></h1>
+    <section class="hero">
+        <h1>Welcome to <?= $this->e($siteName ?? $title) ?></h1>
+        <p><?= $this->e($tagline ?? 'A fast, lightweight content management system for your business.') ?></p>
+        <a href="/blog" class="cta-button">Read Our Blog</a>
+    </section>
 
 <?php if (!empty($posts)): ?>
     <section class="recent-posts">

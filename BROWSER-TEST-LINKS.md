@@ -14,11 +14,11 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
-| 1 | [http://localhost:8000/](http://localhost:8000/) | Public homepage — shows "Welcome to LiteCMS" with navigation, recent blog posts, and SEO meta tags |
+| 1 | [http://localhost:8000/](http://localhost:8000/) | Public homepage — hero section with tagline and CTA button, styled recent blog posts as post cards, mobile-first responsive CSS |
 | 2 | [http://localhost:8000/admin/login](http://localhost:8000/admin/login) | Login page — centered card with username/password form and CSRF token |
 | 3 | [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard) | Admin dashboard — styled sidebar nav, topbar, stats cards (Total Content, Published, Drafts, Users, Media Files), and recent content table. Redirects to `/admin/login` if not authenticated |
 | 4 | [http://localhost:8000/admin/content](http://localhost:8000/admin/content) | Content list — filterable/searchable table with type and status filters, pagination, bulk actions, and "+ New Content" button |
@@ -34,7 +34,8 @@ This starts PHP's built-in development server with `public/` as the document roo
 | 11 | [http://localhost:8000/blog](http://localhost:8000/blog) | Blog index — paginated listing of published posts with author, date, excerpts. Pagination via `?page=N` |
 | 11a | [http://localhost:8000/blog/hello-world](http://localhost:8000/blog/hello-world) | Single blog post — full post content with author name, date, featured image, and article-type OG tags |
 | 12 | [http://localhost:8000/about](http://localhost:8000/about) | Single page — renders published page by slug with SEO meta tags (create an "about" page first via admin) |
-| 13 | [http://localhost:8000/nonexistent](http://localhost:8000/nonexistent) | Styled 404 page — "404 — Page Not Found" with navigation and "Return to homepage" link |
+| 14 | [http://localhost:8000/contact](http://localhost:8000/contact) | Contact form — CSRF-protected form with name, email, subject, message fields. Submits via POST, stores in DB, shows success via PRG pattern |
+| 15 | [http://localhost:8000/nonexistent](http://localhost:8000/nonexistent) | Styled 404 page — "404 — Page Not Found" with navigation and "Return to homepage" link |
 
 ### Authentication Flow
 
@@ -120,6 +121,21 @@ The public-facing website is now functional with content-driven routing:
 - **Canonical redirects** — posts accessed via `/{slug}` are 301-redirected to `/blog/{slug}`
 - **Section/yield template system** — child templates can define named sections (head, scripts) that the layout yields
 
+### Public Templates & Styling (Chunk 3.2)
+
+The public site now has a complete, mobile-first responsive design:
+- **Public stylesheet** (`/assets/css/style.css`) — CSS custom properties, mobile-first responsive layout with 768px breakpoint
+- **Hero section** — homepage displays a centered hero with site tagline and "Read Our Blog" CTA button
+- **Post cards** — blog index and homepage recent posts displayed as styled cards with featured images, author, date, excerpt
+- **Contact page** (`/contact`) — CSRF-protected form with name, email, subject, message fields; server-side validation; PRG pattern; submissions stored in `contact_submissions` table
+- **Archive template** — generic listing for custom content types with pagination (used by Chunk 5.1)
+- **Cookie consent banner** — GDPR-compliant fixed-position banner with Accept/Decline buttons; stores choice in `litecms_consent` cookie for 365 days
+- **Conditional Google Analytics** — GA gtag.js loads only after user clicks Accept; reads Measurement ID from `data-ga-id` on `<body>` (configured via settings table)
+- **Mobile hamburger navigation** — `<button>` with SVG icon, `aria-expanded` attribute, toggles `.site-nav.open` class
+- **Sticky header** — site header sticks to top with `position: sticky`
+- **Navigation includes Contact** — Contact link appears in nav with active state highlighting
+- **Settings-driven content** — tagline, cookie consent text, privacy link, GA ID read from `settings` table
+
 ---
 
 ## What Happens Behind the Scenes
@@ -157,8 +173,9 @@ sqlite3 storage/database.sqlite ".tables"
 
 Expected output:
 ```
-_migrations      content          content_types    custom_fields
-ai_conversations media            settings         users
+_migrations          contact_submissions  content_types        media
+ai_conversations     content              custom_fields        settings
+users
 ```
 
 ---

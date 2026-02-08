@@ -1,6 +1,6 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling)
 >
 > **Last updated**: 2026-02-08
 
@@ -47,7 +47,7 @@ php -S localhost:8000 -t public
 3. **Verify**: Page uses the public layout (has header, nav, footer)
 4. Try: `/admin`, `/login`
 5. **Expected**: Both return styled 404 page (these routes aren't registered)
-6. Note: `/admin/content` is now a full content list (Chunk 2.2); `/admin/media` is now the media library (Chunk 2.3); `/admin/users` is now the user management section (Chunk 2.4); `/admin/settings` still has a placeholder page
+6. Note: `/admin/content` is now a full content list (Chunk 2.2); `/admin/media` is now the media library (Chunk 2.3); `/admin/users` is now the user management section (Chunk 2.4); `/admin/settings` still has a placeholder page; `/contact` is the public contact form (Chunk 3.2)
 
 ### A5. Query strings don't break routing
 1. Open [http://localhost:8000/?foo=bar](http://localhost:8000/?foo=bar)
@@ -1158,6 +1158,126 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 
 ---
 
+## Test Group AC: Public Stylesheet & Responsive Design (Chunk 3.2)
+
+### AC1. Public CSS loads and styles the site
+1. Open [http://localhost:8000/](http://localhost:8000/)
+2. **Verify**: Page is styled (not raw HTML) — fonts, colors, spacing visible
+3. **Verify**: Page source includes `<link rel="stylesheet" href="/assets/css/style.css">`
+4. **Verify**: Header has sticky positioning (stays at top when scrolling)
+
+### AC2. Homepage hero section
+1. Open [http://localhost:8000/](http://localhost:8000/)
+2. **Verify**: Hero section with centered text: "Welcome to LiteCMS"
+3. **Verify**: Tagline paragraph below the heading
+4. **Verify**: "Read Our Blog" CTA button (blue, links to /blog)
+5. **Verify**: Recent posts displayed as styled post cards below the hero
+
+### AC3. Mobile navigation hamburger
+1. Resize browser to 375px width (or use DevTools responsive mode)
+2. **Verify**: Nav links hidden, hamburger icon (three lines) appears
+3. Click the hamburger button
+4. **Verify**: Navigation slides open, `aria-expanded` changes to `true`
+5. Click again — navigation closes
+
+### AC4. Post cards responsive
+1. On desktop — post cards show image on left, text on right (horizontal)
+2. On mobile (375px) — post cards stack vertically (image on top, text below)
+
+### AC5. Cookie consent banner appears
+1. Clear all cookies for localhost
+2. Open any public page
+3. **Verify**: Cookie consent banner appears at bottom of page (fixed position, dark background)
+4. **Verify**: Banner has "Accept" and "Decline" buttons
+5. **Verify**: No `litecms_consent` cookie set yet
+
+### AC6. Cookie consent — Accept
+1. Click "Accept" on the banner
+2. **Verify**: Banner disappears
+3. **Verify**: `litecms_consent` cookie set to "accepted" (check via DevTools > Application > Cookies)
+4. Refresh the page — banner stays hidden
+
+### AC7. Cookie consent — Decline
+1. Clear cookies, reload
+2. Click "Decline" on the banner
+3. **Verify**: Banner disappears
+4. **Verify**: `litecms_consent` cookie set to "declined"
+5. Refresh — banner stays hidden, no GA loaded
+
+### AC8. Google Analytics conditional loading
+1. Insert GA settings: `INSERT INTO settings (key, value) VALUES ('ga_enabled', '1'), ('ga_measurement_id', 'G-TESTID123');`
+2. Clear cookies, visit homepage
+3. **Verify**: `<body>` has `data-ga-id="G-TESTID123"` attribute
+4. **Verify**: No `googletagmanager` script loaded yet (check Network tab)
+5. Click "Accept" on consent banner
+6. **Verify**: `googletagmanager.com/gtag/js?id=G-TESTID123` script loaded
+
+---
+
+## Test Group AD: Contact Page (Chunk 3.2)
+
+### AD1. Contact form loads
+1. Open [http://localhost:8000/contact](http://localhost:8000/contact)
+2. **Verify**: Form with Name, Email, Subject, Message fields
+3. **Verify**: CSRF token hidden input present (view source)
+4. **Verify**: "Send Message" submit button
+5. **Verify**: Navigation highlights "Contact" link
+6. **Verify**: Page has SEO meta tags (title, canonical, og:type)
+
+### AD2. Contact form — valid submission
+1. Fill in: Name=`Jane Doe`, Email=`jane@example.com`, Subject=`Test`, Message=`Hello there`
+2. Click "Send Message"
+3. **Expected**: Redirected back to `/contact` (PRG pattern)
+4. **Verify**: Success flash message: "Thank you for your message! We will get back to you soon."
+5. **Verify**: Form fields are empty (not pre-filled with submitted values)
+6. Run: `sqlite3 storage/database.sqlite "SELECT * FROM contact_submissions;"`
+7. **Verify**: Row with name=Jane Doe, email=jane@example.com, message=Hello there
+
+### AD3. Contact form — validation errors
+1. Submit the form with empty name, invalid email, empty message
+2. **Expected**: Form re-renders (not redirected) with error messages
+3. **Verify**: Error text visible in a red box
+4. **Verify**: Previously entered values preserved in form fields (`$old` values)
+
+### AD4. Contact form — CSRF protection
+1. Using curl: `curl -X POST http://localhost:8000/contact -d "name=Test&email=test@test.com&message=Hello"`
+2. **Expected**: HTTP 403 — CSRF token missing
+
+### AD5. Contact form — refresh doesn't resubmit
+1. Submit a valid contact form
+2. After the success redirect, press F5 to refresh
+3. **Verify**: No duplicate submission (PRG pattern prevents it)
+
+---
+
+## Test Group AE: Archive & Navigation Enhancements (Chunk 3.2)
+
+### AE1. Navigation includes Contact link
+1. Open any public page
+2. **Verify**: Navigation shows: Home, [pages], Blog, Contact — in that order
+3. **Verify**: Contact link points to `/contact`
+
+### AE2. Contact active state in navigation
+1. Open [http://localhost:8000/contact](http://localhost:8000/contact)
+2. **Verify**: "Contact" link has `class="active"` in the nav
+
+### AE3. Home not highlighted on Contact page
+1. Open /contact
+2. **Verify**: "Home" link does NOT have `class="active"`
+
+### AE4. Archive template exists
+1. **Verify**: File `templates/public/archive.php` exists
+2. **Verify**: Template references `archiveSlug`, `archiveTitle`, `totalPages` variables
+3. **Note**: Archive routes not yet registered (deferred to Chunk 5.1)
+
+### AE5. Migration created contact_submissions table
+1. Run: `sqlite3 storage/database.sqlite ".tables"`
+2. **Verify**: `contact_submissions` table exists
+3. Run: `sqlite3 storage/database.sqlite "PRAGMA table_info(contact_submissions);"`
+4. **Verify**: Columns: id, name, email, subject, message, ip_address, created_at
+
+---
+
 ## Summary Checklist
 
 (continued from previous chunks)
@@ -1306,3 +1426,21 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | AB5 | Archived page returns 404 | ☐ |
 | AB6 | Non-existent slug returns styled 404 | ☐ |
 | AB7 | Admin routes still work after catch-all | ☐ |
+| AC1 | Public CSS loads and styles the site | ☐ |
+| AC2 | Homepage hero section | ☐ |
+| AC3 | Mobile navigation hamburger | ☐ |
+| AC4 | Post cards responsive | ☐ |
+| AC5 | Cookie consent banner appears | ☐ |
+| AC6 | Cookie consent — Accept | ☐ |
+| AC7 | Cookie consent — Decline | ☐ |
+| AC8 | Google Analytics conditional loading | ☐ |
+| AD1 | Contact form loads | ☐ |
+| AD2 | Contact form — valid submission | ☐ |
+| AD3 | Contact form — validation errors | ☐ |
+| AD4 | Contact form — CSRF protection | ☐ |
+| AD5 | Contact form — refresh doesn't resubmit | ☐ |
+| AE1 | Navigation includes Contact link | ☐ |
+| AE2 | Contact active state in navigation | ☐ |
+| AE3 | Home not highlighted on Contact page | ☐ |
+| AE4 | Archive template exists | ☐ |
+| AE5 | Migration created contact_submissions table | ☐ |
