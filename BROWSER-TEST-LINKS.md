@@ -14,7 +14,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
@@ -24,7 +24,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 | 4 | [http://localhost:8000/admin/content](http://localhost:8000/admin/content) | Content list — filterable/searchable table with type and status filters, pagination, bulk actions, and "+ New Content" button |
 | 5 | [http://localhost:8000/admin/content/create](http://localhost:8000/admin/content/create) | Content editor (create mode) — two-column layout with title, slug, TinyMCE body editor, excerpt, and sidebar with publish/SEO/image fields |
 | 6 | [http://localhost:8000/admin/content/create?type=post](http://localhost:8000/admin/content/create?type=post) | Content editor (create mode) — pre-selects "Post" type in the sidebar |
-| 7 | [http://localhost:8000/admin/content/1/edit](http://localhost:8000/admin/content/1/edit) | Content editor (edit mode) — loads existing content, shows "Update" button instead of "Create", includes `_method=PUT` hidden field |
+| 7 | [http://localhost:8000/admin/content/1/edit](http://localhost:8000/admin/content/1/edit) | Content editor (edit mode) — loads existing content, shows "Update" button instead of "Create", includes `_method=PUT` hidden field. AI Assistant toggle button in header opens chat panel as third column |
 | 8 | [http://localhost:8000/admin/media](http://localhost:8000/admin/media) | Media library — upload form with drag & drop zone, media grid with thumbnails, pagination, delete buttons. Sidebar highlights "Media" |
 | 8a | [http://localhost:8000/admin/media/browse?type=image](http://localhost:8000/admin/media/browse?type=image) | JSON endpoint — returns paginated list of image media items (used by media browser modal) |
 | 9 | [http://localhost:8000/admin/users](http://localhost:8000/admin/users) | User list — searchable table with username, email, role badge, created date, edit/delete actions, pagination, and "+ New User" button. Admin-only (editors get 403) |
@@ -135,6 +135,22 @@ The public site now has a complete, mobile-first responsive design:
 - **Sticky header** — site header sticks to top with `position: sticky`
 - **Navigation includes Contact** — Contact link appears in nav with active state highlighting
 - **Settings-driven content** — tagline, cookie consent text, privacy link, GA ID read from `settings` table
+
+### AI Chat Panel Frontend (Chunk 4.2)
+
+The content editor now includes an AI chat panel:
+- **AI toggle button** — "AI Assistant" button in the content editor page header (both create and edit modes)
+- **Collapsible panel** — opens as a third column alongside the editor and sidebar; 3-column grid layout (`1fr 320px 380px`)
+- **Chat interface** — message bubbles: user (blue, right-aligned), assistant (gray, left-aligned), with typing indicator animation
+- **Action buttons** — each AI response has "Insert" (at cursor), "Replace" (full editor content with confirm dialog), and "Copy" (plain text to clipboard)
+- **New conversation** — "New" button clears chat and starts fresh conversation
+- **Conversation persistence** — conversations load from backend when editing existing content (`GET /admin/ai/conversations`)
+- **Enter/Shift+Enter** — Enter sends message, Shift+Enter inserts newline
+- **Loading state** — animated typing indicator (bouncing dots), send button disabled during requests
+- **Error handling** — network errors and API key issues displayed as red error bubbles with link to /admin/settings
+- **Mobile responsive** — panel becomes full-screen overlay on viewports <=768px
+- **CSRF protection** — sends `X-CSRF-Token` header with all fetch requests
+- **XSS safety** — user messages rendered via `textContent`, assistant messages via `innerHTML` (AI HTML responses)
 
 ### Settings & AI Backend (Chunk 4.1)
 

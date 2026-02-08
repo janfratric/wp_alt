@@ -9,6 +9,7 @@ use App\Core\Response;
 use App\Database\QueryBuilder;
 use App\Auth\Session;
 use App\AIAssistant\AIController;
+use App\AIAssistant\ClaudeClient;
 
 class SettingsController
 {
@@ -91,6 +92,22 @@ class SettingsController
         $siteName = trim((string) $request->input('site_name', ''));
         if ($siteName !== '') {
             $this->saveSetting('site_name', $siteName);
+        }
+
+        // AI parameters
+        $aiMaxTokens = $request->input('ai_max_tokens');
+        if ($aiMaxTokens !== null && $aiMaxTokens !== '') {
+            $this->saveSetting('ai_max_tokens', (string) max(1, min(128000, (int) $aiMaxTokens)));
+        }
+
+        $aiTimeout = $request->input('ai_timeout');
+        if ($aiTimeout !== null && $aiTimeout !== '') {
+            $this->saveSetting('ai_timeout', (string) max(10, min(600, (int) $aiTimeout)));
+        }
+
+        $aiTemperature = $request->input('ai_temperature');
+        if ($aiTemperature !== null && $aiTemperature !== '') {
+            $this->saveSetting('ai_temperature', (string) max(0.0, min(1.0, round((float) $aiTemperature, 2))));
         }
 
         Session::flash('success', 'Settings saved successfully.');

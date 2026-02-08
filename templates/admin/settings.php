@@ -90,6 +90,50 @@
                 </div>
             <?php endif; ?>
         </div>
+
+        <!-- API Parameters -->
+        <div class="model-management">
+            <h3>API Parameters</h3>
+            <p class="section-desc">Fine-tune how the AI assistant communicates with the Claude API.</p>
+
+            <?php
+            $currentMaxTokens   = $settings['ai_max_tokens'] ?? \App\AIAssistant\ClaudeClient::DEFAULT_MAX_TOKENS;
+            $currentTimeout     = $settings['ai_timeout'] ?? \App\AIAssistant\ClaudeClient::DEFAULT_TIMEOUT;
+            $currentTemperature = $settings['ai_temperature'] ?? \App\AIAssistant\ClaudeClient::DEFAULT_TEMPERATURE;
+            ?>
+
+            <div class="ai-params-grid">
+                <div class="form-group">
+                    <label for="ai_max_tokens">Max Tokens</label>
+                    <input type="number"
+                           id="ai_max_tokens"
+                           name="ai_max_tokens"
+                           value="<?= (int) $currentMaxTokens ?>"
+                           min="1" max="128000" step="1">
+                    <small>Maximum number of tokens in the AI response (1 &ndash; 128,000). Default: <?= \App\AIAssistant\ClaudeClient::DEFAULT_MAX_TOKENS ?>.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="ai_timeout">Timeout (seconds)</label>
+                    <input type="number"
+                           id="ai_timeout"
+                           name="ai_timeout"
+                           value="<?= (int) $currentTimeout ?>"
+                           min="10" max="600" step="1">
+                    <small>How long to wait for a response before timing out (10 &ndash; 600 s). Default: <?= \App\AIAssistant\ClaudeClient::DEFAULT_TIMEOUT ?>.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="ai_temperature">Temperature</label>
+                    <input type="number"
+                           id="ai_temperature"
+                           name="ai_temperature"
+                           value="<?= number_format((float) $currentTemperature, 2) ?>"
+                           min="0" max="1" step="0.05">
+                    <small>Controls randomness: 0 = deterministic, 1 = most creative. Default: <?= number_format(\App\AIAssistant\ClaudeClient::DEFAULT_TEMPERATURE, 1) ?>.</small>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- General Section -->
@@ -202,5 +246,18 @@
 .btn-sm {
     padding: 0.35rem 0.75rem;
     font-size: 0.85rem;
+}
+.ai-params-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+}
+.ai-params-grid input[type="number"] {
+    width: 100%;
+}
+@media (max-width: 600px) {
+    .ai-params-grid {
+        grid-template-columns: 1fr;
+    }
 }
 </style>

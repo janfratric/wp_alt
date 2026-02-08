@@ -1,6 +1,6 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend)
 >
 > **Last updated**: 2026-02-08
 
@@ -1383,6 +1383,144 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 
 ---
 
+## Test Group AH: AI Chat Panel — Toggle & Layout (Chunk 4.2)
+
+### AH1. AI toggle button visible on content editor
+1. Log in as admin
+2. Open [http://localhost:8000/admin/content/create](http://localhost:8000/admin/content/create)
+3. **Verify**: "AI Assistant" button visible in the page header (next to "Back to Content")
+4. **Verify**: Button has a star icon and "AI Assistant" text
+5. Open an existing content item for editing
+6. **Verify**: Toggle button also present on the edit page
+
+### AH2. Toggle AI panel — opens as third column
+1. On the content editor page, click "AI Assistant" button
+2. **Verify**: AI panel slides in as a third column to the right of the sidebar
+3. **Verify**: Editor layout adjusts to 3-column grid (main, sidebar, AI panel)
+4. **Verify**: Panel shows empty state: star icon + "Ask the AI assistant..." placeholder text
+5. **Verify**: `aria-expanded` changes to "true" on the toggle button
+
+### AH3. Close AI panel
+1. With the AI panel open, click the "×" button in the panel header
+2. **Verify**: Panel closes, editor returns to 2-column layout
+3. Open the panel again, click the "AI Assistant" toggle button
+4. **Verify**: Panel closes (toggle behavior)
+5. **Verify**: `aria-expanded` changes to "false"
+
+---
+
+## Test Group AI: AI Chat Panel — Messaging (Chunk 4.2)
+
+### AI1. Send a message — user bubble appears
+1. Open the AI panel
+2. Type "Write a short welcome message" in the input
+3. Press Enter (or click the send arrow button)
+4. **Verify**: User message appears as a blue bubble on the right
+5. **Verify**: Input field is cleared after sending
+
+### AI2. AI response appears with action buttons
+1. After sending a message (AI1), wait for response
+2. **Verify**: Typing indicator (animated bouncing dots) appears while waiting
+3. **Verify**: Send button is disabled during the request
+4. **Verify**: AI response appears as a gray bubble on the left
+5. **Verify**: Three buttons below the response: "Insert", "Replace", "Copy"
+
+### AI3. Enter to send, Shift+Enter for newline
+1. Focus the AI input textarea
+2. Type some text and press Shift+Enter
+3. **Verify**: A newline is inserted (message NOT sent)
+4. Press Enter (without Shift)
+5. **Verify**: Message is sent
+
+### AI4. Double-send prevention
+1. Type a message and press Enter
+2. Immediately try to type and send another message
+3. **Verify**: Second message is blocked while the first is loading (send button disabled)
+4. After the first response arrives, send button re-enables
+
+### AI5. Error message with API key link
+1. Ensure no Claude API key is configured in Settings
+2. Open the AI panel, type a message, and send
+3. **Verify**: Red error bubble appears with message about API key
+4. **Verify**: Error includes a clickable link to "/admin/settings"
+
+### AI6. Network error handling
+1. Disconnect from the network (or stop the server mid-request)
+2. Try to send a message
+3. **Verify**: Error bubble appears: "Network error. Please check your connection and try again."
+
+---
+
+## Test Group AJ: AI Chat Panel — Editor Integration (Chunk 4.2)
+
+### AJ1. Insert button — inserts AI HTML into TinyMCE
+1. Create or edit content, add some text in the TinyMCE editor
+2. Open AI panel, send a message asking for content
+3. When AI responds, click "Insert"
+4. **Verify**: AI-generated HTML is inserted into TinyMCE at the cursor position
+5. **Verify**: Existing editor content is preserved (not replaced)
+6. **Verify**: "Insert" button briefly shows "Inserted!" feedback
+
+### AJ2. Replace button — replaces TinyMCE content with confirm
+1. Add text in TinyMCE editor
+2. Get an AI response
+3. Click "Replace"
+4. **Verify**: Confirmation dialog appears: "Replace all editor content with this response?"
+5. Click Cancel — **Verify**: Editor content unchanged
+6. Click "Replace" again, click OK
+7. **Verify**: TinyMCE editor content completely replaced with AI response
+
+### AJ3. Copy button — copies plain text to clipboard
+1. Get an AI response (which may contain HTML)
+2. Click "Copy"
+3. **Verify**: "Copy" button briefly shows "Copied!" feedback
+4. Paste into a text editor
+5. **Verify**: Plain text (HTML tags stripped) was copied
+
+---
+
+## Test Group AK: AI Chat Panel — Conversations (Chunk 4.2)
+
+### AK1. New conversation button
+1. Have an ongoing conversation with messages
+2. Click "New" button in the AI panel header
+3. **Verify**: Chat messages are cleared
+4. **Verify**: System message "New conversation started." appears (centered, gray)
+5. Send a new message
+6. **Verify**: New conversation begins (no prior context from backend)
+
+### AK2. Conversation history loads on edit page
+1. Edit an existing content item (e.g., /admin/content/1/edit)
+2. Open AI panel, send 2-3 messages
+3. Navigate away to /admin/content
+4. Navigate back to /admin/content/1/edit
+5. Open AI panel
+6. **Verify**: Previous conversation messages are loaded from the server
+
+### AK3. New content has no conversation preload
+1. Open [http://localhost:8000/admin/content/create](http://localhost:8000/admin/content/create)
+2. Open the AI panel
+3. **Verify**: Panel shows empty state (no conversation loaded)
+4. **Verify**: `data-content-id` attribute on the form is empty
+
+---
+
+## Test Group AL: AI Chat Panel — Responsive (Chunk 4.2)
+
+### AL1. Mobile — panel becomes full-screen overlay
+1. Resize browser to <768px width
+2. Open the AI panel
+3. **Verify**: Panel opens as a full-screen overlay (position: fixed, covers entire viewport)
+4. **Verify**: Close button (×) works to dismiss the overlay
+5. **Verify**: Messages and input are fully usable in overlay mode
+
+### AL2. Desktop — panel as third column
+1. On desktop (>768px), open the AI panel
+2. **Verify**: Panel appears alongside the editor and sidebar as a third column
+3. **Verify**: TinyMCE editor area narrows to accommodate the panel
+
+---
+
 ## Summary Checklist
 
 (continued from previous chunks)
@@ -1562,3 +1700,20 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | AG4 | Missing API key returns friendly error | ☐ |
 | AG5 | CSRF via X-CSRF-Token header works | ☐ |
 | AG6 | Conversation isolation between users | ☐ |
+| AH1 | AI toggle button visible on editor | ☐ |
+| AH2 | Toggle AI panel opens as third column | ☐ |
+| AH3 | Close AI panel | ☐ |
+| AI1 | Send message — user bubble appears | ☐ |
+| AI2 | AI response with action buttons | ☐ |
+| AI3 | Enter to send, Shift+Enter for newline | ☐ |
+| AI4 | Double-send prevention | ☐ |
+| AI5 | Error message with API key link | ☐ |
+| AI6 | Network error handling | ☐ |
+| AJ1 | Insert button inserts into TinyMCE | ☐ |
+| AJ2 | Replace button with confirm dialog | ☐ |
+| AJ3 | Copy button copies plain text | ☐ |
+| AK1 | New conversation button | ☐ |
+| AK2 | Conversation history loads on edit | ☐ |
+| AK3 | New content has no conversation | ☐ |
+| AL1 | Mobile — full-screen overlay | ☐ |
+| AL2 | Desktop — third column | ☐ |

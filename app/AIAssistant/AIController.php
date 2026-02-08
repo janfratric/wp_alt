@@ -50,6 +50,22 @@ class AIController
 
         $model = $this->getSetting('claude_model', Config::getString('claude_model', 'claude-sonnet-4-20250514'));
 
+        // Load configurable API parameters from settings
+        $maxTokens   = (int) $this->getSetting('ai_max_tokens', (string) ClaudeClient::DEFAULT_MAX_TOKENS);
+        $timeout     = (int) $this->getSetting('ai_timeout', (string) ClaudeClient::DEFAULT_TIMEOUT);
+        $temperature = (float) $this->getSetting('ai_temperature', (string) ClaudeClient::DEFAULT_TEMPERATURE);
+
+        // Clamp values to safe ranges
+        $maxTokens   = max(1, min(128000, $maxTokens));
+        $timeout     = max(10, min(600, $timeout));
+        $temperature = max(0.0, min(1.0, $temperature));
+
+        // Extend PHP execution time to accommodate the API timeout
+        $phpTimeout = $timeout + 10;
+        if ((int) ini_get('max_execution_time') > 0 && (int) ini_get('max_execution_time') < $phpTimeout) {
+            set_time_limit($phpTimeout);
+        }
+
         $manager = new ConversationManager();
         $userId = (int) Session::get('user_id', 0);
 
@@ -82,7 +98,11 @@ class AIController
         $systemPrompt = $this->buildSystemPrompt($contentId);
 
         try {
-            $client = new ClaudeClient($apiKey, $model);
+            $client = new ClaudeClient($apiKey, $model, [
+                'max_tokens'  => $maxTokens,
+                'timeout'     => $timeout,
+                'temperature' => $temperature,
+            ]);
             $result = $client->sendMessage($apiMessages, $systemPrompt);
         } catch (\RuntimeException $e) {
             return Response::json([

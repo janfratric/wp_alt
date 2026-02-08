@@ -9,16 +9,26 @@ class ClaudeClient
     private const API_URL = 'https://api.anthropic.com/v1/messages';
     private const MODELS_URL = 'https://api.anthropic.com/v1/models';
     private const API_VERSION = '2023-06-01';
-    private const MAX_TOKENS = 4096;
-    private const TIMEOUT_SECONDS = 60;
+    public const DEFAULT_MAX_TOKENS = 4096;
+    public const DEFAULT_TIMEOUT = 60;
+    public const DEFAULT_TEMPERATURE = 1.0;
 
     private string $apiKey;
     private string $model;
+    private int $maxTokens;
+    private int $timeout;
+    private float $temperature;
 
-    public function __construct(string $apiKey, string $model = 'claude-sonnet-4-20250514')
+    /**
+     * @param array{max_tokens?: int, timeout?: int, temperature?: float} $options
+     */
+    public function __construct(string $apiKey, string $model = 'claude-sonnet-4-20250514', array $options = [])
     {
         $this->apiKey = $apiKey;
         $this->model = $model;
+        $this->maxTokens = $options['max_tokens'] ?? self::DEFAULT_MAX_TOKENS;
+        $this->timeout = $options['timeout'] ?? self::DEFAULT_TIMEOUT;
+        $this->temperature = $options['temperature'] ?? self::DEFAULT_TEMPERATURE;
     }
 
     /**
@@ -43,16 +53,17 @@ class ClaudeClient
      *
      * @throws RuntimeException on network error, API error, or invalid response
      */
-    public function sendMessage(array $messages, string $systemPrompt = '', int $maxTokens = self::MAX_TOKENS): array
+    public function sendMessage(array $messages, string $systemPrompt = ''): array
     {
         if (empty($this->apiKey)) {
             throw new RuntimeException('Claude API key is not configured.');
         }
 
         $payload = [
-            'model'      => $this->model,
-            'max_tokens' => $maxTokens,
-            'messages'   => $messages,
+            'model'       => $this->model,
+            'max_tokens'  => $this->maxTokens,
+            'temperature' => $this->temperature,
+            'messages'    => $messages,
         ];
 
         if ($systemPrompt !== '') {
@@ -67,7 +78,7 @@ class ClaudeClient
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $jsonPayload,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => self::TIMEOUT_SECONDS,
+            CURLOPT_TIMEOUT        => $this->timeout,
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',

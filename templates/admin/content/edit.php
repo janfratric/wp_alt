@@ -2,12 +2,19 @@
 
 <div class="page-header">
     <h1><?= $isNew ? 'Create Content' : 'Edit: ' . $this->e($content['title']) ?></h1>
-    <a href="/admin/content" class="btn">← Back to Content</a>
+    <div style="display:flex;gap:0.5rem;align-items:center;">
+        <a href="/admin/content" class="btn">← Back to Content</a>
+        <button type="button" id="ai-toggle-btn" aria-expanded="false"
+                title="Toggle AI Assistant">
+            <span class="ai-icon">&#9733;</span> AI Assistant
+        </button>
+    </div>
 </div>
 
 <form method="POST"
       action="<?= $isNew ? '/admin/content' : '/admin/content/' . (int)$content['id'] ?>"
-      id="content-form">
+      id="content-form"
+      data-content-id="<?= $isNew ? '' : (int)$content['id'] ?>">
     <?= $this->csrfField() ?>
     <?php if (!$isNew): ?>
         <input type="hidden" name="_method" value="PUT">
@@ -150,7 +157,32 @@
                 </div>
             </div>
         </div>
+
+        <!-- AI Assistant Panel (hidden by default, shown when toggled) -->
+        <div id="ai-panel">
+            <div class="ai-panel-header">
+                <span>AI Assistant</span>
+                <div class="ai-panel-header-actions">
+                    <button type="button" id="ai-new-conversation" title="New conversation">New</button>
+                    <button type="button" onclick="document.getElementById('ai-toggle-btn').click()" title="Close panel">&times;</button>
+                </div>
+            </div>
+            <div id="ai-messages">
+                <div class="ai-empty-state">
+                    <div class="ai-empty-icon">&#9733;</div>
+                    <p>Ask the AI assistant to help write, edit, or improve your content.</p>
+                    <p style="font-size:0.8rem;margin-top:0.25rem;">Try: "Write an introduction for this page" or "Make this text more concise"</p>
+                </div>
+            </div>
+            <div class="ai-panel-input">
+                <textarea id="ai-input" rows="1"
+                          placeholder="Ask the AI assistant..."
+                          autocomplete="off"></textarea>
+                <button type="button" id="ai-send-btn" title="Send message">&#10148;</button>
+            </div>
+        </div>
     </div>
 </form>
 
 <script src="/assets/js/editor.js"></script>
+<script src="/assets/js/ai-assistant.js"></script>
