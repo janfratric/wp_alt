@@ -1,0 +1,151 @@
+<?php declare(strict_types=1);
+
+namespace App\Admin;
+
+use App\Core\App;
+use App\Core\Config;
+use App\Core\Request;
+use App\Core\Response;
+use App\Database\QueryBuilder;
+use App\Auth\Session;
+use App\AIAssistant\AIController;
+
+class SettingsController
+{
+    private const DEFAULT_MODELS = [
+        ['id' => 'claude-sonnet-4-20250514', 'display_name' => 'Claude Sonnet 4 (Recommended)'],
+        ['id' => 'claude-haiku-4-5-20251001', 'display_name' => 'Claude Haiku 4.5 (Faster, lower cost)'],
+        ['id' => 'claude-opus-4-6', 'display_name' => 'Claude Opus 4.6 (Most capable)'],
+    ];
+
+    private App $app;
+
+    public function __construct(App $app)
+    {
+        $this->app = $app;
+    }
+
+    /**
+     * GET /admin/settings — Show the settings form.
+     */
+    public function index(Request $request): Response
+    {
+        if (Session::get('user_role') !== 'admin') {
+            Session::flash('error', 'Only administrators can access settings.');
+            return Response::redirect('/admin/dashboard');
+        }
+
+        $settings = $this->loadSettings();
+
+        $hasApiKey = !empty($settings['claude_api_key']);
+
+        // Decode model management data
+        $availableModels = json_decode($settings['available_models'] ?? '[]', true) ?: [];
+        $enabledModels = json_decode($settings['enabled_models'] ?? '[]', true) ?: [];
+
+        // Build dropdown: enabled models from available, or defaults
+        if (!empty($enabledModels) && !empty($availableModels)) {
+            $enabledSet = array_flip($enabledModels);
+            $dropdownModels = array_filter($availableModels, fn($m) => isset($enabledSet[$m['id']]));
+            $dropdownModels = array_values($dropdownModels);
+        } else {
+            $dropdownModels = self::DEFAULT_MODELS;
+        }
+
+        $html = $this->app->template()->render('admin/settings', [
+            'title'           => 'Settings',
+            'activeNav'       => 'settings',
+            'settings'        => $settings,
+            'hasApiKey'       => $hasApiKey,
+            'claudeModel'     => $settings['claude_model']
+                ?? Config::getString('claude_model', 'claude-sonnet-4-20250514'),
+            'dropdownModels'  => $dropdownModels,
+            'availableModels' => $availableModels,
+            'enabledModels'   => $enabledModels,
+        ]);
+
+        return $this->withSecurityHeaders(Response::html($html));
+    }
+
+    /**
+     * PUT /admin/settings — Save settings.
+     */
+    public function update(Request $request): Response
+    {
+        if (Session::get('user_role') !== 'admin') {
+            Session::flash('error', 'Only administrators can access settings.');
+            return Response::redirect('/admin/dashboard');
+        }
+
+        $newApiKey = trim((string) $request->input('claude_api_key', ''));
+        if ($newApiKey !== '') {
+            $encrypted = AIController::encrypt($newApiKey);
+            $this->saveSetting('claude_api_key', $encrypted);
+        }
+
+        $model = trim((string) $request->input('claude_model', ''));
+        if ($model !== '') {
+            $this->saveSetting('claude_model', $model);
+        }
+
+        $siteName = trim((string) $request->input('site_name', ''));
+        if ($siteName !== '') {
+            $this->saveSetting('site_name', $siteName);
+        }
+
+        Session::flash('success', 'Settings saved successfully.');
+        return Response::redirect('/admin/settings');
+    }
+
+    /**
+     * Load all settings from the database as a key-value array.
+     */
+    private function loadSettings(): array
+    {
+        $rows = QueryBuilder::query('settings')->select('key', 'value')->get();
+        $settings = [];
+        foreach ($rows as $row) {
+            $settings[$row['key']] = $row['value'];
+        }
+        return $settings;
+    }
+
+    /**
+     * Save a single setting (upsert: insert if new, update if exists).
+     */
+    private function saveSetting(string $key, string $value): void
+    {
+        $existing = QueryBuilder::query('settings')
+            ->select('key')
+            ->where('key', $key)
+            ->first();
+
+        if ($existing !== null) {
+            QueryBuilder::query('settings')
+                ->where('key', $key)
+                ->update(['value' => $value]);
+        } else {
+            QueryBuilder::query('settings')->insert([
+                'key'   => $key,
+                'value' => $value,
+            ]);
+        }
+    }
+
+    /**
+     * Add standard security headers to admin responses.
+     */
+    private function withSecurityHeaders(Response $response): Response
+    {
+        return $response
+            ->withHeader('X-Frame-Options', 'DENY')
+            ->withHeader('Content-Security-Policy',
+                "default-src 'self'; "
+                . "script-src 'self' https://cdn.jsdelivr.net; "
+                . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                . "img-src 'self' data: blob:; "
+                . "connect-src 'self'; "
+                . "font-src 'self' https://cdn.jsdelivr.net"
+            );
+    }
+}

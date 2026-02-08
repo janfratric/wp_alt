@@ -14,7 +14,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
@@ -30,7 +30,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 | 9 | [http://localhost:8000/admin/users](http://localhost:8000/admin/users) | User list — searchable table with username, email, role badge, created date, edit/delete actions, pagination, and "+ New User" button. Admin-only (editors get 403) |
 | 9a | [http://localhost:8000/admin/users/create](http://localhost:8000/admin/users/create) | Create user form — username, email, role select, password fields. Admin-only |
 | 9b | [http://localhost:8000/admin/users/1/edit](http://localhost:8000/admin/users/1/edit) | Edit user form — pre-filled fields, `_method=PUT`, current password required for own password change, role field disabled when editing self |
-| 10 | [http://localhost:8000/admin/settings](http://localhost:8000/admin/settings) | Settings placeholder — "Coming soon" message, sidebar highlights "Settings" |
+| 10 | [http://localhost:8000/admin/settings](http://localhost:8000/admin/settings) | Settings page — AI Assistant section (Claude API key, model selection), General section (site name). Admin-only access; API key stored encrypted, never displayed |
 | 11 | [http://localhost:8000/blog](http://localhost:8000/blog) | Blog index — paginated listing of published posts with author, date, excerpts. Pagination via `?page=N` |
 | 11a | [http://localhost:8000/blog/hello-world](http://localhost:8000/blog/hello-world) | Single blog post — full post content with author name, date, featured image, and article-type OG tags |
 | 12 | [http://localhost:8000/about](http://localhost:8000/about) | Single page — renders published page by slug with SEO meta tags (create an "about" page first via admin) |
@@ -135,6 +135,18 @@ The public site now has a complete, mobile-first responsive design:
 - **Sticky header** — site header sticks to top with `position: sticky`
 - **Navigation includes Contact** — Contact link appears in nav with active state highlighting
 - **Settings-driven content** — tagline, cookie consent text, privacy link, GA ID read from `settings` table
+
+### Settings & AI Backend (Chunk 4.1)
+
+The settings page and AI backend provide:
+- **Settings page** (`/admin/settings`) — admin-only page with AI Assistant section (Claude API key, model selection) and General section (site name)
+- **API key encryption** — API key stored encrypted in `settings` table using AES-256-CBC; never displayed in browser, only shows a "configured" or "missing" status indicator
+- **Model selection** — dropdown to choose between Claude Sonnet 4, Haiku 4.5, and Opus 4.6
+- **AI chat endpoint** (`POST /admin/ai/chat`) — JSON API accepting `{message, content_id, conversation_id}`, calls Claude Messages API, returns AI response with conversation persistence
+- **Conversation history** (`GET /admin/ai/conversations`) — JSON API returning past conversations filtered by content_id
+- **Content context** — AI system prompt includes the content being edited (type, title, status, body excerpt) for context-aware assistance
+- **CSRF for JSON APIs** — chat endpoint protected by header-based CSRF tokens (`X-CSRF-Token` header)
+- **Conversation isolation** — each user has separate conversations per content item; users cannot access each other's conversations
 
 ---
 

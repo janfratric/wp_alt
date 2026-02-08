@@ -19,6 +19,8 @@ use App\Admin\ContentController;
 use App\Admin\MediaController;
 use App\Admin\UserController;
 use App\Templates\FrontController;
+use App\AIAssistant\AIController;
+use App\Admin\SettingsController;
 
 // Bootstrap
 $app = new App();
@@ -97,16 +99,15 @@ $router->group('/admin', function($router) use ($app) {
     $router->put('/users/{id}', [UserController::class, 'update']);
     $router->delete('/users/{id}', [UserController::class, 'delete']);
 
-    // Placeholder routes for sidebar links (to be replaced in future chunks)
-    $router->get('/settings', function($request) use ($app) {
-        return new Response(
-            $app->template()->render('admin/placeholder', [
-                'title' => 'Settings',
-                'activeNav' => 'settings',
-                'message' => 'Settings panel is coming in Chunk 5.2.',
-            ])
-        );
-    });
+    // Settings routes
+    $router->get('/settings', [SettingsController::class, 'index']);
+    $router->put('/settings', [SettingsController::class, 'update']);
+
+    // AI Assistant routes
+    $router->post('/ai/chat', [AIController::class, 'chat']);
+    $router->get('/ai/conversations', [AIController::class, 'conversations']);
+    $router->post('/ai/models/fetch', [AIController::class, 'fetchModels']);
+    $router->post('/ai/models/enable', [AIController::class, 'saveEnabledModels']);
 });
 
 // Catch-all for pages by slug (MUST be last)

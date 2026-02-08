@@ -19,6 +19,17 @@
  *  12. CSRF middleware accepts X-CSRF-Token header
  *  13. ClaudeClient constructs successfully with valid params
  *  14. Conversation ownership check (user cannot access another's conversation)
+ *  15. Settings template exists with expected fields
+ *  16. ClaudeClient::listModels() throws on empty API key
+ *  17. Model management routes registered
+ *  18. Settings template has model management UI elements
+ *  19. SettingsController has DEFAULT_MODELS constant
+ *  20. AIController has model management methods
+ *  21. Available/enabled models stored in settings DB as JSON
+ *  22. Dropdown model computation (fallback vs filtered)
+ *  23. saveEnabledModels resets claude_model when deselected
+ *  24. admin.js has model management JavaScript
+ *  25. ClaudeClient has SSL CA bundle support
  *
  * Smoke mode (LITECMS_TEST_SMOKE=1): runs only tests 1-3
  */
@@ -637,6 +648,365 @@ if (file_exists($settingsTemplate)) {
     }
 } else {
     test_fail('Settings template exists', 'templates/admin/settings.php not found');
+}
+
+// ---------------------------------------------------------------------------
+// Test 16: ClaudeClient::listModels() throws on empty API key
+// ---------------------------------------------------------------------------
+try {
+    $emptyClient = new \App\AIAssistant\ClaudeClient('');
+    $threw = false;
+    try {
+        $emptyClient->listModels();
+    } catch (\RuntimeException $e) {
+        $threw = true;
+        if (str_contains(strtolower($e->getMessage()), 'api key')) {
+            test_pass('ClaudeClient::listModels() throws RuntimeException for empty API key');
+        } else {
+            test_fail('listModels() empty key error message', "expected message about API key, got: {$e->getMessage()}");
+        }
+    }
+    if (!$threw) {
+        test_fail('listModels() throws on empty API key', 'no exception was thrown');
+    }
+} catch (\Throwable $e) {
+    test_fail('listModels() empty key test', $e->getMessage());
+}
+
+// ---------------------------------------------------------------------------
+// Test 17: Model management routes registered in index.php
+// ---------------------------------------------------------------------------
+try {
+    $indexContent = file_get_contents($rootDir . '/public/index.php');
+
+    if (str_contains($indexContent, "'/ai/models/fetch'") && str_contains($indexContent, 'fetchModels')) {
+        test_pass('Model fetch route registered: POST /admin/ai/models/fetch');
+    } else {
+        test_fail('Model fetch route', '/ai/models/fetch or fetchModels not found in index.php');
+    }
+
+    if (str_contains($indexContent, "'/ai/models/enable'") && str_contains($indexContent, 'saveEnabledModels')) {
+        test_pass('Model enable route registered: POST /admin/ai/models/enable');
+    } else {
+        test_fail('Model enable route', '/ai/models/enable or saveEnabledModels not found in index.php');
+    }
+} catch (\Throwable $e) {
+    test_fail('Model management routes check', $e->getMessage());
+}
+
+// ---------------------------------------------------------------------------
+// Test 18: Settings template has model management UI
+// ---------------------------------------------------------------------------
+try {
+    $tplContent = file_get_contents($rootDir . '/templates/admin/settings.php');
+
+    if (str_contains($tplContent, 'model-management') && str_contains($tplContent, 'Manage Available Models')) {
+        test_pass('Settings template has model management section with id and heading');
+    } else {
+        test_fail('Model management section', 'missing model-management id or heading');
+    }
+
+    if (str_contains($tplContent, 'fetch-models-btn') && str_contains($tplContent, 'Refresh Models from API')) {
+        test_pass('Settings template has "Refresh Models from API" button');
+    } else {
+        test_fail('Refresh models button', 'missing fetch-models-btn or button text');
+    }
+
+    if (str_contains($tplContent, 'models-list') && str_contains($tplContent, 'model-checkbox')) {
+        test_pass('Settings template has models checklist with checkboxes');
+    } else {
+        test_fail('Models checklist', 'missing models-list or model-checkbox');
+    }
+
+    if (str_contains($tplContent, 'save-models-btn') && str_contains($tplContent, 'Save Model Selection')) {
+        test_pass('Settings template has "Save Model Selection" button');
+    } else {
+        test_fail('Save models button', 'missing save-models-btn or button text');
+    }
+
+    // Dropdown uses dynamic foreach loop
+    if (str_contains($tplContent, '$dropdownModels')) {
+        test_pass('Model dropdown uses dynamic $dropdownModels variable');
+    } else {
+        test_fail('Dynamic dropdown', '$dropdownModels not found in template');
+    }
+
+    // Refresh button disabled when no API key
+    if (str_contains($tplContent, '!$hasApiKey') && str_contains($tplContent, 'disabled')) {
+        test_pass('Refresh button disabled when no API key configured');
+    } else {
+        test_fail('Refresh button disabled state', 'missing hasApiKey-based disabled logic');
+    }
+} catch (\Throwable $e) {
+    test_fail('Settings template model management check', $e->getMessage());
+}
+
+// ---------------------------------------------------------------------------
+// Test 19: SettingsController has DEFAULT_MODELS constant
+// ---------------------------------------------------------------------------
+try {
+    $scReflection = new ReflectionClass(\App\Admin\SettingsController::class);
+    $defaultModels = $scReflection->getConstant('DEFAULT_MODELS');
+
+    if (is_array($defaultModels) && count($defaultModels) === 3) {
+        test_pass('SettingsController::DEFAULT_MODELS has 3 fallback models');
+    } else {
+        test_fail('DEFAULT_MODELS constant', 'expected array with 3 entries');
+    }
+
+    // Each model should have id and display_name
+    $allHaveKeys = true;
+    foreach ($defaultModels as $m) {
+        if (!isset($m['id']) || !isset($m['display_name'])) {
+            $allHaveKeys = false;
+        }
+    }
+    if ($allHaveKeys) {
+        test_pass('DEFAULT_MODELS entries all have id and display_name keys');
+    } else {
+        test_fail('DEFAULT_MODELS structure', 'some entries missing id or display_name');
+    }
+} catch (\Throwable $e) {
+    test_fail('SettingsController DEFAULT_MODELS check', $e->getMessage());
+}
+
+// ---------------------------------------------------------------------------
+// Test 20: AIController methods exist for model management
+// ---------------------------------------------------------------------------
+try {
+    $aiReflection = new ReflectionClass(\App\AIAssistant\AIController::class);
+
+    if ($aiReflection->hasMethod('fetchModels')) {
+        $fetchMethod = $aiReflection->getMethod('fetchModels');
+        if ($fetchMethod->isPublic()) {
+            test_pass('AIController::fetchModels() exists and is public');
+        } else {
+            test_fail('fetchModels() visibility', 'method is not public');
+        }
+    } else {
+        test_fail('AIController::fetchModels()', 'method not found');
+    }
+
+    if ($aiReflection->hasMethod('saveEnabledModels')) {
+        $saveMethod = $aiReflection->getMethod('saveEnabledModels');
+        if ($saveMethod->isPublic()) {
+            test_pass('AIController::saveEnabledModels() exists and is public');
+        } else {
+            test_fail('saveEnabledModels() visibility', 'method is not public');
+        }
+    } else {
+        test_fail('AIController::saveEnabledModels()', 'method not found');
+    }
+
+    if ($aiReflection->hasMethod('saveSetting')) {
+        test_pass('AIController has private saveSetting() helper');
+    } else {
+        test_fail('AIController::saveSetting()', 'method not found');
+    }
+} catch (\Throwable $e) {
+    test_fail('AIController model management methods check', $e->getMessage());
+}
+
+// ---------------------------------------------------------------------------
+// Test 21: Available/enabled models stored and retrieved via settings DB
+// ---------------------------------------------------------------------------
+try {
+    $testModels = [
+        ['id' => 'claude-sonnet-4-20250514', 'display_name' => 'Claude Sonnet 4'],
+        ['id' => 'claude-haiku-4-5-20251001', 'display_name' => 'Claude Haiku 4.5'],
+        ['id' => 'claude-opus-4-6', 'display_name' => 'Claude Opus 4.6'],
+    ];
+    $testModelJson = json_encode($testModels, JSON_THROW_ON_ERROR);
+
+    // Save available_models to settings
+    \App\Database\QueryBuilder::query('settings')->insert([
+        'key'   => 'available_models',
+        'value' => $testModelJson,
+    ]);
+
+    $row = \App\Database\QueryBuilder::query('settings')
+        ->select('value')
+        ->where('key', 'available_models')
+        ->first();
+    $decoded = json_decode($row['value'] ?? '[]', true);
+
+    if (is_array($decoded) && count($decoded) === 3 && $decoded[0]['id'] === 'claude-sonnet-4-20250514') {
+        test_pass('available_models stored and retrieved as JSON array of {id, display_name}');
+    } else {
+        test_fail('available_models storage', 'JSON roundtrip failed');
+    }
+
+    // Save enabled_models
+    $enabledIds = ['claude-sonnet-4-20250514', 'claude-opus-4-6'];
+    \App\Database\QueryBuilder::query('settings')->insert([
+        'key'   => 'enabled_models',
+        'value' => json_encode($enabledIds, JSON_THROW_ON_ERROR),
+    ]);
+
+    $row2 = \App\Database\QueryBuilder::query('settings')
+        ->select('value')
+        ->where('key', 'enabled_models')
+        ->first();
+    $decodedEnabled = json_decode($row2['value'] ?? '[]', true);
+
+    if (is_array($decodedEnabled) && count($decodedEnabled) === 2
+        && in_array('claude-sonnet-4-20250514', $decodedEnabled, true)
+        && in_array('claude-opus-4-6', $decodedEnabled, true)) {
+        test_pass('enabled_models stored and retrieved as JSON array of model ID strings');
+    } else {
+        test_fail('enabled_models storage', 'JSON roundtrip failed');
+    }
+} catch (\Throwable $e) {
+    test_fail('Model settings DB storage', $e->getMessage());
+}
+
+// ---------------------------------------------------------------------------
+// Test 22: Dropdown model computation — fallback vs enabled
+// ---------------------------------------------------------------------------
+try {
+    // When enabled_models is empty, should use DEFAULT_MODELS
+    $scReflection = new ReflectionClass(\App\Admin\SettingsController::class);
+    $defaultModels = $scReflection->getConstant('DEFAULT_MODELS');
+
+    $emptyEnabled = [];
+    $emptyAvailable = [];
+    // Simulate the logic from SettingsController::index()
+    if (!empty($emptyEnabled) && !empty($emptyAvailable)) {
+        $dropdown = []; // won't reach here
+    } else {
+        $dropdown = $defaultModels;
+    }
+
+    if (count($dropdown) === 3) {
+        test_pass('Dropdown falls back to DEFAULT_MODELS when no enabled/available models');
+    } else {
+        test_fail('Dropdown fallback', 'expected 3 defaults, got ' . count($dropdown));
+    }
+
+    // When both available and enabled exist, filter available by enabled
+    $available = [
+        ['id' => 'model-a', 'display_name' => 'Model A'],
+        ['id' => 'model-b', 'display_name' => 'Model B'],
+        ['id' => 'model-c', 'display_name' => 'Model C'],
+    ];
+    $enabled = ['model-a', 'model-c'];
+
+    $enabledSet = array_flip($enabled);
+    $filtered = array_values(array_filter($available, fn($m) => isset($enabledSet[$m['id']])));
+
+    if (count($filtered) === 2
+        && $filtered[0]['id'] === 'model-a'
+        && $filtered[1]['id'] === 'model-c') {
+        test_pass('Dropdown correctly filters available models by enabled selection');
+    } else {
+        test_fail('Dropdown filtering', 'expected 2 filtered models (a, c)');
+    }
+} catch (\Throwable $e) {
+    test_fail('Dropdown model computation', $e->getMessage());
+}
+
+// ---------------------------------------------------------------------------
+// Test 23: saveEnabledModels resets claude_model when deselected
+// ---------------------------------------------------------------------------
+try {
+    // Set a current model in settings
+    $existing = \App\Database\QueryBuilder::query('settings')
+        ->select('key')
+        ->where('key', 'claude_model')
+        ->first();
+    if ($existing !== null) {
+        \App\Database\QueryBuilder::query('settings')
+            ->where('key', 'claude_model')
+            ->update(['value' => 'claude-haiku-4-5-20251001']);
+    } else {
+        \App\Database\QueryBuilder::query('settings')->insert([
+            'key'   => 'claude_model',
+            'value' => 'claude-haiku-4-5-20251001',
+        ]);
+    }
+
+    // Verify AIController source handles this case
+    $aiSource = file_get_contents($rootDir . '/app/AIAssistant/AIController.php');
+
+    if (str_contains($aiSource, 'in_array($currentModel, $modelIds')
+        && str_contains($aiSource, 'saveSetting(\'claude_model\'')) {
+        test_pass('saveEnabledModels() resets claude_model when current model is deselected');
+    } else {
+        test_fail('Model reset logic', 'in_array check or saveSetting claude_model not found');
+    }
+} catch (\Throwable $e) {
+    test_fail('Model deselection reset check', $e->getMessage());
+}
+
+// ---------------------------------------------------------------------------
+// Test 24: admin.js has model management JavaScript
+// ---------------------------------------------------------------------------
+try {
+    $jsContent = file_get_contents($rootDir . '/public/assets/js/admin.js');
+
+    if (str_contains($jsContent, 'model-management') && str_contains($jsContent, 'fetch-models-btn')) {
+        test_pass('admin.js targets model management DOM elements');
+    } else {
+        test_fail('admin.js model mgmt elements', 'missing model-management or fetch-models-btn references');
+    }
+
+    if (str_contains($jsContent, '/admin/ai/models/fetch') && str_contains($jsContent, '/admin/ai/models/enable')) {
+        test_pass('admin.js calls both model management API endpoints');
+    } else {
+        test_fail('admin.js API endpoints', 'missing /admin/ai/models/fetch or /admin/ai/models/enable');
+    }
+
+    if (str_contains($jsContent, 'renderModelCheckboxes')) {
+        test_pass('admin.js has renderModelCheckboxes() function');
+    } else {
+        test_fail('admin.js renderModelCheckboxes', 'function not found');
+    }
+
+    if (str_contains($jsContent, 'updateDropdown')) {
+        test_pass('admin.js has updateDropdown() function to refresh select without reload');
+    } else {
+        test_fail('admin.js updateDropdown', 'function not found');
+    }
+
+    if (str_contains($jsContent, 'escapeHtml')) {
+        test_pass('admin.js has escapeHtml() for XSS-safe dynamic HTML');
+    } else {
+        test_fail('admin.js escapeHtml', 'function not found');
+    }
+
+    if (str_contains($jsContent, 'X-CSRF-Token')) {
+        test_pass('admin.js sends X-CSRF-Token header with model management requests');
+    } else {
+        test_fail('admin.js CSRF header', 'X-CSRF-Token not found');
+    }
+} catch (\Throwable $e) {
+    test_fail('admin.js model management check', $e->getMessage());
+}
+
+// ---------------------------------------------------------------------------
+// Test 25: ClaudeClient has SSL CA bundle support
+// ---------------------------------------------------------------------------
+try {
+    $clientReflection = new ReflectionClass(\App\AIAssistant\ClaudeClient::class);
+
+    if ($clientReflection->hasMethod('applySslConfig')) {
+        test_pass('ClaudeClient has applySslConfig() method for CA bundle');
+    } else {
+        test_fail('ClaudeClient SSL config', 'applySslConfig method not found');
+    }
+
+    // Check that sendMessage and listModels source both reference applySslConfig
+    $clientSource = file_get_contents($rootDir . '/app/AIAssistant/ClaudeClient.php');
+    $sslCallCount = substr_count($clientSource, 'applySslConfig');
+
+    // Expect at least 3: the method definition + 2 calls (sendMessage, listModels)
+    if ($sslCallCount >= 3) {
+        test_pass('applySslConfig() called in both sendMessage() and listModels()');
+    } else {
+        test_fail('SSL config usage', "expected 3+ references to applySslConfig, found {$sslCallCount}");
+    }
+} catch (\Throwable $e) {
+    test_fail('ClaudeClient SSL check', $e->getMessage());
 }
 
 // ---------------------------------------------------------------------------

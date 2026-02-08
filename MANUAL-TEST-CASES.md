@@ -1,6 +1,6 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend)
 >
 > **Last updated**: 2026-02-08
 
@@ -47,7 +47,7 @@ php -S localhost:8000 -t public
 3. **Verify**: Page uses the public layout (has header, nav, footer)
 4. Try: `/admin`, `/login`
 5. **Expected**: Both return styled 404 page (these routes aren't registered)
-6. Note: `/admin/content` is now a full content list (Chunk 2.2); `/admin/media` is now the media library (Chunk 2.3); `/admin/users` is now the user management section (Chunk 2.4); `/admin/settings` still has a placeholder page; `/contact` is the public contact form (Chunk 3.2)
+6. Note: `/admin/content` is now a full content list (Chunk 2.2); `/admin/media` is now the media library (Chunk 2.3); `/admin/users` is now the user management section (Chunk 2.4); `/admin/settings` is now the real settings page (Chunk 4.1); `/contact` is the public contact form (Chunk 3.2)
 
 ### A5. Query strings don't break routing
 1. Open [http://localhost:8000/?foo=bar](http://localhost:8000/?foo=bar)
@@ -434,7 +434,7 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 ### K3. All sidebar links work (no 404s)
 1. Click each of the 5 sidebar links in order
 2. **Verify**: All pages load (no 404 errors)
-3. **Verify**: Content shows a content list with filters and "+ New Content" button (Chunk 2.2); Media shows the media library with upload form (Chunk 2.3); Users shows the user management list with "+ New User" button (Chunk 2.4); Settings shows "coming soon" placeholder message
+3. **Verify**: Content shows a content list with filters and "+ New Content" button (Chunk 2.2); Media shows the media library with upload form (Chunk 2.3); Users shows the user management list with "+ New User" button (Chunk 2.4); Settings shows AI and General settings form (Chunk 4.1)
 4. **Verify**: Dashboard shows the full stats dashboard
 
 ### K4. Sidebar user info and logout
@@ -1278,6 +1278,111 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 
 ---
 
+## Test Group AF: Settings Page — API Key & Model Management (Chunk 4.1)
+
+### AF1. Settings page loads (admin-only)
+1. Log in as admin
+2. Open [http://localhost:8000/admin/settings](http://localhost:8000/admin/settings)
+3. **Verify**: Page loads with "Settings" heading
+4. **Verify**: Two sections visible: "AI Assistant" and "General"
+5. **Verify**: Sidebar highlights "Settings" nav link
+6. **Verify**: CSRF token hidden input present in the form
+7. **Verify**: Form has `_method=PUT` hidden input
+
+### AF2. API key stored encrypted
+1. Enter a test API key (e.g., `sk-ant-test-12345`) in the Claude API Key field
+2. Click "Save Settings"
+3. **Verify**: Success flash message "Settings saved successfully."
+4. Run: `sqlite3 storage/database.sqlite "SELECT value FROM settings WHERE key='claude_api_key';"`
+5. **Verify**: Value is a base64-encoded string — NOT the plain text key
+6. **Verify**: Decoding the value shows 16-byte IV prefix + ciphertext (AES-256-CBC)
+
+### AF3. API key never displayed in browser
+1. After saving an API key, reload /admin/settings
+2. **Verify**: API key input field is empty (type="password")
+3. **Verify**: Green status indicator shows "API key is configured (stored encrypted)"
+4. **Verify**: View page source — no plain text API key anywhere in the HTML
+
+### AF4. Model selection persists
+1. Select "Claude Haiku 4.5 (Faster, lower cost)" from the model dropdown
+2. Click "Save Settings"
+3. Reload the page
+4. **Verify**: "Claude Haiku 4.5" is still selected in the dropdown
+5. Run: `sqlite3 storage/database.sqlite "SELECT value FROM settings WHERE key='claude_model';"`
+6. **Verify**: Value is `claude-haiku-4-5-20251001`
+
+### AF5. Site name setting persists
+1. Change "Site Name" to "My Business Website"
+2. Click "Save Settings"
+3. Reload the page
+4. **Verify**: Site Name field shows "My Business Website"
+
+### AF6. Empty API key preserves existing
+1. Save an API key first (AF2)
+2. Leave the API key field blank and click "Save Settings"
+3. **Verify**: Green indicator still shows "API key is configured" — existing key preserved
+4. **Verify**: Database still has the encrypted key value
+
+### AF7. Editor cannot access settings
+1. Log in as an editor (non-admin) user
+2. Navigate to /admin/settings
+3. **Expected**: Redirected to /admin/dashboard with error flash "Only administrators can access settings."
+
+---
+
+## Test Group AG: AI Chat Endpoint (Chunk 4.1)
+
+### AG1. AI chat endpoint returns response (requires valid API key)
+1. Configure a valid Claude API key in /admin/settings
+2. Using browser DevTools console or curl, send:
+   ```bash
+   curl -X POST http://localhost:8000/admin/ai/chat \
+     -H "Content-Type: application/json" \
+     -H "X-CSRF-Token: <token>" \
+     -H "Cookie: PHPSESSID=<session>" \
+     -d '{"message": "Write a short greeting"}'
+   ```
+3. **Verify**: HTTP 200 response with JSON:
+   ```json
+   {"success": true, "response": "...", "conversation_id": 1, "usage": {...}}
+   ```
+4. **Verify**: `response` contains a non-empty AI-generated reply
+
+### AG2. Conversation persists in database
+1. After AG1, check the database:
+   ```bash
+   sqlite3 storage/database.sqlite "SELECT messages_json FROM ai_conversations WHERE id=1;"
+   ```
+2. **Verify**: JSON array with 2 entries (user message + assistant response)
+3. **Verify**: Each message has `role`, `content`, and `timestamp` fields
+
+### AG3. Conversation history endpoint works
+1. GET /admin/ai/conversations (while logged in)
+2. **Verify**: JSON response with `success: true` and `conversations` array
+3. **Verify**: Conversations include `id`, `content_id`, `messages`, `created_at`, `updated_at`
+
+### AG4. Missing API key returns friendly error
+1. Remove the API key from settings and config
+2. POST to /admin/ai/chat with a message
+3. **Expected**: HTTP 400 with JSON:
+   ```json
+   {"success": false, "error": "Claude API key is not configured. Please add your API key in Settings."}
+   ```
+
+### AG5. CSRF via X-CSRF-Token header works
+1. POST to /admin/ai/chat without CSRF token
+2. **Expected**: HTTP 403 (CSRF validation fails)
+3. POST with `X-CSRF-Token` header containing a valid token
+4. **Expected**: Request passes CSRF validation
+
+### AG6. Conversation isolation between users
+1. As user A, send a chat message for content_id=1
+2. As user B, request conversations for content_id=1
+3. **Verify**: User B does NOT see user A's conversation
+4. **Verify**: Each user has separate conversation records
+
+---
+
 ## Summary Checklist
 
 (continued from previous chunks)
@@ -1444,3 +1549,16 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | AE3 | Home not highlighted on Contact page | ☐ |
 | AE4 | Archive template exists | ☐ |
 | AE5 | Migration created contact_submissions table | ☐ |
+| AF1 | Settings page loads (admin-only) | ☐ |
+| AF2 | API key stored encrypted | ☐ |
+| AF3 | API key never displayed in browser | ☐ |
+| AF4 | Model selection persists | ☐ |
+| AF5 | Site name setting persists | ☐ |
+| AF6 | Empty API key preserves existing | ☐ |
+| AF7 | Editor cannot access settings | ☐ |
+| AG1 | AI chat endpoint returns response | ☐ |
+| AG2 | Conversation persists in database | ☐ |
+| AG3 | Conversation history endpoint works | ☐ |
+| AG4 | Missing API key returns friendly error | ☐ |
+| AG5 | CSRF via X-CSRF-Token header works | ☐ |
+| AG6 | Conversation isolation between users | ☐ |
