@@ -14,7 +14,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2 + 5.3)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
@@ -42,6 +42,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 | 17 | [http://localhost:8000/admin/content/create?type=products](http://localhost:8000/admin/content/create?type=products) | Content editor with custom type — type dropdown shows "Products" selected, custom fields section below excerpt (after creating a "Products" content type) |
 | 18 | [http://localhost:8000/products](http://localhost:8000/products) | Custom type archive — paginated listing of published "Products" content items (requires has_archive enabled and published items) |
 | 18a | [http://localhost:8000/products/widget-pro](http://localhost:8000/products/widget-pro) | Single custom type item — renders published content by slug under the custom type URL pattern |
+| 19 | [http://localhost:8000/admin/generator](http://localhost:8000/admin/generator) | AI Page Generator — 4-step wizard (Setup → Describe → Preview → Done) with content type selector, chat interface, preview pane, and create buttons |
 
 ### Authentication Flow
 
@@ -53,7 +54,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 ### Admin Panel (Chunk 2.1)
 
 After logging in, the admin panel features:
-- **Sidebar navigation** with 6 links: Dashboard, Content, Media, Content Types, Users, Settings — grouped by section (Main, Content, System)
+- **Sidebar navigation** with 7 links: Dashboard, Content, Media, Content Types, Generate Page, Users, Settings — grouped by section (Main, Content, System)
 - **Active state highlighting** — current page's nav link is visually highlighted
 - **Top bar** with page title and "View Site" link
 - **Dashboard stats** — 5 cards showing Total Content, Published, Drafts, Users, Media Files
@@ -198,6 +199,22 @@ The settings page is now a comprehensive site configuration interface:
 - **Immediate effect** — `Config::reset()` after save ensures changes take effect on the next request without restarting
 - **Conditional cookie consent** — public site conditionally shows/hides cookie consent banner based on `cookie_consent_enabled` setting
 - **Timezone re-apply** — `App::__construct()` re-applies timezone after loading DB settings
+
+### AI Page Generator (Chunk 5.3)
+
+The AI page generator (`/admin/generator`) provides a conversational wizard for creating new pages:
+- **4-step wizard** — Setup (content type selection) → Describe (chat with AI) → Preview (review generated content) → Done (success with edit link)
+- **Content type selector** — choose from Page, Blog Post, or any custom content type
+- **AI chat interface** — conversational requirement gathering with the AI asking 2-3 questions per turn
+- **READY_TO_GENERATE marker** — AI signals when it has enough info; "Generate Page" button appears in chat
+- **Two-phase AI conversation** — gathering prompt (asks questions) switches to generation prompt (outputs structured JSON)
+- **Preview pane** — shows title, slug, excerpt, meta fields, and rendered HTML body before creating
+- **Custom fields support** — custom content type fields included in AI context and populated in generated content
+- **Create as Draft / Create & Publish** — choose status at creation time; published_at auto-set for published items
+- **Content integration** — created content immediately appears in `/admin/content` list and is editable in the standard editor
+- **Conversation persistence** — generator conversations stored in `ai_conversations` table with `content_id = null`
+- **Error handling** — missing API key shows helpful error with link to Settings; network errors displayed in chat
+- **Sidebar navigation** — "Generate Page" link with star icon (★) in the Content section
 
 ---
 

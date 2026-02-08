@@ -37,6 +37,10 @@
                    class="<?= ($activeNav ?? '') === 'content-types' ? 'active' : '' ?>">
                     <span class="nav-icon">&#128209;</span> Content Types
                 </a>
+                <a href="/admin/generator"
+                   class="<?= ($activeNav ?? '') === 'generator' ? 'active' : '' ?>">
+                    <span class="nav-icon">&#9733;</span> Generate Page
+                </a>
 
                 <div class="nav-section">System</div>
                 <a href="/admin/users"

@@ -1,6 +1,6 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration) + 5.3 (AI Page Generator)
 >
 > **Last updated**: 2026-02-08
 
@@ -417,11 +417,11 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 
 ## Test Group K: Sidebar Navigation (Chunk 2.1)
 
-### K1. All 6 navigation links present
+### K1. All 7 navigation links present
 1. Log in and visit dashboard
-2. **Verify**: Sidebar contains these links: Dashboard, Content, Media, Content Types, Users, Settings
+2. **Verify**: Sidebar contains these links: Dashboard, Content, Media, Content Types, Generate Page, Users, Settings
 3. **Verify**: Links are grouped under section labels: "Main", "Content", "System"
-4. **Verify**: Each link has a Unicode icon (square, pencil, camera, clipboard, people, gear)
+4. **Verify**: Each link has a Unicode icon (square, pencil, camera, clipboard, star, people, gear)
 
 ### K2. Active state highlighting
 1. Visit [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard)
@@ -432,9 +432,9 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 6. **Verify**: Each page highlights its respective nav link
 
 ### K3. All sidebar links work (no 404s)
-1. Click each of the 6 sidebar links in order
+1. Click each of the 7 sidebar links in order
 2. **Verify**: All pages load (no 404 errors)
-3. **Verify**: Content shows a content list with filters and "+ New Content" button (Chunk 2.2); Media shows the media library with upload form (Chunk 2.3); Content Types shows the custom content types list with "+ New Content Type" button (Chunk 5.1); Users shows the user management list with "+ New User" button (Chunk 2.4); Settings shows AI and General settings form (Chunk 4.1)
+3. **Verify**: Content shows a content list with filters and "+ New Content" button (Chunk 2.2); Media shows the media library with upload form (Chunk 2.3); Content Types shows the custom content types list with "+ New Content Type" button (Chunk 5.1); Generate Page shows the AI wizard with content type selector (Chunk 5.3); Users shows the user management list with "+ New User" button (Chunk 2.4); Settings shows AI and General settings form (Chunk 4.1)
 4. **Verify**: Dashboard shows the full stats dashboard
 
 ### K4. Sidebar user info and logout
@@ -1871,6 +1871,121 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 
 ---
 
+## Test Group AW: AI Page Generator — Setup & Navigation (Chunk 5.3)
+
+### AW1. Generator page loads with content type selector
+1. Log in as admin
+2. Open [http://localhost:8000/admin/generator](http://localhost:8000/admin/generator)
+3. **Verify**: Page loads with "Generate Page" heading and step indicator (1. Setup → 2. Describe → 3. Preview → 4. Done)
+4. **Verify**: Content type buttons visible: "Page", "Blog Post", plus any custom types
+5. **Verify**: Sidebar highlights "Generate Page" nav link
+6. **Verify**: Step 1 (Setup) is active in the step indicator
+
+### AW2. Sidebar shows "Generate Page" link
+1. Log in as admin, visit any admin page
+2. **Verify**: Sidebar Content section shows "Generate Page" with star icon (★)
+3. Click the link
+4. **Verify**: Navigates to /admin/generator with active nav highlight
+
+### AW3. Custom content types appear in type selector
+1. Create a custom content type (e.g., "Products") via /admin/content-types
+2. Navigate to /admin/generator
+3. **Verify**: "Products" button appears alongside "Page" and "Blog Post"
+
+---
+
+## Test Group AX: AI Page Generator — Chat & Gathering (Chunk 5.3)
+
+### AX1. Select content type starts conversation
+1. On the generator page, click "Page"
+2. **Verify**: Step indicator advances to "2. Describe"
+3. **Verify**: Chat interface appears with a user message and AI response
+4. **Verify**: AI asks questions about the page's purpose and audience
+
+### AX2. Chat conversation flows naturally
+1. Continue from AX1, answer the AI's questions
+2. **Verify**: AI responds with follow-up questions (2-3 per turn)
+3. **Verify**: User messages appear as blue bubbles on the right
+4. **Verify**: AI messages appear as gray bubbles on the left
+5. **Verify**: Chat auto-scrolls to newest messages
+
+### AX3. Enter to send, Shift+Enter for newline
+1. In the chat input, type text and press Enter
+2. **Verify**: Message is sent (not a newline inserted)
+3. Type text and press Shift+Enter
+4. **Verify**: Newline inserted (message NOT sent)
+
+### AX4. Loading state during AI response
+1. Send a message
+2. **Verify**: "AI is thinking..." indicator appears
+3. **Verify**: Send button is disabled
+4. **Verify**: After response, indicator disappears and send button re-enables
+
+### AX5. "Generate Page" button appears when AI is ready
+1. Answer enough questions until the AI indicates it has sufficient info
+2. **Verify**: "Generate Page" button appears in the chat (centered)
+3. **Verify**: The READY_TO_GENERATE marker is NOT shown as visible text
+
+### AX6. Missing API key shows helpful error
+1. Remove the Claude API key from Settings
+2. Navigate to /admin/generator, select a type
+3. **Verify**: Error message in chat: "Claude API key is not configured. Please set it in Settings."
+
+---
+
+## Test Group AY: AI Page Generator — Preview & Create (Chunk 5.3)
+
+### AY1. Preview shows generated content
+1. After clicking "Generate Page" in the chat
+2. **Verify**: Step indicator advances to "3. Preview"
+3. **Verify**: Preview pane shows: Title, Slug, Excerpt, Meta Title, Meta Description
+4. **Verify**: HTML body is rendered visually (not as raw code)
+5. **Verify**: Three buttons visible: "Back to Chat", "Create as Draft", "Create & Publish"
+
+### AY2. Preview shows custom fields for custom types
+1. Create a "Products" content type with price, description, featured fields
+2. Generate a product through the wizard
+3. **Verify**: Preview shows "Custom Fields" section with generated values
+
+### AY3. "Back to Chat" returns to gathering step
+1. On the preview step, click "Back to Chat"
+2. **Verify**: Returns to the chat interface (step 2) with previous messages preserved
+3. **Verify**: Step indicator goes back to "2. Describe"
+
+### AY4. "Create as Draft" creates draft content
+1. On the preview step, click "Create as Draft"
+2. **Verify**: Step indicator advances to "4. Done"
+3. **Verify**: Success message with "Open in Editor" link
+4. Navigate to /admin/content
+5. **Verify**: New content item appears with status "draft"
+6. Edit the item — **Verify**: all fields populated (title, slug, body, excerpt, meta fields)
+
+### AY5. "Create & Publish" creates published content
+1. Generate another page, click "Create & Publish"
+2. **Verify**: Success screen with "Open in Editor" link
+3. Navigate to /admin/content
+4. **Verify**: Content appears with status "published" and published_at set
+5. Visit the public URL (e.g., /about-us)
+6. **Verify**: Page is accessible on the public site
+
+### AY6. Success step actions
+1. On the success step (step 4):
+2. **Verify**: "Open in Editor" link navigates to /admin/content/{id}/edit
+3. **Verify**: "Generate Another" link navigates to /admin/generator
+4. **Verify**: "View All Content" link navigates to /admin/content
+
+### AY7. Duplicate slug handled
+1. Generate two pages with the same title
+2. **Verify**: Second page gets a unique slug (e.g., "about-us-2")
+
+### AY8. Custom fields saved to database
+1. Generate a custom type content item (e.g., Products) with custom fields
+2. Create as draft
+3. Edit the item in /admin/content/{id}/edit
+4. **Verify**: Custom field values match what was shown in the preview
+
+---
+
 ## Summary Checklist
 
 (continued from previous chunks)
@@ -1909,7 +2024,7 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | J2 | Dashboard recent content (empty state) | ☐ |
 | J3 | Admin CSS and JS loaded | ☐ |
 | J4 | Security headers on dashboard | ☐ |
-| K1 | All 6 navigation links present | ☐ |
+| K1 | All 7 navigation links present | ☐ |
 | K2 | Active state highlighting | ☐ |
 | K3 | All sidebar links work (no 404s) | ☐ |
 | K4 | Sidebar user info and logout | ☐ |
@@ -2114,3 +2229,20 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | AU2-3 | Protected keys cannot be overridden | ☐ |
 | AU2-4 | AI settings preserved after 5.2 | ☐ |
 | AV1 | Editor cannot access settings | ☐ |
+| AW1 | Generator page loads with type selector | ☐ |
+| AW2 | Sidebar shows Generate Page link | ☐ |
+| AW3 | Custom content types in type selector | ☐ |
+| AX1 | Select type starts conversation | ☐ |
+| AX2 | Chat conversation flows naturally | ☐ |
+| AX3 | Enter to send, Shift+Enter for newline | ☐ |
+| AX4 | Loading state during AI response | ☐ |
+| AX5 | Generate Page button appears when ready | ☐ |
+| AX6 | Missing API key shows helpful error | ☐ |
+| AY1 | Preview shows generated content | ☐ |
+| AY2 | Preview shows custom fields | ☐ |
+| AY3 | Back to Chat returns to gathering | ☐ |
+| AY4 | Create as Draft creates draft content | ☐ |
+| AY5 | Create & Publish creates published content | ☐ |
+| AY6 | Success step actions work | ☐ |
+| AY7 | Duplicate slug handled | ☐ |
+| AY8 | Custom fields saved to database | ☐ |

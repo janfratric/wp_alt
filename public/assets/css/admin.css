@@ -1309,3 +1309,183 @@ table.data-table td:first-child {
         max-height: calc(100vh - 140px);
     }
 }
+
+/* =========================================================
+   Page Generator
+   ========================================================= */
+
+.generator-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* Step indicator */
+.generator-steps {
+    display: flex;
+    gap: 0;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid var(--color-border, #ddd);
+    padding-bottom: 0;
+}
+.generator-steps .step {
+    flex: 1;
+    text-align: center;
+    padding: 0.75rem 1rem;
+    color: var(--color-text-muted, #888);
+    font-size: 0.9rem;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+}
+.generator-steps .step.active {
+    color: var(--color-primary, #4a90d9);
+    border-bottom-color: var(--color-primary, #4a90d9);
+    font-weight: 600;
+}
+.generator-steps .step.completed {
+    color: #28a745;
+    border-bottom-color: #28a745;
+}
+
+/* Type selector (setup step) */
+.type-selector {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+.type-option {
+    padding: 1.5rem 1rem;
+    border: 2px solid var(--color-border, #ddd);
+    border-radius: 8px;
+    background: var(--color-white, #fff);
+    cursor: pointer;
+    font-size: 1rem;
+    text-align: center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.type-option:hover {
+    border-color: var(--color-primary, #4a90d9);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Chat interface (gathering step) */
+.generator-chat {
+    display: flex;
+    flex-direction: column;
+    height: 500px;
+    border: 1px solid var(--color-border, #ddd);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.generator-chat .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+.chat-message {
+    margin-bottom: 1rem;
+    max-width: 80%;
+}
+.chat-message-user {
+    margin-left: auto;
+    text-align: right;
+}
+.chat-message-user .chat-bubble {
+    background: var(--color-primary, #4a90d9);
+    color: #fff;
+    border-radius: 12px 12px 4px 12px;
+    display: inline-block;
+    padding: 0.75rem 1rem;
+    text-align: left;
+}
+.chat-message-assistant .chat-bubble {
+    background: var(--color-border-light, #f5f5f5);
+    border-radius: 12px 12px 12px 4px;
+    display: inline-block;
+    padding: 0.75rem 1rem;
+}
+.chat-input-area {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-top: 1px solid var(--color-border, #ddd);
+    background: var(--color-white, #fff);
+}
+.chat-input-area textarea {
+    flex: 1;
+    resize: none;
+    border: 1px solid var(--color-border, #ddd);
+    border-radius: 6px;
+    padding: 0.5rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+.chat-input-area button {
+    padding: 0.5rem 1.5rem;
+    white-space: nowrap;
+}
+.chat-loading {
+    text-align: center;
+    padding: 1rem;
+    color: var(--color-text-muted, #888);
+    font-style: italic;
+}
+
+/* Generate button (appears in chat) */
+.btn-generate {
+    display: block;
+    margin: 1rem auto;
+    padding: 0.75rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* Preview step */
+.preview-header {
+    margin-bottom: 1.5rem;
+}
+.preview-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--color-border-light, #f5f5f5);
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+.preview-content {
+    border: 1px solid var(--color-border, #ddd);
+    border-radius: 8px;
+    padding: 2rem;
+    margin: 1.5rem 0;
+    background: #fff;
+    min-height: 200px;
+}
+.preview-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+/* Success step */
+.success-message {
+    text-align: center;
+    padding: 3rem;
+}
+.success-message h2 {
+    color: #28a745;
+    margin-bottom: 0.5rem;
+}
+.success-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+/* Hidden utility */
+.generator-panel.hidden {
+    display: none;
+}

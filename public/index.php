@@ -22,6 +22,7 @@ use App\Templates\FrontController;
 use App\AIAssistant\AIController;
 use App\Admin\SettingsController;
 use App\Admin\ContentTypeController;
+use App\AIAssistant\PageGeneratorController;
 
 // Bootstrap
 $app = new App();
@@ -117,6 +118,11 @@ $router->group('/admin', function($router) use ($app) {
     $router->get('/ai/conversations', [AIController::class, 'conversations']);
     $router->post('/ai/models/fetch', [AIController::class, 'fetchModels']);
     $router->post('/ai/models/enable', [AIController::class, 'saveEnabledModels']);
+
+    // AI Page Generator
+    $router->get('/generator', [PageGeneratorController::class, 'index']);
+    $router->post('/generator/chat', [PageGeneratorController::class, 'chat']);
+    $router->post('/generator/create', [PageGeneratorController::class, 'create']);
 });
 
 // Dynamic routes for custom content type archives and single items
