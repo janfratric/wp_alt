@@ -41,9 +41,71 @@
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="body">Body</label>
-                <textarea id="body" name="body" rows="20"><?= $content['body'] ?></textarea>
+            <!-- Editor Mode Toggle -->
+            <div class="form-group pb-mode-toggle">
+                <label>Editor Mode</label>
+                <div class="pb-mode-options">
+                    <label class="pb-mode-option">
+                        <input type="radio" name="editor_mode" value="html"
+                               <?= ($content['editor_mode'] ?? 'html') === 'html' ? 'checked' : '' ?>>
+                        <span>HTML Editor</span>
+                    </label>
+                    <label class="pb-mode-option">
+                        <input type="radio" name="editor_mode" value="elements"
+                               <?= ($content['editor_mode'] ?? 'html') === 'elements' ? 'checked' : '' ?>>
+                        <span>Page Builder</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- HTML Editor Panel (visible when editor_mode = html) -->
+            <div id="html-editor-panel"
+                 class="<?= ($content['editor_mode'] ?? 'html') === 'elements' ? 'hidden' : '' ?>">
+                <div class="form-group">
+                    <label for="body">Body</label>
+                    <textarea id="body" name="body" rows="20"><?= $content['body'] ?></textarea>
+                </div>
+            </div>
+
+            <!-- Page Builder Panel (visible when editor_mode = elements) -->
+            <div id="page-builder-panel"
+                 class="<?= ($content['editor_mode'] ?? 'html') !== 'elements' ? 'hidden' : '' ?>"
+                 data-instances="<?= $this->e(json_encode($pageElements ?? [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>"
+                 data-csrf="<?= $this->e($csrfToken ?? '') ?>">
+                <div class="pb-toolbar">
+                    <button type="button" id="pb-add-element" class="btn btn-primary btn-sm">
+                        + Add Element
+                    </button>
+                    <span id="pb-element-count" class="pb-count-badge">0 elements</span>
+                </div>
+
+                <div id="pb-instance-list" class="pb-instance-list">
+                    <div class="pb-empty-state" id="pb-empty-state">
+                        <div class="pb-empty-icon">&#9647;</div>
+                        <p>No elements added yet.</p>
+                        <p style="font-size:0.85rem;color:var(--color-text-muted);">
+                            Click "Add Element" to start building your page.
+                        </p>
+                    </div>
+                </div>
+
+                <input type="hidden" id="elements-json-input" name="elements_json" value="">
+            </div>
+
+            <!-- Element Picker Modal -->
+            <div id="pb-picker-modal" class="pb-picker-modal hidden">
+                <div class="pb-picker-overlay"></div>
+                <div class="pb-picker-content">
+                    <div class="pb-picker-header">
+                        <h3>Choose an Element</h3>
+                        <button type="button" class="pb-picker-close" title="Close">&times;</button>
+                    </div>
+                    <div class="pb-picker-search">
+                        <input type="text" id="pb-picker-search" placeholder="Search elements...">
+                    </div>
+                    <div class="pb-picker-categories" id="pb-picker-categories"></div>
+                    <div class="pb-picker-grid" id="pb-picker-grid"></div>
+                </div>
             </div>
 
             <div class="form-group">
@@ -277,6 +339,8 @@
     </div>
 </form>
 
+<script src="/assets/js/page-builder.js"></script>
+<script src="/assets/js/page-builder-init.js"></script>
 <script src="/assets/js/editor.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>

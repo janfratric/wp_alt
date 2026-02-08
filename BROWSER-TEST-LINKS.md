@@ -14,7 +14,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2 + 5.3)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2 + 5.3 + 6.1 + 6.2)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
@@ -22,9 +22,9 @@ This starts PHP's built-in development server with `public/` as the document roo
 | 2 | [http://localhost:8000/admin/login](http://localhost:8000/admin/login) | Login page — centered card with username/password form and CSRF token |
 | 3 | [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard) | Admin dashboard — styled sidebar nav, topbar, stats cards (Total Content, Published, Drafts, Users, Media Files), and recent content table. Redirects to `/admin/login` if not authenticated |
 | 4 | [http://localhost:8000/admin/content](http://localhost:8000/admin/content) | Content list — filterable/searchable table with type and status filters, pagination, bulk actions, and "+ New Content" button |
-| 5 | [http://localhost:8000/admin/content/create](http://localhost:8000/admin/content/create) | Content editor (create mode) — two-column layout with title, slug, TinyMCE body editor, excerpt, and sidebar with publish/SEO/image fields |
+| 5 | [http://localhost:8000/admin/content/create](http://localhost:8000/admin/content/create) | Content editor (create mode) — two-column layout with title, slug, editor mode toggle (HTML/Page Builder), TinyMCE body editor, excerpt, and sidebar with publish/SEO/image fields. Page Builder mode shows element picker and instance cards |
 | 6 | [http://localhost:8000/admin/content/create?type=post](http://localhost:8000/admin/content/create?type=post) | Content editor (create mode) — pre-selects "Post" type in the sidebar |
-| 7 | [http://localhost:8000/admin/content/1/edit](http://localhost:8000/admin/content/1/edit) | Content editor (edit mode) — loads existing content, shows "Update" button instead of "Create", includes `_method=PUT` hidden field. AI Assistant toggle button in header opens chat panel as third column |
+| 7 | [http://localhost:8000/admin/content/1/edit](http://localhost:8000/admin/content/1/edit) | Content editor (edit mode) — loads existing content, shows "Update" button instead of "Create", includes `_method=PUT` hidden field. Editor mode toggle (HTML/Page Builder) with persistent mode. AI Assistant toggle button in header opens chat panel as third column |
 | 8 | [http://localhost:8000/admin/media](http://localhost:8000/admin/media) | Media library — upload form with drag & drop zone, media grid with thumbnails, pagination, delete buttons. Sidebar highlights "Media" |
 | 8a | [http://localhost:8000/admin/media/browse?type=image](http://localhost:8000/admin/media/browse?type=image) | JSON endpoint — returns paginated list of image media items (used by media browser modal) |
 | 9 | [http://localhost:8000/admin/users](http://localhost:8000/admin/users) | User list — searchable table with username, email, role badge, created date, edit/delete actions, pagination, and "+ New User" button. Admin-only (editors get 403) |
@@ -215,6 +215,30 @@ The AI page generator (`/admin/generator`) provides a conversational wizard for 
 - **Conversation persistence** — generator conversations stored in `ai_conversations` table with `content_id = null`
 - **Error handling** — missing API key shows helpful error with link to Settings; network errors displayed in chat
 - **Sidebar navigation** — "Generate Page" link with star icon (★) in the Content section
+
+### Element Catalogue & Rendering Engine (Chunk 6.1)
+
+The element system provides reusable UI components for page building:
+- **Element catalogue** (`/admin/elements`) — grid view of all elements with name, category, slot count, usage count, and status
+- **Element editor** — create/edit elements with HTML template, CSS, slot definitions (JSON), and live preview
+- **SlotRenderer** — micro-mustache template engine supporting `{{key}}`, `{{{raw}}}`, `{{#section}}`, `{{^inverted}}`, loops, and dot notation
+- **PageRenderer** — assembles element-based pages into HTML with deduplicated CSS
+- **7 seed elements** — Hero Section, Text Section, Feature Grid, CTA Banner, Image + Text, Testimonial Section, FAQ Section
+- **Public rendering** — element-mode pages rendered via PageRenderer with element CSS injected in `<head>`
+
+### Content Editor Element Mode & Page Builder UI (Chunk 6.2)
+
+The content editor now supports two editing modes:
+- **Editor mode toggle** — radio buttons to switch between "HTML Editor" (TinyMCE) and "Page Builder" (element-based) modes
+- **Page Builder panel** — when in elements mode, shows toolbar with "Add Element" button, element count badge, and instance list
+- **Element picker modal** — searchable, categorized modal to browse and select elements from the catalogue
+- **Instance cards** — each added element displays as a collapsible card with drag handle, element name, category badge, and slot form fields
+- **Slot field types** — text input, textarea (richtext), image (with media browser), link (URL + text + target), select dropdown, checkbox (boolean), number input, and list (recursive sub-items)
+- **Drag-and-drop reordering** — drag instance cards by their handle to reorder elements on the page
+- **JSON serialization** — on form submit, all instance data serialized to `elements_json` hidden input
+- **Server-side persistence** — `page_elements` rows saved with element_id, sort_order, and slot_data_json; invalid element_ids silently skipped
+- **Mode coexistence** — switching modes preserves body content; TinyMCE hidden but not destroyed in elements mode
+- **Media browser integration** — image slot fields reuse the existing media browser modal from the content editor
 
 ---
 

@@ -105,6 +105,7 @@ class ContentController
             'featured_image'   => '',
             'published_at'     => '',
             'sort_order'       => 0,
+            'editor_mode'      => (string) $request->query('editor_mode', 'html'),
         ];
 
         // Load custom field definitions for this type
@@ -126,6 +127,8 @@ class ContentController
             'contentTypes'           => $contentTypes,
             'customFieldDefinitions' => $customFieldDefinitions,
             'customFieldValues'      => $customFieldValues,
+            'pageElements'           => [],
+            'csrfToken'              => Session::get('csrf_token', ''),
         ]);
 
         return $this->withSecurityHeaders(Response::html($html));
@@ -147,6 +150,9 @@ class ContentController
         $data['slug'] = $this->ensureUniqueSlug($data['slug']);
         $data['published_at'] = $this->resolvePublishedAt($data['status'], $data['published_at']);
 
+        $editorMode = in_array($data['editor_mode'], ['html', 'elements'], true)
+            ? $data['editor_mode'] : 'html';
+
         $id = QueryBuilder::query('content')->insert([
             'type'             => $data['type'],
             'title'            => $data['title'],
@@ -161,7 +167,13 @@ class ContentController
             'featured_image'   => $data['featured_image'] ?: null,
             'published_at'     => $data['published_at'] ?: null,
             'updated_at'       => date('Y-m-d H:i:s'),
+            'editor_mode'      => $editorMode,
         ]);
+
+        // Save page elements if in elements mode
+        if ($editorMode === 'elements') {
+            $this->savePageElements((int) $id, $request);
+        }
 
         // Save custom fields
         $customFields = $request->input('custom_fields', []);
@@ -220,6 +232,12 @@ class ContentController
             ->orderBy('name', 'ASC')
             ->get();
 
+        // Load page elements for element-mode content
+        $pageElements = [];
+        if (($content['editor_mode'] ?? 'html') === 'elements') {
+            $pageElements = $this->loadPageElements((int) $id);
+        }
+
         $html = $this->app->template()->render('admin/content/edit', [
             'title'                  => 'Edit: ' . $content['title'],
             'activeNav'              => 'content',
@@ -228,6 +246,8 @@ class ContentController
             'contentTypes'           => $contentTypes,
             'customFieldDefinitions' => $customFieldDefinitions,
             'customFieldValues'      => $customFieldValues,
+            'pageElements'           => $pageElements,
+            'csrfToken'              => Session::get('csrf_token', ''),
         ]);
 
         return $this->withSecurityHeaders(Response::html($html));
@@ -259,6 +279,9 @@ class ContentController
         $data['slug'] = $this->ensureUniqueSlug($data['slug'], (int) $id);
         $data['published_at'] = $this->resolvePublishedAt($data['status'], $data['published_at']);
 
+        $editorMode = in_array($data['editor_mode'], ['html', 'elements'], true)
+            ? $data['editor_mode'] : 'html';
+
         QueryBuilder::query('content')->where('id', (int) $id)->update([
             'type'             => $data['type'],
             'title'            => $data['title'],
@@ -272,7 +295,13 @@ class ContentController
             'featured_image'   => $data['featured_image'] ?: null,
             'published_at'     => $data['published_at'] ?: null,
             'updated_at'       => date('Y-m-d H:i:s'),
+            'editor_mode'      => $editorMode,
         ]);
+
+        // Save page elements if in elements mode
+        if ($editorMode === 'elements') {
+            $this->savePageElements((int) $id, $request);
+        }
 
         // Update custom fields: delete old, insert new
         QueryBuilder::query('custom_fields')
@@ -374,6 +403,7 @@ class ContentController
             'featured_image'   => trim((string) $request->input('featured_image', '')),
             'published_at'     => trim((string) $request->input('published_at', '')),
             'sort_order'       => (int) $request->input('sort_order', '0'),
+            'editor_mode'      => (string) $request->input('editor_mode', 'html'),
         ];
     }
 
@@ -445,6 +475,92 @@ class ContentController
             return date('Y-m-d H:i:s');
         }
         return '';
+    }
+
+    /**
+     * Parse elements_json from request and save page_elements rows.
+     * Deletes old rows and inserts new ones with correct sort_order.
+     */
+    private function savePageElements(int $contentId, Request $request): void
+    {
+        // Delete existing page_elements for this content
+        QueryBuilder::query('page_elements')
+            ->where('content_id', $contentId)
+            ->delete();
+
+        $elementsJson = (string) $request->input('elements_json', '[]');
+        $elements = json_decode($elementsJson, true);
+
+        if (!is_array($elements)) {
+            return;
+        }
+
+        foreach ($elements as $sortOrder => $element) {
+            if (!is_array($element) || empty($element['element_id'])) {
+                continue;
+            }
+
+            $elementId = (int) $element['element_id'];
+
+            // Verify element exists
+            $exists = QueryBuilder::query('elements')
+                ->select('id')
+                ->where('id', $elementId)
+                ->first();
+
+            if ($exists === null) {
+                continue;
+            }
+
+            $slotData = $element['slot_data'] ?? [];
+            if (!is_array($slotData)) {
+                $slotData = [];
+            }
+
+            QueryBuilder::query('page_elements')->insert([
+                'content_id'     => $contentId,
+                'element_id'     => $elementId,
+                'sort_order'     => $sortOrder,
+                'slot_data_json' => json_encode($slotData, JSON_UNESCAPED_UNICODE),
+            ]);
+        }
+    }
+
+    /**
+     * Load page_elements for a content item with full element metadata.
+     * Returns an array suitable for passing to the page builder JS.
+     */
+    private function loadPageElements(int $contentId): array
+    {
+        $rows = QueryBuilder::query('page_elements')
+            ->select(
+                'page_elements.id',
+                'page_elements.element_id',
+                'page_elements.sort_order',
+                'page_elements.slot_data_json',
+                'elements.slug',
+                'elements.name',
+                'elements.category',
+                'elements.slots_json'
+            )
+            ->leftJoin('elements', 'elements.id', '=', 'page_elements.element_id')
+            ->where('page_elements.content_id', (string) $contentId)
+            ->orderBy('page_elements.sort_order')
+            ->get();
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[] = [
+                'elementId'       => (int) $row['element_id'],
+                'elementSlug'     => $row['slug'] ?? 'unknown',
+                'elementName'     => $row['name'] ?? 'Unknown Element',
+                'elementCategory' => $row['category'] ?? 'general',
+                'slots'           => json_decode($row['slots_json'] ?? '[]', true) ?: [],
+                'slotData'        => json_decode($row['slot_data_json'] ?? '{}', true) ?: [],
+            ];
+        }
+
+        return $result;
     }
 
     private function withSecurityHeaders(Response $response): Response

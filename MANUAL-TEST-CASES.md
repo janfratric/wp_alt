@@ -1,6 +1,6 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration) + 5.3 (AI Page Generator)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration) + 5.3 (AI Page Generator) + 6.1 (Element Catalogue & Rendering Engine) + 6.2 (Content Editor Element Mode & Page Builder UI)
 >
 > **Last updated**: 2026-02-08
 
@@ -1986,6 +1986,170 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 
 ---
 
+## Test Group AZ: Page Builder — Editor Mode Toggle (Chunk 6.2)
+
+### AZ1. Editor mode toggle visible on content editor
+1. Log in as admin
+2. Open [http://localhost:8000/admin/content/create](http://localhost:8000/admin/content/create)
+3. **Verify**: Editor Mode toggle visible with "HTML Editor" and "Page Builder" radio buttons
+4. **Verify**: "HTML Editor" is selected by default
+5. **Verify**: Body textarea (TinyMCE) is visible
+6. **Verify**: Page builder panel is hidden
+
+### AZ2. Toggle to Page Builder mode
+1. Click "Page Builder" radio button
+2. **Verify**: Body textarea/TinyMCE is hidden
+3. **Verify**: Page builder panel is visible with "Add Element" button and empty state message
+4. **Verify**: Empty state shows "No elements added yet." with hint text
+
+### AZ3. Toggle back to HTML mode
+1. Click "HTML Editor" radio button
+2. **Verify**: Body textarea/TinyMCE reappears
+3. **Verify**: Page builder panel is hidden
+4. **Verify**: No data is lost when switching modes
+
+### AZ4. Editor mode persists on save
+1. Create content in Page Builder mode, add an element, save
+2. Edit the content
+3. **Verify**: "Page Builder" radio is selected (not "HTML Editor")
+4. **Verify**: Page builder panel is visible with saved elements
+
+---
+
+## Test Group BA: Page Builder — Element Picker (Chunk 6.2)
+
+### BA1. Element picker opens with catalogue
+1. Switch to Page Builder mode
+2. Click "Add Element" button
+3. **Verify**: Picker modal appears with all 7 seed elements
+4. **Verify**: Search input is focused
+5. **Verify**: Category tabs appear (All + unique categories from catalogue)
+
+### BA2. Element picker — search filter
+1. Type "hero" in the search input
+2. **Verify**: Only Hero Section element is shown
+3. Clear search — all elements shown again
+
+### BA3. Element picker — category filter
+1. Click a category tab (e.g., "content")
+2. **Verify**: Only elements in that category are shown
+3. Click "All" tab — all elements shown again
+
+### BA4. Element picker — close
+1. Click the × button in the picker header
+2. **Verify**: Picker modal closes
+3. Open again, click the dark overlay
+4. **Verify**: Picker modal closes
+5. **Verify**: No element was added in either case
+
+---
+
+## Test Group BB: Page Builder — Instance Cards & Slot Fields (Chunk 6.2)
+
+### BB1. Adding an element creates instance card
+1. In picker modal, click "Hero Section"
+2. **Verify**: Modal closes
+3. **Verify**: Instance card appears with header showing "Hero Section" name and category badge
+4. **Verify**: Element count badge shows "1 element"
+5. **Verify**: Slot fields are visible in the card body
+
+### BB2. Slot fields render correctly for all types
+1. Add a Hero Section element (has text, richtext, image, link, select)
+2. **Verify**: Title slot → text input
+3. **Verify**: Description slot → textarea
+4. **Verify**: Background Image slot → hidden input + "Browse Media" button
+5. **Verify**: CTA Button slot → three fields (URL, text, target select)
+6. **Verify**: Text Alignment slot → select dropdown with options
+
+### BB3. List slot type
+1. Add a Feature Grid element (has list type)
+2. **Verify**: Features list slot → container with "+ Add Item" button
+3. Click "+ Add Item" → sub-slot fields appear (one item)
+4. Click "+ Add Item" again → two items visible
+5. Remove an item → one item remaining
+
+### BB4. Collapsible instance cards
+1. Add 2-3 elements
+2. Click the collapse toggle (▼) on the first element
+3. **Verify**: Slot fields are hidden (card collapsed)
+4. Click the collapse toggle again (▲)
+5. **Verify**: Slot fields are visible again
+
+### BB5. Remove element
+1. Click the remove button (×) on an element
+2. **Verify**: Confirmation dialog appears
+3. Confirm — element is removed from the list
+4. **Verify**: Element count badge updates
+
+### BB6. Image slot — media browser integration
+1. Add an element with an image slot (e.g., Hero Section)
+2. Click "Browse Media" on the image slot
+3. **Verify**: Media browser modal opens (same as featured image)
+4. Select an image
+5. **Verify**: Image preview appears and hidden input is populated
+6. Click "Remove" — preview hides and input clears
+
+---
+
+## Test Group BC: Page Builder — Drag & Drop Reorder (Chunk 6.2)
+
+### BC1. Drag and drop reorders elements
+1. Add Hero Section, Text Section, CTA Banner (3 elements)
+2. **Verify**: Order is Hero, Text, CTA
+3. Grab the drag handle (☰) on CTA Banner
+4. Drag it to the top position (above Hero Section)
+5. Drop it
+6. **Verify**: Order changes to CTA, Hero, Text
+7. **Verify**: Slot data is preserved during reorder
+
+---
+
+## Test Group BD: Page Builder — Save & Load (Chunk 6.2)
+
+### BD1. Saving persists page_elements rows
+1. Create new content, switch to Page Builder mode
+2. Add Hero Section, fill in title="Welcome"
+3. Add Text Section, fill in heading="About Us"
+4. Click "Create"
+5. **Verify**: Flash success "Content created successfully."
+6. Run: `sqlite3 storage/database.sqlite "SELECT editor_mode FROM content WHERE slug='...'"`
+7. **Verify**: editor_mode = 'elements'
+8. Run: `sqlite3 storage/database.sqlite "SELECT * FROM page_elements WHERE content_id=..."`
+9. **Verify**: 2 rows with sort_order 0 and 1
+
+### BD2. Loading editor restores all element instances
+1. Edit the content created in BD1
+2. **Verify**: Page Builder mode is active (radio selected)
+3. **Verify**: 2 instance cards shown: Hero Section, Text Section
+4. **Verify**: Hero Section's title field has "Welcome"
+5. **Verify**: Text Section's heading field has "About Us"
+6. **Verify**: Element count badge shows "2 elements"
+
+### BD3. Updating reorders and updates slot data
+1. Edit content from BD1
+2. Drag Text Section above Hero Section
+3. Change Hero Section's title to "Updated Welcome"
+4. Click "Update"
+5. **Verify**: Refresh the page — order is Text, Hero; title is "Updated Welcome"
+
+### BD4. HTML-mode content unaffected
+1. Create a new content item in HTML mode (default)
+2. Add title, body text via TinyMCE, publish
+3. Save
+4. **Verify**: editor_mode = 'html' in database
+5. Edit — verify TinyMCE is visible, no page builder panel active
+6. **Verify**: No page_elements rows exist for this content
+
+### BD5. Element-based page renders on public site
+1. Create content in Page Builder mode with Hero + Text sections
+2. Fill in slot data, set status to published
+3. Save
+4. Visit the public page URL
+5. **Verify**: Page renders with both elements
+6. **Verify**: Elements have .lcms-el-{slug} wrapper classes
+
+---
+
 ## Summary Checklist
 
 (continued from previous chunks)
@@ -2246,3 +2410,23 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | AY6 | Success step actions work | ☐ |
 | AY7 | Duplicate slug handled | ☐ |
 | AY8 | Custom fields saved to database | ☐ |
+| AZ1 | Editor mode toggle visible | ☐ |
+| AZ2 | Toggle to Page Builder mode | ☐ |
+| AZ3 | Toggle back to HTML mode | ☐ |
+| AZ4 | Editor mode persists on save | ☐ |
+| BA1 | Element picker opens with catalogue | ☐ |
+| BA2 | Element picker — search filter | ☐ |
+| BA3 | Element picker — category filter | ☐ |
+| BA4 | Element picker — close | ☐ |
+| BB1 | Adding element creates instance card | ☐ |
+| BB2 | Slot fields render correctly | ☐ |
+| BB3 | List slot type | ☐ |
+| BB4 | Collapsible instance cards | ☐ |
+| BB5 | Remove element | ☐ |
+| BB6 | Image slot media browser | ☐ |
+| BC1 | Drag and drop reorders elements | ☐ |
+| BD1 | Saving persists page_elements | ☐ |
+| BD2 | Loading restores element instances | ☐ |
+| BD3 | Updating reorders and updates data | ☐ |
+| BD4 | HTML-mode content unaffected | ☐ |
+| BD5 | Element-based page renders publicly | ☐ |

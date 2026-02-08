@@ -113,7 +113,7 @@ if (!file_exists($editTemplatePath)) {
         'pb-picker-modal'     => str_contains($editSrc, 'pb-picker-modal'),
         'elements-json-input' => str_contains($editSrc, 'elements-json-input') || str_contains($editSrc, 'elements_json'),
         'page-builder.js'     => str_contains($editSrc, 'page-builder.js'),
-        'initPageBuilder'     => str_contains($editSrc, 'initPageBuilder'),
+        'initPageBuilder'     => str_contains($editSrc, 'initPageBuilder') || str_contains($editSrc, 'page-builder-init.js'),
     ];
 
     $allPresent = !in_array(false, $checks, true);
@@ -364,8 +364,8 @@ try {
 
         $body = $resp->getBody();
 
-        // The template should contain the initPageBuilder call with existing instances
-        $hasInitWithData = str_contains($body, 'initPageBuilder');
+        // The template should contain the initPageBuilder call or external init script
+        $hasInitWithData = str_contains($body, 'initPageBuilder') || str_contains($body, 'page-builder-init.js');
         // Check that the existing element data appears (hero element name or slot data)
         $hasElementData = str_contains($body, 'hero-section') || str_contains($body, 'Hero Section')
             || str_contains($body, 'Welcome') || str_contains($body, 'elementId');

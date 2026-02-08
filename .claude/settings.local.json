@@ -16,7 +16,8 @@
       "Bash(ls \"c:\\\\!Agents\\\\wp_alt\\\\app\\\\Admin\"\" 2>nul || echo \"Directory does not exist \")",
       "Bash(if not exist \"c:\\\\!Agents\\\\wp_alt\\\\templates\\\\admin\\\\media\" mkdir \"c:\\\\!Agents\\\\wp_alt\\\\templates\\\\admin\\\\media\")",
       "Bash(cmd /c \"if not exist c:\\\\!Agents\\\\wp_alt\\\\templates\\\\admin\\\\media mkdir c:\\\\!Agents\\\\wp_alt\\\\templates\\\\admin\\\\media\")",
-      "Bash(LITECMS_TEST_SMOKE=1 php:*)"
+      "Bash(LITECMS_TEST_SMOKE=1 php:*)",
+      "Bash(findstr:*)"
     ]
   }
 }
