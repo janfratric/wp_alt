@@ -42,6 +42,7 @@ $chunks = [
     '6.1' => 'chunk-6.1-verify.php',
     '6.2' => 'chunk-6.2-verify.php',
     '6.3' => 'chunk-6.3-verify.php',
+    '6.4' => 'chunk-6.4-verify.php',
     '7.1' => 'chunk-7.1-verify.php',
 ];
 
@@ -177,7 +178,8 @@ function updateStatusFile(
         '5.3' => 'AI Page Generator',
         '6.1' => 'Element Catalogue & Rendering Engine',
         '6.2' => 'Content Editor Element Mode & Page Builder UI',
-        '6.3' => 'AI Element Integration',
+        '6.3' => 'Per-Instance Element Styling',
+        '6.4' => 'AI Element Integration',
         '7.1' => 'Final Polish, Error Handling & Documentation',
     ];
 
@@ -200,7 +202,8 @@ function updateStatusFile(
         '6.1' => ['5.3'],
         '6.2' => ['6.1'],
         '6.3' => ['6.2'],
-        '7.1' => ['6.3'],
+        '6.4' => ['6.3'],
+        '7.1' => ['6.4'],
     ];
 
     // Determine which chunks passed

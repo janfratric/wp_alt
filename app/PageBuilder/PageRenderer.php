@@ -61,7 +61,7 @@ class PageRenderer
         $slug = $instance['slug'] ?? 'unknown';
         $elementId = (int) ($instance['element_id'] ?? $instance['id'] ?? 0);
         $template = $instance['html_template'] ?? '';
-        $slotData = $instance['slot_data'] ?? [];
+        $slotData = $instance['slot_data_json'] ?? $instance['slot_data'] ?? [];
 
         if (is_string($slotData)) {
             $slotData = json_decode($slotData, true) ?: [];

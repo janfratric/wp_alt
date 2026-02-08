@@ -577,11 +577,57 @@ GET    /admin/elements/api/list     → ElementController::apiList
 
 ---
 
-### Chunk 6.3: AI Element Integration
+### Chunk 6.3: Per-Instance Element Styling
+
+**Description**: Add Elementor-like style controls to the page builder. Each element instance gets a "Style" tab with GUI controls for spacing, background, typography, border, effects, and layout — plus a **Custom CSS** textarea for freeform CSS (scoped to the instance). Page-level wrappers (page-body, container, site-main) are also stylable with both GUI controls and custom CSS. A new `StyleRenderer` class handles CSS generation, scoping, and sanitization server-side. The custom CSS fields are the primary integration point for AI-driven styling in Chunk 6.4.
+
+**Input Prerequisites**: Chunk 6.2 complete (page builder UI with element instances)
+
+**Key Files to Create**:
+- `migrations/005_element_styles.sqlite.sql` — Add `style_data_json` column to `page_elements`, create `page_styles` table
+- `migrations/005_element_styles.mysql.sql` — MySQL variant
+- `migrations/005_element_styles.pgsql.sql` — PostgreSQL variant
+- `app/PageBuilder/StyleRenderer.php` — CSS generation + sanitization (buildInlineStyle, buildPageLayoutCss, sanitizeStyleData)
+- `public/assets/js/page-styles-init.js` — Page-level style controls for layout wrappers
+
+**Key Files to Modify**:
+- `app/PageBuilder/PageRenderer.php` — Apply inline styles on wrapper divs, new `getPageLayoutCss()` method
+- `app/Admin/ContentController.php` — Save/load `style_data_json` per instance, save/load page-level styles
+- `app/Templates/FrontController.php` — Append page layout CSS to element CSS
+- `public/assets/js/page-builder.js` — Tab system (Content/Style), style panel with accordion sections, serialize styleData
+- `public/assets/js/page-builder-init.js` — Toggle page styles card visibility
+- `templates/admin/content/edit.php` — Page Layout Styles sidebar card
+- `public/assets/css/admin.css` — Tab bar, style panel, control styles
+
+**Style Properties**: margin, padding, background (color/image), text color/size/align/weight, border (width/style/color/radius), box-shadow, opacity, max-width, min-height, custom CSS class, **custom CSS** (freeform per instance + per layout target)
+
+**Security**: `StyleRenderer::sanitizeStyleData()` whitelists GUI properties; `sanitizeCustomCss()` strips XSS vectors (`@import`, `javascript:`, `</style>`, `<script>`); `scopeCustomCss()` isolates custom rules to the instance wrapper
+
+**CSS Specificity Cascade**: Catalogue CSS → inline GUI styles → scoped custom CSS (each layer overrides the previous)
+
+**Output Deliverables**: Each element instance in the page builder has a Style tab with visual controls and a Custom CSS textarea. Per-instance GUI styles render as inline `style` attributes. Per-instance custom CSS renders scoped in a `<style>` block. Page-level wrapper styles (GUI + custom CSS) render as a `<style>` block. All CSS values are sanitized server-side.
+
+**Acceptance Tests**:
+1. Migration applies cleanly (style_data_json column, page_styles table)
+2. StyleRenderer::buildInlineStyle() generates correct CSS
+3. StyleRenderer::sanitizeStyleData() blocks injection patterns
+4. StyleRenderer::buildPageLayoutCss() generates valid CSS rules
+5. ContentController saves/loads style_data alongside slot_data
+6. ContentController saves/loads page_styles
+7. PageRenderer::renderInstance() emits inline styles + data-instance-id on wrapper div
+8. PageRenderer::getPageLayoutCss() returns CSS for page wrappers
+9. Custom CSS per instance renders scoped in `<style>` block
+10. Custom CSS sanitization blocks XSS, preserves legitimate CSS
+11. Custom CSS scoping prefixes all rules with instance selector
+12. page-builder.js has style-related functions (tab system, style panel, custom CSS textarea)
+
+---
+
+### Chunk 6.4: AI Element Integration
 
 **Description**: Make the AI agent aware of the element catalogue — injecting catalogue context into generation prompts, generating element-based pages (reusing existing elements or proposing new ones), and providing an approval flow for AI-proposed elements.
 
-**Input Prerequisites**: Chunks 6.1 + 6.2 complete, Chunk 5.3 complete (AI Page Generator)
+**Input Prerequisites**: Chunk 6.3 complete (styled page builder), Chunk 5.3 complete (AI Page Generator)
 
 **Key Files to Create**:
 - `templates/admin/elements/proposals.php` — Proposal review UI
@@ -633,7 +679,7 @@ POST   /admin/element-proposals/{id}/reject  → ElementController::rejectPropos
 
 **Description**: Final pass over the entire codebase — comprehensive error handling and logging, input validation tightening, performance verification, security audit, and production of README.md with installation guide.
 
-**Input Prerequisites**: All previous chunks complete (Phases 1–6)
+**Input Prerequisites**: All previous chunks complete (Phases 1–6, including Chunk 6.4)
 
 **Key Files to Create/Modify**:
 - `app/Admin/ContactSubmissionsController.php` — List submissions with pagination, view individual submission, delete
@@ -706,11 +752,12 @@ POST   /admin/element-proposals/{id}/reject  → ElementController::rejectPropos
                                               └── 5.3 AI Page Generator
                                                    └── 6.1 Element Catalogue
                                                         └── 6.2 Page Builder UI
-                                                             └── 6.3 AI Element Integration
-                                                                  └── 7.1 Final Polish & Docs
+                                                             └── 6.3 Per-Instance Element Styling
+                                                                  └── 6.4 AI Element Integration
+                                                                       └── 7.1 Final Polish & Docs
 ```
 
-**Total: 18 chunks across 7 phases**
+**Total: 19 chunks across 7 phases**
 
 ## Parallel Execution Strategy
 
@@ -724,8 +771,8 @@ Step 2 (parallel A):  2.2 + 2.4           ← both depend only on 2.1, no shared
 Step 3 (parallel B):  2.3 + 3.1           ← 2.3 depends on 2.2; 3.1 depends on 2.1
 Step 4 (parallel C):  3.2 + 4.1           ← 3.2 is public frontend; 4.1 is admin backend
 Step 5 (sequential):  4.2 → 5.1 → 5.2 → 5.3
-Step 6 (sequential):  6.1 → 6.2 → 6.3    ← element catalogue, page builder UI, AI integration
-Step 7 (sequential):  7.1                 ← final polish after all features complete
+Step 6 (sequential):  6.1 → 6.2 → 6.3 → 6.4  ← element catalogue, page builder UI, styling, AI integration
+Step 7 (sequential):  7.1                      ← final polish after all features complete
 ```
 
 ### Why These Groups Are Safe
