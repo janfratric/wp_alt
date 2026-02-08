@@ -36,6 +36,14 @@
             toggleBtn.addEventListener('click', togglePanel);
         }
 
+        // Close button (inside panel header)
+        var closeBtn = document.getElementById('ai-close-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() {
+                if (toggleBtn) toggleBtn.click();
+            });
+        }
+
         // Send button
         var sendBtn = document.getElementById('ai-send-btn');
         if (sendBtn) {

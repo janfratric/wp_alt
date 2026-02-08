@@ -33,6 +33,10 @@
                    class="<?= ($activeNav ?? '') === 'media' ? 'active' : '' ?>">
                     <span class="nav-icon">&#128247;</span> Media
                 </a>
+                <a href="/admin/content-types"
+                   class="<?= ($activeNav ?? '') === 'content-types' ? 'active' : '' ?>">
+                    <span class="nav-icon">&#128209;</span> Content Types
+                </a>
 
                 <div class="nav-section">System</div>
                 <a href="/admin/users"

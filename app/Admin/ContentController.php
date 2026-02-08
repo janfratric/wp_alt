@@ -53,16 +53,22 @@ class ContentController
             ->offset($offset)
             ->get();
 
+        $contentTypes = QueryBuilder::query('content_types')
+            ->select('slug', 'name')
+            ->orderBy('name', 'ASC')
+            ->get();
+
         $html = $this->app->template()->render('admin/content/index', [
-            'title'      => 'Content',
-            'activeNav'  => 'content',
-            'items'      => $items,
-            'type'       => $type,
-            'status'     => $status,
-            'search'     => $search,
-            'page'       => $page,
-            'totalPages' => $totalPages,
-            'total'      => $total,
+            'title'        => 'Content',
+            'activeNav'    => 'content',
+            'items'        => $items,
+            'type'         => $type,
+            'status'       => $status,
+            'search'       => $search,
+            'page'         => $page,
+            'totalPages'   => $totalPages,
+            'total'        => $total,
+            'contentTypes' => $contentTypes,
         ]);
 
         return $this->withSecurityHeaders(Response::html($html));
@@ -74,7 +80,15 @@ class ContentController
     public function create(Request $request): Response
     {
         $type = (string) $request->query('type', 'page');
-        if (!in_array($type, ['page', 'post'], true)) {
+        $validTypes = ['page', 'post'];
+        $contentTypes = QueryBuilder::query('content_types')
+            ->select('slug', 'name')
+            ->orderBy('name', 'ASC')
+            ->get();
+        foreach ($contentTypes as $ct) {
+            $validTypes[] = $ct['slug'];
+        }
+        if (!in_array($type, $validTypes, true)) {
             $type = 'page';
         }
 
@@ -93,11 +107,25 @@ class ContentController
             'sort_order'       => 0,
         ];
 
+        // Load custom field definitions for this type
+        $customFieldDefinitions = [];
+        $customFieldValues = [];
+        $contentTypeRecord = QueryBuilder::query('content_types')
+            ->select('fields_json')
+            ->where('slug', $type)
+            ->first();
+        if ($contentTypeRecord !== null) {
+            $customFieldDefinitions = json_decode($contentTypeRecord['fields_json'], true) ?: [];
+        }
+
         $html = $this->app->template()->render('admin/content/edit', [
-            'title'     => 'Create Content',
-            'activeNav' => 'content',
-            'content'   => $content,
-            'isNew'     => true,
+            'title'                  => 'Create Content',
+            'activeNav'              => 'content',
+            'content'                => $content,
+            'isNew'                  => true,
+            'contentTypes'           => $contentTypes,
+            'customFieldDefinitions' => $customFieldDefinitions,
+            'customFieldValues'      => $customFieldValues,
         ]);
 
         return $this->withSecurityHeaders(Response::html($html));
@@ -135,6 +163,19 @@ class ContentController
             'updated_at'       => date('Y-m-d H:i:s'),
         ]);
 
+        // Save custom fields
+        $customFields = $request->input('custom_fields', []);
+        if (is_array($customFields)) {
+            foreach ($customFields as $key => $value) {
+                if (!is_string($key)) continue;
+                QueryBuilder::query('custom_fields')->insert([
+                    'content_id'  => (int) $id,
+                    'field_key'   => $key,
+                    'field_value' => is_string($value) ? $value : '',
+                ]);
+            }
+        }
+
         Session::flash('success', 'Content created successfully.');
         return Response::redirect('/admin/content/' . $id . '/edit');
     }
@@ -154,11 +195,39 @@ class ContentController
             return Response::redirect('/admin/content');
         }
 
+        // Load custom field definitions for this type
+        $customFieldDefinitions = [];
+        $customFieldValues = [];
+        $contentTypeRecord = QueryBuilder::query('content_types')
+            ->select('fields_json')
+            ->where('slug', $content['type'])
+            ->first();
+        if ($contentTypeRecord !== null) {
+            $customFieldDefinitions = json_decode($contentTypeRecord['fields_json'], true) ?: [];
+        }
+
+        // Load custom field values
+        $cfRows = QueryBuilder::query('custom_fields')
+            ->select('field_key', 'field_value')
+            ->where('content_id', (int) $id)
+            ->get();
+        foreach ($cfRows as $row) {
+            $customFieldValues[$row['field_key']] = $row['field_value'];
+        }
+
+        $contentTypes = QueryBuilder::query('content_types')
+            ->select('slug', 'name')
+            ->orderBy('name', 'ASC')
+            ->get();
+
         $html = $this->app->template()->render('admin/content/edit', [
-            'title'     => 'Edit: ' . $content['title'],
-            'activeNav' => 'content',
-            'content'   => $content,
-            'isNew'     => false,
+            'title'                  => 'Edit: ' . $content['title'],
+            'activeNav'              => 'content',
+            'content'                => $content,
+            'isNew'                  => false,
+            'contentTypes'           => $contentTypes,
+            'customFieldDefinitions' => $customFieldDefinitions,
+            'customFieldValues'      => $customFieldValues,
         ]);
 
         return $this->withSecurityHeaders(Response::html($html));
@@ -204,6 +273,23 @@ class ContentController
             'published_at'     => $data['published_at'] ?: null,
             'updated_at'       => date('Y-m-d H:i:s'),
         ]);
+
+        // Update custom fields: delete old, insert new
+        QueryBuilder::query('custom_fields')
+            ->where('content_id', (int) $id)
+            ->delete();
+
+        $customFields = $request->input('custom_fields', []);
+        if (is_array($customFields)) {
+            foreach ($customFields as $key => $value) {
+                if (!is_string($key)) continue;
+                QueryBuilder::query('custom_fields')->insert([
+                    'content_id'  => (int) $id,
+                    'field_key'   => $key,
+                    'field_value' => is_string($value) ? $value : '',
+                ]);
+            }
+        }
 
         Session::flash('success', 'Content updated successfully.');
         return Response::redirect('/admin/content/' . $id . '/edit');
@@ -299,7 +385,14 @@ class ContentController
         if (mb_strlen($data['title']) > 255) {
             return 'Title must be 255 characters or less.';
         }
-        if (!in_array($data['type'], ['page', 'post'], true)) {
+        $validTypes = ['page', 'post'];
+        $customTypes = QueryBuilder::query('content_types')
+            ->select('slug')
+            ->get();
+        foreach ($customTypes as $ct) {
+            $validTypes[] = $ct['slug'];
+        }
+        if (!in_array($data['type'], $validTypes, true)) {
             return 'Invalid content type.';
         }
         if (!in_array($data['status'], ['draft', 'published', 'archived'], true)) {

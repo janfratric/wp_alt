@@ -159,6 +159,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- Media Browser Modal ---
+    window.openMediaBrowser = openMediaBrowser;
     function openMediaBrowser(callback) {
         var overlay = document.getElementById('media-modal-overlay');
         if (!overlay) {

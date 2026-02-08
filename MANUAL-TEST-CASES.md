@@ -1,6 +1,6 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types)
 >
 > **Last updated**: 2026-02-08
 
@@ -417,11 +417,11 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 
 ## Test Group K: Sidebar Navigation (Chunk 2.1)
 
-### K1. All 5 navigation links present
+### K1. All 6 navigation links present
 1. Log in and visit dashboard
-2. **Verify**: Sidebar contains these links: Dashboard, Content, Media, Users, Settings
+2. **Verify**: Sidebar contains these links: Dashboard, Content, Media, Content Types, Users, Settings
 3. **Verify**: Links are grouped under section labels: "Main", "Content", "System"
-4. **Verify**: Each link has a Unicode icon (square, pencil, camera, people, gear)
+4. **Verify**: Each link has a Unicode icon (square, pencil, camera, clipboard, people, gear)
 
 ### K2. Active state highlighting
 1. Visit [http://localhost:8000/admin/dashboard](http://localhost:8000/admin/dashboard)
@@ -432,9 +432,9 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 6. **Verify**: Each page highlights its respective nav link
 
 ### K3. All sidebar links work (no 404s)
-1. Click each of the 5 sidebar links in order
+1. Click each of the 6 sidebar links in order
 2. **Verify**: All pages load (no 404 errors)
-3. **Verify**: Content shows a content list with filters and "+ New Content" button (Chunk 2.2); Media shows the media library with upload form (Chunk 2.3); Users shows the user management list with "+ New User" button (Chunk 2.4); Settings shows AI and General settings form (Chunk 4.1)
+3. **Verify**: Content shows a content list with filters and "+ New Content" button (Chunk 2.2); Media shows the media library with upload form (Chunk 2.3); Content Types shows the custom content types list with "+ New Content Type" button (Chunk 5.1); Users shows the user management list with "+ New User" button (Chunk 2.4); Settings shows AI and General settings form (Chunk 4.1)
 4. **Verify**: Dashboard shows the full stats dashboard
 
 ### K4. Sidebar user info and logout
@@ -1521,6 +1521,198 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 
 ---
 
+## Test Group AM: Content Type List — Display & CRUD (Chunk 5.1)
+
+### AM1. Content types list loads (empty state)
+1. Log in as admin (fresh database)
+2. Open [http://localhost:8000/admin/content-types](http://localhost:8000/admin/content-types)
+3. **Verify**: Page loads with "Content Types" heading and "+ New Content Type" button
+4. **Verify**: Empty state message "No custom content types defined yet." with description and "Create your first content type" link
+5. **Verify**: Sidebar highlights "Content Types" nav link
+
+### AM2. Create a content type with custom fields
+1. Click "+ New Content Type" or visit [http://localhost:8000/admin/content-types/create](http://localhost:8000/admin/content-types/create)
+2. Enter Name: "Products"
+3. **Verify**: Slug auto-generates as "products"
+4. **Verify**: "Enable archive page" checkbox is checked by default
+5. Click "+ Add Field" three times and configure:
+   - Field 1: key=price, label=Price, type=Text, required=checked
+   - Field 2: key=description, label=Description, type=Textarea
+   - Field 3: key=featured, label=Featured Product, type=Boolean
+6. Click "Create Content Type"
+7. **Expected**: Redirected to edit page with flash success "Content type created successfully."
+8. **Verify**: Fields are preserved on reload (field builder re-renders with saved data)
+
+### AM3. Content type list shows items after creation
+1. Open [http://localhost:8000/admin/content-types](http://localhost:8000/admin/content-types)
+2. **Verify**: "Products" appears in the table with name, slug, "3 field(s)", "0 items", and archive "Yes"
+3. **Verify**: Name links to the edit page
+4. **Verify**: Edit and Delete buttons are present
+
+### AM4. Edit content type
+1. Click "Edit" on the Products content type
+2. **Verify**: Form loads with existing name, slug, and fields pre-filled
+3. Change the name to "Our Products"
+4. Click "Update Content Type"
+5. **Expected**: Flash success "Content type updated successfully."
+6. **Verify**: Name change persisted
+
+### AM5. Reserved slug validation
+1. Create a new content type with slug "blog"
+2. **Expected**: Error flash: "The slug 'blog' is reserved and cannot be used."
+3. Try slug "admin" — same error
+4. Try slug "page" — same error
+5. Try slug "post" — same error
+
+### AM6. Duplicate slug validation
+1. Try creating another content type with slug "products"
+2. **Expected**: Error flash: "A content type with this slug already exists."
+
+### AM7. Delete content type — with content protection
+1. Create some content items of type "products" (see Test Group AN)
+2. Try deleting the Products content type
+3. **Expected**: Error flash "Cannot delete — X content item(s) use this type. Delete or reassign them first."
+4. Delete all products content items
+5. Try deleting the Products type again
+6. **Expected**: Type deleted successfully, no longer in the list
+
+### AM8. Slug change cascades to content items
+1. Create a content type "items" and create some content of that type
+2. Edit the content type, change slug from "items" to "products"
+3. Save — check the content items in /admin/content
+4. **Verify**: Content items now show type "Products" (not "Items")
+
+---
+
+## Test Group AN: Custom Types in Content Editor (Chunk 5.1)
+
+### AN1. Content editor type dropdown includes custom types
+1. Create a "Products" content type
+2. Open [http://localhost:8000/admin/content/create](http://localhost:8000/admin/content/create)
+3. **Verify**: Type dropdown shows "Page", "Post", and "Products"
+4. Open [http://localhost:8000/admin/content/create?type=products](http://localhost:8000/admin/content/create?type=products)
+5. **Verify**: Type dropdown pre-selects "Products"
+
+### AN2. Custom fields section appears for custom type
+1. Open [http://localhost:8000/admin/content/create?type=products](http://localhost:8000/admin/content/create?type=products)
+2. **Verify**: Below the excerpt field, a "Custom Fields" section appears
+3. **Verify**: Price field (text input) with required asterisk
+4. **Verify**: Description field (textarea)
+5. **Verify**: Featured Product field (checkbox)
+
+### AN3. Custom fields persist on create and edit
+1. Create content with type=products: Title="Widget Pro", Price="29.99", Description="Great widget", Featured=checked
+2. Click "Create"
+3. **Expected**: Content created with flash success
+4. Edit the content item
+5. **Verify**: Custom fields populated with saved values (Price=29.99, Featured=checked)
+6. Change Price to "39.99", uncheck Featured
+7. Click "Update"
+8. **Verify**: Updated values persist (Price=39.99, Featured unchecked)
+
+### AN4. Content list filter includes custom types
+1. Open [http://localhost:8000/admin/content](http://localhost:8000/admin/content)
+2. **Verify**: Type filter dropdown shows "Products" in addition to "Page" and "Post"
+3. Select "Products" filter, click "Filter"
+4. **Verify**: Only products content items shown
+5. **Verify**: Type badge shows "Products" (not "products")
+
+### AN5. Select field type with options
+1. Create or edit a content type with a select field: key=category, label=Category, type=Select
+2. Enter options: Electronics, Clothing, Home (one per line)
+3. Save the content type
+4. Create content of this type
+5. **Verify**: Category field renders as a dropdown with "— Select —", "Electronics", "Clothing", "Home"
+6. Select "Clothing", save
+7. **Verify**: Value persists on edit
+
+### AN6. Image field type with media browser
+1. Create a content type with an image field: key=photo, label=Photo, type=Image
+2. Upload some images to the media library
+3. Create content of this type
+4. **Verify**: Photo field has "Browse Media" button and hidden input
+5. Click "Browse Media"
+6. **Verify**: Media browser opens (popup window)
+7. Select an image
+8. **Verify**: Preview appears, "Remove" button shows
+9. Click "Remove" — preview hides
+
+### AN7. Custom fields not shown for page/post types
+1. Open [http://localhost:8000/admin/content/create?type=page](http://localhost:8000/admin/content/create?type=page)
+2. **Verify**: No "Custom Fields" section appears
+3. Open [http://localhost:8000/admin/content/create?type=post](http://localhost:8000/admin/content/create?type=post)
+4. **Verify**: No "Custom Fields" section appears
+
+---
+
+## Test Group AO: Custom Type Public Routes (Chunk 5.1)
+
+### AO1. Archive page renders for custom type
+1. Create a "Products" content type with has_archive enabled
+2. Create and publish a product ("Widget Pro" with slug "widget-pro")
+3. Open [http://localhost:8000/products](http://localhost:8000/products)
+4. **Verify**: Archive page renders with published products listed
+5. **Verify**: Each item links to /products/{slug}
+
+### AO2. Single custom type item renders
+1. Open [http://localhost:8000/products/widget-pro](http://localhost:8000/products/widget-pro)
+2. **Verify**: Page renders with content title and body
+3. **Verify**: Page uses the public layout (header, nav, footer)
+
+### AO3. Draft custom type items not shown
+1. Create a product with status="draft"
+2. Open [http://localhost:8000/products/{slug}](http://localhost:8000/products/{slug})
+3. **Expected**: 404 page
+
+### AO4. Archive not available when has_archive disabled
+1. Edit the content type, uncheck "Enable archive page"
+2. Save the content type
+3. Open [http://localhost:8000/products](http://localhost:8000/products)
+4. **Expected**: 404 or falls through to page slug handler (no archive route registered)
+
+---
+
+## Test Group AP: Content Type Field Builder (Chunk 5.1)
+
+### AP1. Field builder — add fields
+1. Open the create content type form
+2. Click "+ Add Field"
+3. **Verify**: A new field row appears with key, label, type, and required inputs
+4. **Verify**: "No custom fields defined" message disappears
+
+### AP2. Field builder — remove fields
+1. Add two fields
+2. Click the remove (×) button on the first field
+3. **Verify**: First field removed, second field remains
+4. Remove the last field
+5. **Verify**: "No custom fields defined" message reappears
+
+### AP3. Field builder — reorder fields
+1. Add three fields: A, B, C
+2. Click "Move down" (▼) on field A
+3. **Verify**: Order changes to B, A, C
+4. Click "Move up" (▲) on field C
+5. **Verify**: Order changes to B, C, A
+
+### AP4. Field builder — select type shows options
+1. Add a field and change type to "Select"
+2. **Verify**: Options textarea appears below the field
+3. Change type back to "Text"
+4. **Verify**: Options textarea hides
+
+### AP5. Field builder — serialization on submit
+1. Add fields, fill in key/label/type
+2. Submit the form
+3. **Verify**: Hidden `fields_json` input contains the serialized JSON (inspect via browser dev tools)
+4. **Verify**: Saved content type has correct fields_json in the database
+
+### AP6. Duplicate field key validation
+1. Create a content type with two fields both having key="price"
+2. **Expected**: Error flash about duplicate key
+3. **Verify**: Content type not created
+
+---
+
 ## Summary Checklist
 
 (continued from previous chunks)
@@ -1559,7 +1751,7 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | J2 | Dashboard recent content (empty state) | ☐ |
 | J3 | Admin CSS and JS loaded | ☐ |
 | J4 | Security headers on dashboard | ☐ |
-| K1 | All 5 navigation links present | ☐ |
+| K1 | All 6 navigation links present | ☐ |
 | K2 | Active state highlighting | ☐ |
 | K3 | All sidebar links work (no 404s) | ☐ |
 | K4 | Sidebar user info and logout | ☐ |
@@ -1717,3 +1909,28 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | AK3 | New content has no conversation | ☐ |
 | AL1 | Mobile — full-screen overlay | ☐ |
 | AL2 | Desktop — third column | ☐ |
+| AM1 | Content types list loads (empty state) | ☐ |
+| AM2 | Create content type with custom fields | ☐ |
+| AM3 | Content type list shows items | ☐ |
+| AM4 | Edit content type | ☐ |
+| AM5 | Reserved slug validation | ☐ |
+| AM6 | Duplicate slug validation | ☐ |
+| AM7 | Delete with content protection | ☐ |
+| AM8 | Slug change cascades | ☐ |
+| AN1 | Content editor type dropdown includes custom types | ☐ |
+| AN2 | Custom fields section appears | ☐ |
+| AN3 | Custom fields persist on create/edit | ☐ |
+| AN4 | Content list filter includes custom types | ☐ |
+| AN5 | Select field type with options | ☐ |
+| AN6 | Image field type with media browser | ☐ |
+| AN7 | No custom fields for page/post | ☐ |
+| AO1 | Archive page renders for custom type | ☐ |
+| AO2 | Single custom type item renders | ☐ |
+| AO3 | Draft custom type items not shown | ☐ |
+| AO4 | Archive disabled when has_archive off | ☐ |
+| AP1 | Field builder — add fields | ☐ |
+| AP2 | Field builder — remove fields | ☐ |
+| AP3 | Field builder — reorder fields | ☐ |
+| AP4 | Field builder — select shows options | ☐ |
+| AP5 | Field builder — serialization | ☐ |
+| AP6 | Duplicate field key validation | ☐ |

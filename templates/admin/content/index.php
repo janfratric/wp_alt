@@ -20,6 +20,14 @@
                     <option value="">All Types</option>
                     <option value="page" <?= $type === 'page' ? 'selected' : '' ?>>Page</option>
                     <option value="post" <?= $type === 'post' ? 'selected' : '' ?>>Post</option>
+                    <?php if (!empty($contentTypes)): ?>
+                        <?php foreach ($contentTypes as $ct): ?>
+                            <option value="<?= $this->e($ct['slug']) ?>"
+                                    <?= $type === $ct['slug'] ? 'selected' : '' ?>>
+                                <?= $this->e($ct['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </select>
             </div>
             <div class="form-group">
@@ -97,7 +105,18 @@
                                 </td>
                                 <td>
                                     <span class="badge">
-                                        <?= $this->e(ucfirst($item['type'])) ?>
+                                        <?php
+                                        $typeName = ucfirst($item['type']);
+                                        if (!empty($contentTypes)) {
+                                            foreach ($contentTypes as $ct) {
+                                                if ($ct['slug'] === $item['type']) {
+                                                    $typeName = $ct['name'];
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        ?>
+                                        <?= $this->e($typeName) ?>
                                     </span>
                                 </td>
                                 <td>

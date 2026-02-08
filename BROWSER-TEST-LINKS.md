@@ -14,7 +14,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
@@ -36,6 +36,12 @@ This starts PHP's built-in development server with `public/` as the document roo
 | 12 | [http://localhost:8000/about](http://localhost:8000/about) | Single page — renders published page by slug with SEO meta tags (create an "about" page first via admin) |
 | 14 | [http://localhost:8000/contact](http://localhost:8000/contact) | Contact form — CSRF-protected form with name, email, subject, message fields. Submits via POST, stores in DB, shows success via PRG pattern |
 | 15 | [http://localhost:8000/nonexistent](http://localhost:8000/nonexistent) | Styled 404 page — "404 — Page Not Found" with navigation and "Return to homepage" link |
+| 16 | [http://localhost:8000/admin/content-types](http://localhost:8000/admin/content-types) | Content type list — table with name, slug, field count, content count, archive status, and action buttons. Empty state on fresh install with "Create your first content type" link |
+| 16a | [http://localhost:8000/admin/content-types/create](http://localhost:8000/admin/content-types/create) | Create content type form — name, slug (auto-generated), has_archive checkbox, dynamic field builder (add/remove/reorder fields with key, label, type, required, options) |
+| 16b | [http://localhost:8000/admin/content-types/1/edit](http://localhost:8000/admin/content-types/1/edit) | Edit content type form — pre-filled fields, field builder with existing fields loaded, delete button (if no content references the type) |
+| 17 | [http://localhost:8000/admin/content/create?type=products](http://localhost:8000/admin/content/create?type=products) | Content editor with custom type — type dropdown shows "Products" selected, custom fields section below excerpt (after creating a "Products" content type) |
+| 18 | [http://localhost:8000/products](http://localhost:8000/products) | Custom type archive — paginated listing of published "Products" content items (requires has_archive enabled and published items) |
+| 18a | [http://localhost:8000/products/widget-pro](http://localhost:8000/products/widget-pro) | Single custom type item — renders published content by slug under the custom type URL pattern |
 
 ### Authentication Flow
 
@@ -47,7 +53,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 ### Admin Panel (Chunk 2.1)
 
 After logging in, the admin panel features:
-- **Sidebar navigation** with 5 links: Dashboard, Content, Media, Users, Settings — grouped by section (Main, Content, System)
+- **Sidebar navigation** with 6 links: Dashboard, Content, Media, Content Types, Users, Settings — grouped by section (Main, Content, System)
 - **Active state highlighting** — current page's nav link is visually highlighted
 - **Top bar** with page title and "View Site" link
 - **Dashboard stats** — 5 cards showing Total Content, Published, Drafts, Users, Media Files
@@ -151,6 +157,22 @@ The content editor now includes an AI chat panel:
 - **Mobile responsive** — panel becomes full-screen overlay on viewports <=768px
 - **CSRF protection** — sends `X-CSRF-Token` header with all fetch requests
 - **XSS safety** — user messages rendered via `textContent`, assistant messages via `innerHTML` (AI HTML responses)
+
+### Custom Content Types (Chunk 5.1)
+
+The custom content types system (`/admin/content-types`) provides:
+- **Content type list** — table with name, slug, field count, content item count, archive status, and edit/delete actions
+- **Create/edit form** — name, auto-generated slug, has_archive toggle, and dynamic field builder
+- **Field builder** — JavaScript-powered UI to add, remove, and reorder custom fields with key, label, type (text, textarea, image, select, boolean), required flag, and options (for select type)
+- **Field JSON serialization** — fields stored as JSON in `content_types.fields_json`; serialized on form submit
+- **Content integration** — content editor type dropdown dynamically includes custom types; custom fields section renders below excerpt with appropriate input types
+- **Custom field persistence** — field values stored in `custom_fields` table; delete-and-reinsert on update (handles unchecked booleans)
+- **Content list integration** — type filter dropdown includes custom types; type badges show custom type names
+- **Dynamic public routes** — archive routes (`/{type-slug}`) and single item routes (`/{type-slug}/{slug}`) registered dynamically from `content_types` table
+- **Slug cascade** — changing a content type's slug updates all content items referencing the old slug
+- **Delete protection** — cannot delete a content type that has content items referencing it
+- **Reserved slug validation** — slugs like `page`, `post`, `blog`, `admin`, `contact` are rejected
+- **Field validation** — keys must be unique, lowercase alphanumeric with underscores; select type requires non-empty options array
 
 ### Settings & AI Backend (Chunk 4.1)
 

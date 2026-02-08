@@ -21,6 +21,7 @@ use App\Admin\UserController;
 use App\Templates\FrontController;
 use App\AIAssistant\AIController;
 use App\Admin\SettingsController;
+use App\Admin\ContentTypeController;
 
 // Bootstrap
 $app = new App();
@@ -103,12 +104,37 @@ $router->group('/admin', function($router) use ($app) {
     $router->get('/settings', [SettingsController::class, 'index']);
     $router->put('/settings', [SettingsController::class, 'update']);
 
+    // Content type management routes
+    $router->get('/content-types', [ContentTypeController::class, 'index']);
+    $router->get('/content-types/create', [ContentTypeController::class, 'create']);
+    $router->post('/content-types', [ContentTypeController::class, 'store']);
+    $router->get('/content-types/{id}/edit', [ContentTypeController::class, 'edit']);
+    $router->put('/content-types/{id}', [ContentTypeController::class, 'update']);
+    $router->delete('/content-types/{id}', [ContentTypeController::class, 'delete']);
+
     // AI Assistant routes
     $router->post('/ai/chat', [AIController::class, 'chat']);
     $router->get('/ai/conversations', [AIController::class, 'conversations']);
     $router->post('/ai/models/fetch', [AIController::class, 'fetchModels']);
     $router->post('/ai/models/enable', [AIController::class, 'saveEnabledModels']);
 });
+
+// Dynamic routes for custom content type archives and single items
+try {
+    $customTypes = QueryBuilder::query('content_types')
+        ->select('slug', 'has_archive')
+        ->get();
+
+    foreach ($customTypes as $ct) {
+        if ((int)$ct['has_archive'] === 1) {
+            $router->get('/' . $ct['slug'], [FrontController::class, 'archive']);
+        }
+        // Single custom type item: /type-slug/item-slug
+        $router->get('/' . $ct['slug'] . '/{slug}', [FrontController::class, 'page']);
+    }
+} catch (\Throwable $e) {
+    // Table might not exist yet during first migration run — silently skip
+}
 
 // Catch-all for pages by slug (MUST be last)
 $router->get('/{slug}', [FrontController::class, 'page']);

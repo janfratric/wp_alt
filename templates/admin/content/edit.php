@@ -51,6 +51,77 @@
                 <textarea id="excerpt" name="excerpt" rows="3"
                           placeholder="Brief summary for listings..."><?= $this->e($content['excerpt'] ?? '') ?></textarea>
             </div>
+
+            <?php if (!empty($customFieldDefinitions)): ?>
+            <div class="custom-fields-section" style="margin-top: 1rem;">
+                <h3 style="margin-bottom: 0.75rem;">Custom Fields</h3>
+                <?php foreach ($customFieldDefinitions as $fieldDef): ?>
+                    <div class="form-group">
+                        <label for="cf_<?= $this->e($fieldDef['key']) ?>">
+                            <?= $this->e($fieldDef['label']) ?>
+                            <?php if (!empty($fieldDef['required'])): ?>
+                                <span style="color:var(--color-error);">*</span>
+                            <?php endif; ?>
+                        </label>
+
+                        <?php if ($fieldDef['type'] === 'text'): ?>
+                            <input type="text"
+                                   id="cf_<?= $this->e($fieldDef['key']) ?>"
+                                   name="custom_fields[<?= $this->e($fieldDef['key']) ?>]"
+                                   value="<?= $this->e($customFieldValues[$fieldDef['key']] ?? '') ?>">
+
+                        <?php elseif ($fieldDef['type'] === 'textarea'): ?>
+                            <textarea id="cf_<?= $this->e($fieldDef['key']) ?>"
+                                      name="custom_fields[<?= $this->e($fieldDef['key']) ?>]"
+                                      rows="5"><?= $this->e($customFieldValues[$fieldDef['key']] ?? '') ?></textarea>
+
+                        <?php elseif ($fieldDef['type'] === 'image'): ?>
+                            <?php $cfImgVal = $customFieldValues[$fieldDef['key']] ?? ''; ?>
+                            <div style="margin-bottom: 0.5rem;">
+                                <img id="cf_preview_<?= $this->e($fieldDef['key']) ?>"
+                                     src="<?= $this->e($cfImgVal) ?>"
+                                     alt=""
+                                     style="max-width:200px;max-height:120px;<?= $cfImgVal ? '' : 'display:none;' ?>">
+                            </div>
+                            <input type="hidden"
+                                   id="cf_<?= $this->e($fieldDef['key']) ?>"
+                                   name="custom_fields[<?= $this->e($fieldDef['key']) ?>]"
+                                   value="<?= $this->e($cfImgVal) ?>">
+                            <button type="button" class="btn btn-sm cf-image-browse"
+                                    data-field="<?= $this->e($fieldDef['key']) ?>">Browse Media</button>
+                            <button type="button" class="btn btn-sm cf-image-remove"
+                                    data-field="<?= $this->e($fieldDef['key']) ?>"
+                                    style="<?= $cfImgVal ? '' : 'display:none;' ?>">Remove</button>
+
+                        <?php elseif ($fieldDef['type'] === 'boolean'): ?>
+                            <div>
+                                <label style="cursor:pointer;">
+                                    <input type="checkbox"
+                                           id="cf_<?= $this->e($fieldDef['key']) ?>"
+                                           name="custom_fields[<?= $this->e($fieldDef['key']) ?>]"
+                                           value="1"
+                                           <?= ($customFieldValues[$fieldDef['key']] ?? '0') === '1' ? 'checked' : '' ?>>
+                                    Yes
+                                </label>
+                            </div>
+
+                        <?php elseif ($fieldDef['type'] === 'select'): ?>
+                            <select id="cf_<?= $this->e($fieldDef['key']) ?>"
+                                    name="custom_fields[<?= $this->e($fieldDef['key']) ?>]">
+                                <option value="">— Select —</option>
+                                <?php foreach (($fieldDef['options'] ?? []) as $option): ?>
+                                    <option value="<?= $this->e($option) ?>"
+                                            <?= ($customFieldValues[$fieldDef['key']] ?? '') === $option ? 'selected' : '' ?>>
+                                        <?= $this->e($option) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
         </div>
 
         <!-- Sidebar Column -->
@@ -64,6 +135,14 @@
                         <select id="type" name="type">
                             <option value="page" <?= ($content['type'] ?? 'page') === 'page' ? 'selected' : '' ?>>Page</option>
                             <option value="post" <?= ($content['type'] ?? '') === 'post' ? 'selected' : '' ?>>Post</option>
+                            <?php if (!empty($contentTypes)): ?>
+                                <?php foreach ($contentTypes as $ct): ?>
+                                    <option value="<?= $this->e($ct['slug']) ?>"
+                                            <?= ($content['type'] ?? '') === $ct['slug'] ? 'selected' : '' ?>>
+                                        <?= $this->e($ct['name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </select>
                     </div>
 
@@ -164,7 +243,7 @@
                 <span>AI Assistant</span>
                 <div class="ai-panel-header-actions">
                     <button type="button" id="ai-new-conversation" title="New conversation">New</button>
-                    <button type="button" onclick="document.getElementById('ai-toggle-btn').click()" title="Close panel">&times;</button>
+                    <button type="button" id="ai-close-btn" title="Close panel">&times;</button>
                 </div>
             </div>
             <div id="ai-messages">
@@ -186,3 +265,4 @@
 
 <script src="/assets/js/editor.js"></script>
 <script src="/assets/js/ai-assistant.js"></script>
+<script src="/assets/js/custom-fields.js"></script>
