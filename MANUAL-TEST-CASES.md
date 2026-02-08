@@ -1,6 +1,6 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration)
 >
 > **Last updated**: 2026-02-08
 
@@ -1713,6 +1713,164 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 
 ---
 
+## Test Group AQ: Settings — General Section (Chunk 5.2)
+
+### AQ1. Settings page loads with all sections
+1. Log in as admin
+2. Open [http://localhost:8000/admin/settings](http://localhost:8000/admin/settings)
+3. **Verify**: Page loads with six sections: General, SEO, Cookie Consent & Analytics, Contact Form, AI Assistant, Advanced
+4. **Verify**: Sidebar highlights "Settings" nav link
+5. **Verify**: CSRF token and `_method=PUT` hidden inputs present
+
+### AQ2. Change site name — public site reflects immediately
+1. Change "Site Name" to "My Business Site"
+2. Click "Save Settings"
+3. **Verify**: Flash success "Settings saved successfully."
+4. Open the public homepage
+5. **Verify**: Page title and header show "My Business Site" (not "LiteCMS")
+6. **Verify**: No change needed to `config/app.php` — the DB value takes priority
+
+### AQ3. Site URL validates and saves
+1. Enter "https://example.com" in Site URL field
+2. Save — **Verify**: Value persists on reload
+3. Enter "not-a-url" — save
+4. **Verify**: Invalid URL is not saved (old value remains)
+5. Clear the field and save — **Verify**: Empty is accepted
+
+### AQ4. Tagline saves and displays
+1. Enter a tagline in the Tagline field
+2. Save — reload settings page
+3. **Verify**: Tagline value persists
+4. Open public homepage
+5. **Verify**: Tagline appears in the hero section
+
+### AQ5. Timezone select with optgroups
+1. **Verify**: Timezone dropdown shows grouped timezones (America, Europe, etc.)
+2. Select "America/New_York"
+3. Save — reload
+4. **Verify**: "America/New_York" is still selected
+
+### AQ6. Items per page — pagination adjusts
+1. Ensure at least 6 published blog posts exist
+2. Change "Items Per Page" to 5, save
+3. Open [http://localhost:8000/blog](http://localhost:8000/blog)
+4. **Verify**: Only 5 posts shown on page 1, pagination shows page 2
+5. Change back to 10 — all 6 posts on single page
+
+### AQ7. Items per page clamped to 1–100
+1. Enter 0 in Items Per Page, save — **Verify**: Value saved as 1
+2. Enter 200, save — **Verify**: Value saved as 100
+3. Enter 50, save — **Verify**: Value saved as 50
+
+---
+
+## Test Group AR: Settings — SEO Section (Chunk 5.2)
+
+### AR1. Default meta description saves
+1. Enter "A test description for SEO purposes." in Default Meta Description
+2. Save — reload
+3. **Verify**: Value persists (max 300 characters)
+
+### AR2. Default OG image saves
+1. Enter "/assets/uploads/og-image.jpg" in Default Open Graph Image
+2. Save — reload
+3. **Verify**: Value persists
+
+---
+
+## Test Group AS: Settings — Cookie Consent & Analytics (Chunk 5.2)
+
+### AS1. Enable/disable cookie consent banner
+1. **Verify**: "Enable cookie consent banner" is checked by default
+2. Open public site — **Verify**: Cookie consent banner appears
+3. Go to settings, uncheck "Enable cookie consent banner", save
+4. Open public site — **Verify**: Cookie consent banner is NOT shown
+5. Re-enable — banner reappears
+
+### AS2. Cookie consent text and privacy link
+1. Enter custom consent text: "We use cookies for analytics. Accept?"
+2. Enter privacy link: "/privacy-policy"
+3. Save, open incognito public page
+4. **Verify**: Banner shows custom text and "Learn more" link
+
+### AS3. Enable Google Analytics with measurement ID
+1. Check "Enable Google Analytics"
+2. Enter "G-TEST12345" as Measurement ID
+3. Save, visit public site
+4. **Verify**: `<body>` has `data-ga-id="G-TEST12345"` attribute
+5. Click "Accept" on cookie banner
+6. **Verify**: gtag.js script loaded
+
+### AS4. Disable GA — no script injected
+1. Uncheck "Enable Google Analytics" (leave Measurement ID filled)
+2. Save, visit public site
+3. **Verify**: No `data-ga-id` attribute on body, no GA script
+
+### AS5. GA Measurement ID validation
+1. Enter "UA-12345" (invalid format) — save
+2. **Verify**: Invalid value not saved (old value remains)
+3. Enter "G-VALID123" — save
+4. **Verify**: Value persists
+
+---
+
+## Test Group AT: Settings — Contact & Advanced (Chunk 5.2)
+
+### AT1. Contact notification email validates
+1. Enter "admin@example.com" in Notification Email, save
+2. **Verify**: Value persists on reload
+3. Enter "not-an-email", save
+4. **Verify**: Invalid value not saved
+5. Clear field and save — **Verify**: Empty accepted (disables notifications)
+
+### AT2. Registration enabled toggle
+1. Check "Enable user registration", save
+2. **Verify**: Checkbox stays checked on reload
+3. Uncheck, save
+4. **Verify**: Checkbox unchecked on reload
+
+### AT3. Maintenance mode toggle
+1. Check "Maintenance mode", save
+2. **Verify**: Checkbox stays checked on reload
+3. Uncheck, save
+4. **Verify**: Checkbox unchecked on reload
+
+---
+
+## Test Group AU2: Settings — Persistence & Config Override (Chunk 5.2)
+
+### AU2-1. Settings persist across logout/login
+1. Change site name and items per page
+2. Log out, log in again
+3. Go to settings page
+4. **Verify**: Changed values are still shown (loaded from DB, not session)
+
+### AU2-2. DB settings override file config transparently
+1. Set items_per_page to 25 via admin settings
+2. **Verify**: Blog pagination uses 25 items per page
+3. **Verify**: No change to `config/app.php` was needed
+
+### AU2-3. Protected keys cannot be overridden
+1. **Verify**: DB cannot override db_driver, db_path, db_host, db_port, db_name, db_user, db_pass, or app_secret
+2. Even if someone manually inserts `db_driver=pgsql` in the settings table, `Config::getString('db_driver')` still returns `sqlite`
+
+### AU2-4. AI settings preserved after 5.2 changes
+1. Configure a Claude API key, select a model
+2. Save settings
+3. **Verify**: AI section still shows "API key is configured" status
+4. **Verify**: Model dropdown, model management UI, and API parameters are all present and functional
+
+---
+
+## Test Group AV: Settings — Editor Access (Chunk 5.2)
+
+### AV1. Editor cannot access settings
+1. Log in as an editor user
+2. Navigate to /admin/settings
+3. **Expected**: Redirected to /admin/dashboard with error "Only administrators can access settings."
+
+---
+
 ## Summary Checklist
 
 (continued from previous chunks)
@@ -1934,3 +2092,25 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | AP4 | Field builder — select shows options | ☐ |
 | AP5 | Field builder — serialization | ☐ |
 | AP6 | Duplicate field key validation | ☐ |
+| AQ1 | Settings page loads with all sections | ☐ |
+| AQ2 | Change site name — public site reflects | ☐ |
+| AQ3 | Site URL validates and saves | ☐ |
+| AQ4 | Tagline saves and displays | ☐ |
+| AQ5 | Timezone select with optgroups | ☐ |
+| AQ6 | Items per page — pagination adjusts | ☐ |
+| AQ7 | Items per page clamped 1–100 | ☐ |
+| AR1 | Default meta description saves | ☐ |
+| AR2 | Default OG image saves | ☐ |
+| AS1 | Enable/disable cookie consent banner | ☐ |
+| AS2 | Cookie consent text and privacy link | ☐ |
+| AS3 | Enable GA with measurement ID | ☐ |
+| AS4 | Disable GA — no script injected | ☐ |
+| AS5 | GA Measurement ID validation | ☐ |
+| AT1 | Contact notification email validates | ☐ |
+| AT2 | Registration enabled toggle | ☐ |
+| AT3 | Maintenance mode toggle | ☐ |
+| AU2-1 | Settings persist across logout/login | ☐ |
+| AU2-2 | DB settings override file config | ☐ |
+| AU2-3 | Protected keys cannot be overridden | ☐ |
+| AU2-4 | AI settings preserved after 5.2 | ☐ |
+| AV1 | Editor cannot access settings | ☐ |

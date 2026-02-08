@@ -15,6 +15,16 @@ class App
     public function __construct()
     {
         date_default_timezone_set(Config::getString('timezone', 'UTC'));
+
+        // Load DB settings to override file config
+        Config::loadDbSettings();
+
+        // Re-apply timezone in case it was overridden by a DB setting
+        $dbTimezone = Config::getString('timezone', 'UTC');
+        if ($dbTimezone !== 'UTC') {
+            date_default_timezone_set($dbTimezone);
+        }
+
         $this->router = new Router();
         $this->template = new TemplateEngine(dirname(__DIR__, 2) . '/templates');
     }

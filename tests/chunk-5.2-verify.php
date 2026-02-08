@@ -301,7 +301,9 @@ try {
         if ($hasSiteName && $hasDbDriver) {
             test_pass('Config::all() returns merged config (DB overrides + file protected keys intact)');
         } else {
-            test_fail('Config::all() merge', "site_name={$all['site_name'] ?? 'null'}, db_driver={$all['db_driver'] ?? 'null'}");
+            $snVal = $all['site_name'] ?? 'null';
+            $ddVal = $all['db_driver'] ?? 'null';
+            test_fail('Config::all() merge', "site_name={$snVal}, db_driver={$ddVal}");
         }
     }
 } catch (\Throwable $e) {

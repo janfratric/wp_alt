@@ -316,17 +316,19 @@ class FrontController
     public function notFound(Request $request): Response
     {
         $settings = $this->getPublicSettings();
+        $consentEnabled = ($settings['cookie_consent_enabled'] ?? '1') === '1';
 
         $html = $this->app->template()->render('public/404', [
-            'title'       => 'Page Not Found',
-            'navPages'    => $this->getNavPages(),
-            'siteName'    => Config::getString('site_name', 'LiteCMS'),
-            'siteUrl'     => Config::getString('site_url', ''),
-            'currentSlug' => '',
-            'consentText' => $settings['cookie_consent_text'] ?? '',
-            'consentLink' => $settings['cookie_consent_link'] ?? '',
-            'gaId'        => ($settings['ga_enabled'] ?? '') === '1' ? ($settings['ga_measurement_id'] ?? '') : '',
-            'meta'        => [
+            'title'          => 'Page Not Found',
+            'navPages'       => $this->getNavPages(),
+            'siteName'       => Config::getString('site_name', 'LiteCMS'),
+            'siteUrl'        => Config::getString('site_url', ''),
+            'currentSlug'    => '',
+            'consentText'    => $consentEnabled ? ($settings['cookie_consent_text'] ?? '') : '',
+            'consentLink'    => $consentEnabled ? ($settings['cookie_consent_link'] ?? '') : '',
+            'consentEnabled' => $consentEnabled,
+            'gaId'           => ($settings['ga_enabled'] ?? '') === '1' ? ($settings['ga_measurement_id'] ?? '') : '',
+            'meta'           => [
                 'title' => 'Page Not Found — ' . Config::getString('site_name', 'LiteCMS'),
             ],
         ]);
@@ -426,16 +428,18 @@ class FrontController
     private function renderPublic(string $template, array $data): Response
     {
         $settings = $this->getPublicSettings();
+        $consentEnabled = ($settings['cookie_consent_enabled'] ?? '1') === '1';
 
         $data = array_merge([
-            'navPages'    => $this->getNavPages(),
-            'siteName'    => Config::getString('site_name', 'LiteCMS'),
-            'siteUrl'     => Config::getString('site_url', ''),
-            'currentSlug' => '',
-            'tagline'     => $settings['site_tagline'] ?? '',
-            'consentText' => $settings['cookie_consent_text'] ?? '',
-            'consentLink' => $settings['cookie_consent_link'] ?? '',
-            'gaId'        => ($settings['ga_enabled'] ?? '') === '1' ? ($settings['ga_measurement_id'] ?? '') : '',
+            'navPages'       => $this->getNavPages(),
+            'siteName'       => Config::getString('site_name', 'LiteCMS'),
+            'siteUrl'        => Config::getString('site_url', ''),
+            'currentSlug'    => '',
+            'tagline'        => $settings['site_tagline'] ?? '',
+            'consentText'    => $consentEnabled ? ($settings['cookie_consent_text'] ?? '') : '',
+            'consentLink'    => $consentEnabled ? ($settings['cookie_consent_link'] ?? '') : '',
+            'consentEnabled' => $consentEnabled,
+            'gaId'           => ($settings['ga_enabled'] ?? '') === '1' ? ($settings['ga_measurement_id'] ?? '') : '',
         ], $data);
 
         if (isset($data['content']['slug'])) {
@@ -466,12 +470,13 @@ class FrontController
         try {
             $rows = QueryBuilder::query('settings')
                 ->select('key', 'value')
-                ->whereRaw("key IN (:k1, :k2, :k3, :k4, :k5)", [
+                ->whereRaw("key IN (:k1, :k2, :k3, :k4, :k5, :k6)", [
                     ':k1' => 'site_tagline',
                     ':k2' => 'cookie_consent_text',
                     ':k3' => 'cookie_consent_link',
                     ':k4' => 'ga_enabled',
                     ':k5' => 'ga_measurement_id',
+                    ':k6' => 'cookie_consent_enabled',
                 ])
                 ->get();
 

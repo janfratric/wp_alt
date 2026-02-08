@@ -47,11 +47,13 @@
         </div>
     </footer>
 
+<?php if ($consentEnabled ?? true): ?>
 <?= $this->partial('public/partials/cookie-consent', [
     'consentText' => $consentText ?? '',
     'consentLink' => $consentLink ?? '',
 ]) ?>
     <script src="/assets/js/cookie-consent.js"></script>
+<?php endif; ?>
     <script>
     document.querySelector('.nav-toggle').addEventListener('click', function() {
         var nav = document.querySelector('.site-nav');

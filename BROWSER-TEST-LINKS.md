@@ -14,7 +14,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
@@ -30,7 +30,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 | 9 | [http://localhost:8000/admin/users](http://localhost:8000/admin/users) | User list — searchable table with username, email, role badge, created date, edit/delete actions, pagination, and "+ New User" button. Admin-only (editors get 403) |
 | 9a | [http://localhost:8000/admin/users/create](http://localhost:8000/admin/users/create) | Create user form — username, email, role select, password fields. Admin-only |
 | 9b | [http://localhost:8000/admin/users/1/edit](http://localhost:8000/admin/users/1/edit) | Edit user form — pre-filled fields, `_method=PUT`, current password required for own password change, role field disabled when editing self |
-| 10 | [http://localhost:8000/admin/settings](http://localhost:8000/admin/settings) | Settings page — AI Assistant section (Claude API key, model selection), General section (site name). Admin-only access; API key stored encrypted, never displayed |
+| 10 | [http://localhost:8000/admin/settings](http://localhost:8000/admin/settings) | Settings page — six sections: General (site name, URL, tagline, timezone, items per page), SEO (meta description, OG image), Cookie Consent & Analytics (enable banner, consent text, privacy link, enable GA, measurement ID), Contact Form (notification email), AI Assistant (API key, model, parameters), Advanced (registration, maintenance mode). Admin-only; DB settings override file config; API key stored encrypted |
 | 11 | [http://localhost:8000/blog](http://localhost:8000/blog) | Blog index — paginated listing of published posts with author, date, excerpts. Pagination via `?page=N` |
 | 11a | [http://localhost:8000/blog/hello-world](http://localhost:8000/blog/hello-world) | Single blog post — full post content with author name, date, featured image, and article-type OG tags |
 | 12 | [http://localhost:8000/about](http://localhost:8000/about) | Single page — renders published page by slug with SEO meta tags (create an "about" page first via admin) |
@@ -185,6 +185,19 @@ The settings page and AI backend provide:
 - **Content context** — AI system prompt includes the content being edited (type, title, status, body excerpt) for context-aware assistance
 - **CSRF for JSON APIs** — chat endpoint protected by header-based CSRF tokens (`X-CSRF-Token` header)
 - **Conversation isolation** — each user has separate conversations per content item; users cannot access each other's conversations
+
+### Settings Panel & Site Configuration (Chunk 5.2)
+
+The settings page is now a comprehensive site configuration interface:
+- **DB settings overlay** — `Config::loadDbSettings()` loads settings from the database and overrides file-based config values; protected keys (`db_*`, `app_secret`) never overridden by DB
+- **General section** — site name, site URL (validated), tagline, timezone (grouped `<select>` with optgroups), items per page (clamped 1–100)
+- **SEO section** — default meta description (max 300 chars), default Open Graph image
+- **Cookie Consent & Analytics** — enable/disable consent banner (checkbox with hidden input pattern), consent text, privacy policy link, enable/disable Google Analytics, GA Measurement ID (validated `G-XXXXXXXXXX` format)
+- **Contact Form section** — notification email (validated or empty to disable)
+- **Advanced section** — enable user registration (checkbox), maintenance mode (checkbox)
+- **Immediate effect** — `Config::reset()` after save ensures changes take effect on the next request without restarting
+- **Conditional cookie consent** — public site conditionally shows/hides cookie consent banner based on `cookie_consent_enabled` setting
+- **Timezone re-apply** — `App::__construct()` re-applies timezone after loading DB settings
 
 ---
 
