@@ -1,0 +1,756 @@
+/* =========================================================
+   AI Chat Styles — shared by editor assistant & page generator
+   ========================================================= */
+
+/* --- AI Toggle Button --- */
+.ai-toggle-wrapper {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.75rem;
+}
+
+#ai-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.85rem;
+    background: var(--color-primary);
+    color: var(--color-white);
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+#ai-toggle-btn:hover {
+    background: var(--color-primary-hover);
+}
+
+#ai-toggle-btn .ai-icon {
+    font-size: 1rem;
+}
+
+/* --- AI Panel --- */
+#ai-panel {
+    display: none;
+    flex-direction: column;
+    background: var(--color-white);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+    min-height: 0;
+    position: relative;
+}
+
+#ai-panel.active {
+    display: flex;
+}
+
+.editor-layout.ai-panel-open {
+    grid-template-columns: 1fr 320px 380px;
+}
+
+/* --- Panel Header --- */
+.ai-panel-header {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.ai-panel-header-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.ai-panel-header-actions {
+    display: flex;
+    gap: 0.3rem;
+    flex-shrink: 0;
+}
+
+.ai-panel-header-actions button {
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 0.2rem 0.45rem;
+    font-size: 0.7rem;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.ai-panel-header-actions button:hover {
+    background: var(--color-border-light);
+    color: var(--color-text);
+}
+
+/* --- Model Selector --- */
+.ai-model-select {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.3rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background: var(--color-white);
+    color: var(--color-text);
+    max-width: 150px;
+    cursor: pointer;
+}
+
+.ai-model-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+/* --- Context Meter --- */
+.ai-context-meter {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+}
+
+.context-bar-track {
+    width: 50px;
+    height: 6px;
+    background: var(--color-border-light);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.context-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+    width: 0;
+}
+
+.context-bar-ok {
+    background-color: #22c55e;
+}
+
+.context-bar-warning {
+    background-color: #f59e0b;
+}
+
+.context-bar-danger {
+    background-color: #ef4444;
+}
+
+.context-text {
+    font-size: 0.65rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+
+/* --- Conversation History Dropdown --- */
+.ai-history-dropdown {
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-border-light);
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.ai-history-item {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background var(--transition-fast);
+}
+
+.ai-history-item:last-child {
+    border-bottom: none;
+}
+
+.ai-history-item:hover {
+    background: var(--color-white);
+}
+
+.ai-history-item.active {
+    background: var(--color-primary-light, rgba(37, 99, 235, 0.08));
+    font-weight: 500;
+}
+
+.ai-history-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.ai-history-date {
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+    flex-shrink: 0;
+    margin-left: 0.5rem;
+}
+
+/* --- Messages Container --- */
+.ai-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 300px;
+    max-height: calc(100vh - 300px);
+}
+
+/* Legacy ID selector for backward compat */
+#ai-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 300px;
+    max-height: calc(100vh - 300px);
+}
+
+/* --- Empty State --- */
+.ai-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 200px;
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    padding: 2rem 1rem;
+}
+
+.ai-empty-state .ai-empty-icon {
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.5;
+}
+
+/* --- Message Bubbles --- */
+.ai-message {
+    max-width: 95%;
+    animation: aiFadeIn 0.2s ease;
+}
+
+@keyframes aiFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ai-message-user {
+    align-self: flex-end;
+}
+
+.ai-message-user .ai-message-content {
+    background: var(--color-primary);
+    color: var(--color-white);
+    border-radius: 12px 12px 2px 12px;
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+/* Attachment thumbnails in user messages */
+.ai-message-attachments {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.4rem;
+}
+
+.ai-message-attachments img {
+    max-width: 120px;
+    max-height: 80px;
+    border-radius: 6px;
+    object-fit: cover;
+    cursor: pointer;
+}
+
+.ai-message-user .ai-message-attachments img {
+    border: 2px solid rgba(255,255,255,0.3);
+}
+
+.ai-message-assistant {
+    align-self: flex-start;
+}
+
+.ai-message-assistant .ai-message-content {
+    background: var(--color-border-light);
+    color: var(--color-text);
+    border-radius: 12px 12px 12px 2px;
+    padding: 0.75rem 0.85rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    word-wrap: break-word;
+}
+
+/* --- Markdown Content Styles --- */
+.ai-message-assistant .ai-message-content h1,
+.ai-message-assistant .ai-message-content h2,
+.ai-message-assistant .ai-message-content h3 {
+    margin: 0.5rem 0 0.3rem;
+    font-size: 1.05rem;
+}
+
+.ai-message-assistant .ai-message-content p {
+    margin: 0.3rem 0;
+}
+
+.ai-message-assistant .ai-message-content ul,
+.ai-message-assistant .ai-message-content ol {
+    padding-left: 1.25rem;
+    margin: 0.3rem 0;
+}
+
+.ai-message-assistant .ai-message-content code {
+    background: rgba(0,0,0,0.06);
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.85em;
+}
+
+.ai-message-assistant .ai-message-content pre {
+    position: relative;
+    margin: 0.5rem 0;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.ai-message-assistant .ai-message-content pre code {
+    display: block;
+    padding: 0.75rem;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    overflow-x: auto;
+    border-radius: 6px;
+}
+
+.ai-message-assistant .ai-message-content blockquote {
+    border-left: 3px solid var(--color-primary, #4a90d9);
+    padding: 0.3rem 0.75rem;
+    margin: 0.5rem 0;
+    background: rgba(37, 99, 235, 0.04);
+    color: var(--color-text-muted);
+}
+
+.ai-message-assistant .ai-message-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.5rem 0;
+    font-size: 0.85rem;
+}
+
+.ai-message-assistant .ai-message-content th,
+.ai-message-assistant .ai-message-content td {
+    border: 1px solid var(--color-border);
+    padding: 0.35rem 0.5rem;
+    text-align: left;
+}
+
+.ai-message-assistant .ai-message-content th {
+    background: var(--color-border-light);
+    font-weight: 600;
+}
+
+/* --- Code Block Copy Button --- */
+.ai-code-block-wrapper {
+    position: relative;
+}
+
+.ai-code-copy-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    padding: 0.2rem 0.45rem;
+    font-size: 0.65rem;
+    background: rgba(255,255,255,0.15);
+    color: #cdd6f4;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 2;
+}
+
+.ai-code-block-wrapper:hover .ai-code-copy-btn {
+    opacity: 1;
+}
+
+.ai-code-copy-btn:hover {
+    background: rgba(255,255,255,0.25);
+}
+
+/* --- Summary Message --- */
+.ai-message-summary .ai-message-content {
+    background: linear-gradient(135deg, #f0f9ff, #e8f4fd);
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    padding: 0.6rem 0.85rem;
+    font-size: 0.85rem;
+}
+
+.ai-summary-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    background: #0284c7;
+    color: #fff;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    margin-bottom: 0.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+/* --- Message Action Buttons --- */
+.ai-message-actions {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+    padding-top: 0.35rem;
+}
+
+.ai-action-btn {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.ai-action-btn:hover {
+    background: var(--color-primary-light, rgba(37, 99, 235, 0.08));
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+/* --- Error Messages --- */
+.ai-message-error .ai-message-content {
+    background: var(--color-error-bg);
+    color: #991b1b;
+    border: 1px solid var(--color-error-border);
+    border-radius: 8px;
+    padding: 0.6rem 0.85rem;
+    font-size: 0.85rem;
+}
+
+.ai-message-error a {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+/* --- System Messages --- */
+.ai-message-system {
+    align-self: center;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    padding: 0.25rem 0.75rem;
+    background: var(--color-border-light);
+    border-radius: 12px;
+}
+
+/* --- Loading / Typing Indicator --- */
+.ai-message-loading {
+    align-self: flex-start;
+}
+
+.ai-typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 0.75rem 1rem;
+    background: var(--color-border-light);
+    border-radius: 12px 12px 12px 2px;
+    width: fit-content;
+}
+
+.ai-typing-indicator span {
+    width: 7px;
+    height: 7px;
+    background: var(--color-text-muted);
+    border-radius: 50%;
+    animation: aiTypingBounce 1.4s ease-in-out infinite;
+}
+
+.ai-typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.ai-typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes aiTypingBounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* --- Attachment Previews (input area) --- */
+.ai-attachments-preview {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    padding: 0 0.75rem;
+}
+
+.ai-attachments-preview:empty {
+    display: none;
+}
+
+.ai-attachment-thumb {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+}
+
+.ai-attachment-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ai-attachment-remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.ai-attachment-remove:hover {
+    background: rgba(220,38,38,0.8);
+}
+
+.ai-uploading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg, #f8f9fa);
+    border-style: dashed;
+}
+
+.ai-upload-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: ai-spin 0.6s linear infinite;
+}
+
+@keyframes ai-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* --- Input Area --- */
+.ai-panel-input {
+    border-top: 1px solid var(--color-border);
+    padding: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+    flex-shrink: 0;
+}
+
+.ai-attach-btn {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    background: none;
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    transition: all var(--transition-fast);
+}
+
+.ai-attach-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: var(--color-primary-light, rgba(37, 99, 235, 0.08));
+}
+
+.ai-panel-input textarea {
+    flex: 1;
+    resize: none;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    font-family: inherit;
+    line-height: 1.4;
+    max-height: 120px;
+    min-height: 38px;
+    transition: border-color var(--transition-fast);
+}
+
+.ai-panel-input textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.ai-send-btn {
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: var(--color-primary);
+    color: var(--color-white);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: background var(--transition-fast);
+}
+
+/* Legacy ID selectors */
+#ai-send-btn {
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: var(--color-primary);
+    color: var(--color-white);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: background var(--transition-fast);
+}
+
+.ai-send-btn:hover,
+#ai-send-btn:hover {
+    background: var(--color-primary-hover);
+}
+
+.ai-send-btn:disabled,
+#ai-send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* --- File Drop Overlay --- */
+.ai-file-drop-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(37, 99, 235, 0.08);
+    border: 2px dashed var(--color-primary);
+    border-radius: var(--card-radius, 8px);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    color: var(--color-primary);
+    font-weight: 500;
+    pointer-events: none;
+}
+
+/* --- Resize Handle --- */
+.ai-resize-handle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    cursor: col-resize;
+    background: transparent;
+    z-index: 10;
+}
+
+.ai-resize-handle:hover {
+    background: var(--color-primary);
+    opacity: 0.3;
+}
+
+/* --- Generator Chat Header (shared styles) --- */
+.generator-chat-header {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--color-border, #ddd);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    background: var(--color-white, #fff);
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .editor-layout.ai-panel-open {
+        grid-template-columns: 1fr;
+    }
+
+    #ai-panel.active {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        border-radius: 0;
+        max-height: 100vh;
+    }
+
+    #ai-messages,
+    .ai-chat-messages {
+        max-height: calc(100vh - 140px);
+    }
+
+    .ai-panel-header {
+        flex-wrap: wrap;
+    }
+
+    .ai-model-select {
+        max-width: 100px;
+    }
+
+    .context-bar-track {
+        width: 35px;
+    }
+}

@@ -305,6 +305,61 @@
         </div>
     </div>
 
+    <!-- Media & Image Settings Section -->
+    <div class="settings-section">
+        <h2>Media &amp; Images</h2>
+        <p class="section-desc">Configure upload limits and automatic image optimization for AI chat attachments.</p>
+
+        <?php
+        $currentMaxUpload       = $settings['max_upload_size'] ?? \App\Core\Config::getInt('max_upload_size', 5242880);
+        $currentResizeThreshold = $settings['image_resize_threshold'] ?? 1572864;
+        $currentMaxDimension    = $settings['image_max_dimension'] ?? 2048;
+        $currentJpegQuality     = $settings['image_jpeg_quality'] ?? 85;
+        ?>
+
+        <div class="form-group">
+            <label for="max_upload_size">Max Upload Size (bytes)</label>
+            <input type="number"
+                   id="max_upload_size"
+                   name="max_upload_size"
+                   value="<?= (int) $currentMaxUpload ?>"
+                   min="102400" max="104857600" step="1024">
+            <small>Server-side file size limit (100 KB &ndash; 100 MB). Default: 5,242,880 (5 MB). Note: PHP's <code>upload_max_filesize</code> (currently <?= ini_get('upload_max_filesize') ?>) also applies.</small>
+        </div>
+
+        <div class="ai-params-grid">
+            <div class="form-group">
+                <label for="image_resize_threshold">Auto-Resize Threshold (bytes)</label>
+                <input type="number"
+                       id="image_resize_threshold"
+                       name="image_resize_threshold"
+                       value="<?= (int) $currentResizeThreshold ?>"
+                       min="102400" max="104857600" step="1024">
+                <small>Images larger than this are auto-resized before upload. Default: 1,572,864 (1.5 MB).</small>
+            </div>
+
+            <div class="form-group">
+                <label for="image_max_dimension">Max Dimension (px)</label>
+                <input type="number"
+                       id="image_max_dimension"
+                       name="image_max_dimension"
+                       value="<?= (int) $currentMaxDimension ?>"
+                       min="100" max="10000" step="1">
+                <small>Maximum width or height when resizing. Aspect ratio is preserved. Default: 2048.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="image_jpeg_quality">JPEG Quality (%)</label>
+                <input type="number"
+                       id="image_jpeg_quality"
+                       name="image_jpeg_quality"
+                       value="<?= (int) $currentJpegQuality ?>"
+                       min="10" max="100" step="1">
+                <small>Quality for JPEG compression when resizing (10 &ndash; 100). Default: 85.</small>
+            </div>
+        </div>
+    </div>
+
     <!-- Advanced Section -->
     <div class="settings-section">
         <h2>Advanced</h2>

@@ -239,13 +239,25 @@
 
         <!-- AI Assistant Panel (hidden by default, shown when toggled) -->
         <div id="ai-panel">
-            <div class="ai-panel-header">
-                <span>AI Assistant</span>
+            <div class="ai-resize-handle"></div>
+            <div class="ai-panel-header" id="ai-panel-header">
+                <div class="ai-panel-header-left">
+                    <select class="ai-model-select" title="Select model"></select>
+                </div>
                 <div class="ai-panel-header-actions">
+                    <button type="button" id="ai-compact-btn" title="Compact conversation" style="display:none;">Compact</button>
+                    <button type="button" id="ai-history-btn" title="Conversation history">History</button>
                     <button type="button" id="ai-new-conversation" title="New conversation">New</button>
                     <button type="button" id="ai-close-btn" title="Close panel">&times;</button>
                 </div>
             </div>
+            <div class="ai-context-meter">
+                <div class="context-bar-track">
+                    <div class="context-bar context-bar-ok" style="width:0"></div>
+                </div>
+                <span class="context-text">0 / 200.0k</span>
+            </div>
+            <div id="ai-history-dropdown" class="ai-history-dropdown" style="display:none;"></div>
             <div id="ai-messages">
                 <div class="ai-empty-state">
                     <div class="ai-empty-icon">&#9733;</div>
@@ -253,7 +265,9 @@
                     <p style="font-size:0.8rem;margin-top:0.25rem;">Try: "Write an introduction for this page" or "Make this text more concise"</p>
                 </div>
             </div>
+            <div id="ai-attach-preview" class="ai-attachments-preview"></div>
             <div class="ai-panel-input">
+                <button type="button" id="ai-attach-btn" class="ai-attach-btn" title="Attach image">&#128206;</button>
                 <textarea id="ai-input" rows="1"
                           placeholder="Ask the AI assistant..."
                           autocomplete="off"></textarea>
@@ -264,5 +278,9 @@
 </form>
 
 <script src="/assets/js/editor.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<script src="/assets/js/ai-chat-core.js"></script>
 <script src="/assets/js/ai-assistant.js"></script>
 <script src="/assets/js/custom-fields.js"></script>

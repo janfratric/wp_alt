@@ -5,8 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $this->e($title ?? 'Admin') ?> — LiteCMS Admin</title>
     <link rel="stylesheet" href="/assets/css/admin.css">
+    <link rel="stylesheet" href="/assets/css/ai-chat.css">
 </head>
-<body>
+<?php
+$imgSettings = json_encode([
+    'resize_threshold' => (int) \App\Core\Config::getInt('image_resize_threshold', 1572864),
+    'max_dimension'    => (int) \App\Core\Config::getInt('image_max_dimension', 2048),
+    'jpeg_quality'     => (int) \App\Core\Config::getInt('image_jpeg_quality', 85),
+]);
+?>
+<body data-image-settings="<?= $this->e($imgSettings) ?>">
     <div class="admin-wrapper">
         <!-- Sidebar Overlay (mobile) -->
         <div class="sidebar-overlay"></div>

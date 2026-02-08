@@ -11,6 +11,14 @@ use App\Database\QueryBuilder;
 
 class AIController
 {
+    /** Known context window sizes for Claude models (in tokens). */
+    public const CONTEXT_WINDOWS = [
+        'claude-sonnet-4-20250514'  => 200000,
+        'claude-haiku-4-5-20251001' => 200000,
+        'claude-opus-4-6'           => 200000,
+    ];
+    public const DEFAULT_CONTEXT_WINDOW = 200000;
+
     private App $app;
 
     public function __construct(App $app)
@@ -21,7 +29,7 @@ class AIController
     /**
      * POST /admin/ai/chat
      *
-     * Expects JSON body: {"message": "...", "content_id": 123, "conversation_id": 456}
+     * Expects JSON body: {"message": "...", "content_id": 123, "conversation_id": 456, "model": "...", "attachments": [...]}
      * Returns JSON: {"success": true, "response": "...", "conversation_id": 456, "usage": {...}}
      */
     public function chat(Request $request): Response
@@ -39,6 +47,7 @@ class AIController
         $userMessage    = trim((string) $data['message']);
         $contentId      = isset($data['content_id']) ? (int) $data['content_id'] : null;
         $conversationId = isset($data['conversation_id']) ? (int) $data['conversation_id'] : null;
+        $attachments    = $data['attachments'] ?? [];
 
         $apiKey = $this->getApiKey();
         if ($apiKey === '') {
@@ -48,7 +57,7 @@ class AIController
             ], 400);
         }
 
-        $model = $this->getSetting('claude_model', Config::getString('claude_model', 'claude-sonnet-4-20250514'));
+        $model = $this->resolveModel($data['model'] ?? null);
 
         // Load configurable API parameters from settings
         $maxTokens   = (int) $this->getSetting('ai_max_tokens', (string) ClaudeClient::DEFAULT_MAX_TOKENS);
@@ -80,7 +89,11 @@ class AIController
 
         $conversationId = (int) $conversation['id'];
 
+        // Auto-set conversation title from first user message
         $existingMessages = $manager->getMessages($conversation);
+        if (empty($existingMessages)) {
+            $manager->setTitle($conversationId, $userMessage);
+        }
 
         $apiMessages = [];
         foreach ($existingMessages as $msg) {
@@ -90,9 +103,11 @@ class AIController
             ];
         }
 
+        // Build the current user message (with optional image attachments)
+        $userApiContent = $this->buildUserContent($userMessage, $attachments);
         $apiMessages[] = [
             'role'    => 'user',
-            'content' => $userMessage,
+            'content' => $userApiContent,
         ];
 
         $systemPrompt = $this->buildSystemPrompt($contentId);
@@ -111,14 +126,25 @@ class AIController
             ], 502);
         }
 
-        $manager->appendMessage($conversationId, 'user', $userMessage);
-        $manager->appendMessage($conversationId, 'assistant', $result['content']);
+        // Store messages with metadata
+        $storedAttachments = $this->sanitizeAttachments($attachments);
+        $manager->appendMessageWithUsage($conversationId, 'user', $userMessage, $storedAttachments);
+        $manager->appendMessageWithUsage($conversationId, 'assistant', $result['content'], [], $result['usage']);
+        $manager->updateUsage($conversationId, $result['usage']);
+
+        // Build extended usage response
+        $totalUsage = $manager->getUsage($conversationId);
+        $contextWindow = self::CONTEXT_WINDOWS[$model] ?? self::DEFAULT_CONTEXT_WINDOW;
 
         return Response::json([
             'success'         => true,
             'response'        => $result['content'],
             'conversation_id' => $conversationId,
-            'usage'           => $result['usage'],
+            'usage'           => array_merge($result['usage'], [
+                'total_input_tokens'  => $totalUsage['total_input_tokens'] ?? 0,
+                'total_output_tokens' => $totalUsage['total_output_tokens'] ?? 0,
+                'context_window'      => $contextWindow,
+            ]),
         ]);
     }
 
@@ -137,10 +163,13 @@ class AIController
 
         $result = [];
         foreach ($history as $conv) {
+            $usage = @json_decode($conv['usage_json'] ?? '{}', true);
             $result[] = [
                 'id'         => (int) $conv['id'],
                 'content_id' => $conv['content_id'] !== null ? (int) $conv['content_id'] : null,
+                'title'      => $conv['title'] ?? null,
                 'messages'   => $manager->getMessages($conv),
+                'usage'      => is_array($usage) ? $usage : [],
                 'created_at' => $conv['created_at'],
                 'updated_at' => $conv['updated_at'],
             ];
@@ -320,6 +349,236 @@ class AIController
                 'value' => $value,
             ]);
         }
+    }
+
+    /**
+     * POST /admin/ai/compact
+     * Summarizes a conversation to reduce token usage.
+     */
+    public function compact(Request $request): Response
+    {
+        $rawBody = file_get_contents('php://input');
+        $data = json_decode($rawBody, true);
+
+        if (!is_array($data) || !isset($data['conversation_id'])) {
+            return Response::json(['success' => false, 'error' => 'conversation_id is required.'], 400);
+        }
+
+        $manager = new ConversationManager();
+        $userId = (int) Session::get('user_id', 0);
+        $convId = (int) $data['conversation_id'];
+
+        $conversation = $manager->findById($convId);
+        if ($conversation === null || (int) $conversation['user_id'] !== $userId) {
+            return Response::json(['success' => false, 'error' => 'Conversation not found.'], 404);
+        }
+
+        $messages = $manager->getMessages($conversation);
+        if (count($messages) < 6) {
+            return Response::json(['success' => false, 'error' => 'Conversation too short to compact.'], 400);
+        }
+
+        $apiKey = $this->getApiKey();
+        if ($apiKey === '') {
+            return Response::json(['success' => false, 'error' => 'API key not configured.'], 400);
+        }
+
+        $model = $this->resolveModel($data['model'] ?? null);
+
+        // Calculate tokens before
+        $usageBefore = $manager->getUsage($convId);
+        $tokensBefore = ($usageBefore['total_input_tokens'] ?? 0) + ($usageBefore['total_output_tokens'] ?? 0);
+
+        // Build summarization request
+        $summaryMessages = [];
+        foreach ($messages as $msg) {
+            $summaryMessages[] = [
+                'role'    => $msg['role'],
+                'content' => $msg['content'],
+            ];
+        }
+        $summaryMessages[] = [
+            'role'    => 'user',
+            'content' => 'Please provide a concise summary of our entire conversation so far. '
+                . 'Preserve all key decisions, requirements, context, and details needed to continue effectively. '
+                . 'Format as a brief paragraph.',
+        ];
+
+        try {
+            $client = new ClaudeClient($apiKey, $model, ['max_tokens' => 2048]);
+            $result = $client->sendMessage(
+                $summaryMessages,
+                'You are a conversation summarizer. Provide a clear, concise summary.'
+            );
+        } catch (\RuntimeException $e) {
+            return Response::json(['success' => false, 'error' => 'Summarization failed: ' . $e->getMessage()], 502);
+        }
+
+        $newMessages = $manager->compact($convId, $result['content'], 4);
+        $contextWindow = self::CONTEXT_WINDOWS[$model] ?? self::DEFAULT_CONTEXT_WINDOW;
+
+        return Response::json([
+            'success'       => true,
+            'messages'      => $newMessages,
+            'tokens_before' => $tokensBefore,
+            'tokens_after'  => 0,
+            'usage'         => [
+                'total_input_tokens'  => 0,
+                'total_output_tokens' => 0,
+                'context_window'      => $contextWindow,
+            ],
+        ]);
+    }
+
+    /**
+     * GET /admin/ai/models/enabled
+     * Returns the list of enabled models for the chat UI model selector.
+     */
+    public function enabledModels(Request $request): Response
+    {
+        $enabledJson = $this->getSetting('enabled_models', '');
+        $enabledIds = [];
+        if ($enabledJson !== '') {
+            $enabledIds = @json_decode($enabledJson, true);
+            if (!is_array($enabledIds)) {
+                $enabledIds = [];
+            }
+        }
+
+        $availableJson = $this->getSetting('available_models', '');
+        $availableModels = [];
+        if ($availableJson !== '') {
+            $availableModels = @json_decode($availableJson, true);
+            if (!is_array($availableModels)) {
+                $availableModels = [];
+            }
+        }
+
+        // Build the enabled models list with display names
+        $models = [];
+        if (!empty($enabledIds) && !empty($availableModels)) {
+            $lookup = [];
+            foreach ($availableModels as $m) {
+                $lookup[$m['id']] = $m['display_name'] ?? $m['id'];
+            }
+            foreach ($enabledIds as $id) {
+                $models[] = [
+                    'id'             => $id,
+                    'display_name'   => $lookup[$id] ?? $id,
+                    'context_window' => self::CONTEXT_WINDOWS[$id] ?? self::DEFAULT_CONTEXT_WINDOW,
+                ];
+            }
+        }
+
+        // Fallback if no models configured
+        if (empty($models)) {
+            $defaultModel = Config::getString('claude_model', 'claude-sonnet-4-20250514');
+            $models[] = [
+                'id'             => $defaultModel,
+                'display_name'   => $defaultModel,
+                'context_window' => self::CONTEXT_WINDOWS[$defaultModel] ?? self::DEFAULT_CONTEXT_WINDOW,
+            ];
+        }
+
+        $currentModel = $this->getSetting('claude_model', Config::getString('claude_model', 'claude-sonnet-4-20250514'));
+
+        return Response::json([
+            'success'       => true,
+            'models'        => $models,
+            'current_model' => $currentModel,
+        ]);
+    }
+
+    /**
+     * Resolve the model to use: prefer request override if it's in enabled list, else settings default.
+     */
+    private function resolveModel(?string $requestModel): string
+    {
+        $defaultModel = $this->getSetting('claude_model', Config::getString('claude_model', 'claude-sonnet-4-20250514'));
+
+        if ($requestModel === null || $requestModel === '') {
+            return $defaultModel;
+        }
+
+        // Validate the requested model is in the enabled list
+        $enabledJson = $this->getSetting('enabled_models', '');
+        if ($enabledJson !== '') {
+            $enabledIds = @json_decode($enabledJson, true);
+            if (is_array($enabledIds) && in_array($requestModel, $enabledIds, true)) {
+                return $requestModel;
+            }
+        }
+
+        return $defaultModel;
+    }
+
+    /**
+     * Build user message content, optionally with image content blocks for vision.
+     *
+     * @return string|array String for text-only, array of content blocks for vision
+     */
+    private function buildUserContent(string $message, array $attachments): string|array
+    {
+        if (empty($attachments)) {
+            return $message;
+        }
+
+        $blocks = [];
+        $urlMap = [];
+        $publicDir = dirname(__DIR__, 2) . '/public';
+        $imageIndex = 1;
+
+        foreach ($attachments as $att) {
+            if (!is_array($att) || empty($att['url']) || empty($att['mime_type'])) {
+                continue;
+            }
+
+            // Only process image attachments for vision
+            if (!str_starts_with($att['mime_type'], 'image/')) {
+                continue;
+            }
+
+            $filePath = $publicDir . $att['url'];
+            try {
+                $blocks[] = ClaudeClient::imageToBase64Block($filePath, $att['mime_type']);
+                $urlMap[] = "Image {$imageIndex}: {$att['url']}";
+                $imageIndex++;
+            } catch (\RuntimeException $e) {
+                // Skip unreadable images
+            }
+        }
+
+        if (empty($blocks)) {
+            return $message;
+        }
+
+        // Append URL mapping so Claude knows how to reference images in generated HTML
+        $urlInfo = "\n\n[Attached images and their URLs for use in generated content:\n"
+            . implode("\n", $urlMap) . "\n"
+            . "Use these exact URLs in <img src=\"...\"> tags when including these images in the page.]";
+
+        $blocks[] = ['type' => 'text', 'text' => $message . $urlInfo];
+        return $blocks;
+    }
+
+    /**
+     * Sanitize attachments for storage (remove any fields we don't need to persist).
+     */
+    private function sanitizeAttachments(array $attachments): array
+    {
+        $clean = [];
+        foreach ($attachments as $att) {
+            if (!is_array($att) || empty($att['url'])) {
+                continue;
+            }
+            $clean[] = [
+                'type'      => $att['type'] ?? 'image',
+                'url'       => $att['url'],
+                'media_id'  => $att['media_id'] ?? null,
+                'mime_type' => $att['mime_type'] ?? '',
+            ];
+        }
+        return $clean;
     }
 
     /**

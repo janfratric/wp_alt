@@ -1,0 +1,4 @@
+-- LiteCMS Migration 003 — AI Conversations Metadata (SQLite)
+
+ALTER TABLE ai_conversations ADD COLUMN usage_json TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE ai_conversations ADD COLUMN title VARCHAR(255) DEFAULT NULL;

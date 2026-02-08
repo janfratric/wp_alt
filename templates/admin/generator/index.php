@@ -33,8 +33,24 @@
     <!-- Step 2: Gathering -->
     <div class="generator-panel hidden" id="step-gathering">
         <div class="generator-chat">
+            <div class="ai-panel-header" id="generator-chat-header">
+                <div class="ai-panel-header-left">
+                    <select class="ai-model-select" title="Select model"></select>
+                </div>
+                <div class="ai-panel-header-actions">
+                    <button type="button" id="generator-compact-btn" title="Compact conversation" style="display:none;">Compact</button>
+                </div>
+            </div>
+            <div class="ai-context-meter">
+                <div class="context-bar-track">
+                    <div class="context-bar context-bar-ok" style="width:0"></div>
+                </div>
+                <span class="context-text">0 / 200.0k</span>
+            </div>
             <div id="generator-messages" class="chat-messages"></div>
+            <div id="generator-attach-preview" class="ai-attachments-preview"></div>
             <div class="chat-input-area">
+                <button type="button" id="generator-attach-btn" class="ai-attach-btn" title="Attach image">&#128206;</button>
                 <textarea id="generator-input" placeholder="Describe what you need..." rows="2"></textarea>
                 <button id="generator-send" type="button" class="btn btn-primary">Send</button>
             </div>
@@ -77,4 +93,8 @@
 
 </div>
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<script src="/assets/js/ai-chat-core.js"></script>
 <script src="/assets/js/page-generator.js"></script>

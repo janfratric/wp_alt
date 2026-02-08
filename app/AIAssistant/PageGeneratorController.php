@@ -61,9 +61,24 @@ class PageGeneratorController
         $convId       = $data['conversation_id'] ?? null;
         $contentType  = $data['content_type'] ?? 'page';
         $step         = $data['step'] ?? 'gathering';
+        $attachments  = $data['attachments'] ?? [];
 
-        $model  = $this->getModel();
-        $client = new ClaudeClient($apiKey, $model);
+        $model  = $this->resolveModel($data['model'] ?? null);
+
+        // Load configurable API parameters from settings
+        $maxTokens   = (int) $this->getSetting('ai_max_tokens', (string) ClaudeClient::DEFAULT_MAX_TOKENS);
+        $timeout     = (int) $this->getSetting('ai_timeout', (string) ClaudeClient::DEFAULT_TIMEOUT);
+        $temperature = (float) $this->getSetting('ai_temperature', (string) ClaudeClient::DEFAULT_TEMPERATURE);
+
+        $maxTokens   = max(1, min(128000, $maxTokens));
+        $timeout     = max(10, min(600, $timeout));
+        $temperature = max(0.0, min(1.0, $temperature));
+
+        $client = new ClaudeClient($apiKey, $model, [
+            'max_tokens'  => $maxTokens,
+            'timeout'     => $timeout,
+            'temperature' => $temperature,
+        ]);
         $manager = new ConversationManager();
 
         $userId = (int) Session::get('user_id');
@@ -78,25 +93,31 @@ class PageGeneratorController
 
         $convId = (int) $conversation['id'];
 
-        $manager->appendMessage($convId, 'user', $message);
-
-        $allMessages = $manager->getMessages(
-            $manager->findById($convId) ?? $conversation
-        );
+        // Build API messages from existing conversation history (text-only for past messages)
+        $existingMessages = $manager->getMessages($conversation);
         $apiMessages = [];
-        foreach ($allMessages as $msg) {
+        foreach ($existingMessages as $msg) {
             $apiMessages[] = [
                 'role'    => $msg['role'],
                 'content' => $msg['content'],
             ];
         }
 
+        // Build the current user message with optional image content blocks for vision
+        $userApiContent = $this->buildUserContent($message, $attachments);
+        $apiMessages[] = [
+            'role'    => 'user',
+            'content' => $userApiContent,
+        ];
+
         $existingPages = $this->getExistingPages();
         $typeFields = $this->getContentTypeFields($contentType);
         $siteName = Config::getString('site_name', 'LiteCMS');
 
         if ($step === 'generating') {
-            $systemPrompt = GeneratorPrompts::generationPrompt($siteName, $contentType, $typeFields);
+            // Collect all image URLs from conversation history so the generation prompt knows them
+            $imageUrls = $this->collectImageUrls($existingMessages, $attachments);
+            $systemPrompt = GeneratorPrompts::generationPrompt($siteName, $contentType, $typeFields, $imageUrls);
         } else {
             $systemPrompt = GeneratorPrompts::gatheringPrompt($siteName, $existingPages, $typeFields);
         }
@@ -112,7 +133,11 @@ class PageGeneratorController
 
         $aiContent = $result['content'] ?? '';
 
-        $manager->appendMessage($convId, 'assistant', $aiContent);
+        // Store messages after successful API call
+        $storedAttachments = $this->sanitizeAttachments($attachments);
+        $manager->appendMessageWithUsage($convId, 'user', $message, $storedAttachments);
+        $manager->appendMessageWithUsage($convId, 'assistant', $aiContent, [], $result['usage']);
+        $manager->updateUsage($convId, $result['usage']);
 
         $responseStep = 'gathering';
         $generated = null;
@@ -132,12 +157,20 @@ class PageGeneratorController
             $aiContent = trim(str_replace('READY_TO_GENERATE', '', $aiContent));
         }
 
+        $totalUsage = $manager->getUsage($convId);
+        $contextWindow = AIController::CONTEXT_WINDOWS[$model] ?? AIController::DEFAULT_CONTEXT_WINDOW;
+
         return Response::json([
             'success'         => true,
             'response'        => $aiContent,
             'conversation_id' => $convId,
             'step'            => $responseStep,
             'generated'       => $generated,
+            'usage'           => array_merge($result['usage'], [
+                'total_input_tokens'  => $totalUsage['total_input_tokens'] ?? 0,
+                'total_output_tokens' => $totalUsage['total_output_tokens'] ?? 0,
+                'context_window'      => $contextWindow,
+            ]),
         ]);
     }
 
@@ -213,18 +246,130 @@ class PageGeneratorController
         return Config::getString('claude_api_key');
     }
 
-    private function getModel(): string
+    private function resolveModel(?string $requestModel): string
     {
-        $setting = QueryBuilder::query('settings')
-            ->select('value')
-            ->where('key', 'claude_model')
-            ->first();
+        $defaultModel = $this->getSetting('claude_model',
+            Config::getString('claude_model', 'claude-sonnet-4-20250514'));
 
-        if ($setting !== null && $setting['value'] !== '') {
-            return $setting['value'];
+        if ($requestModel === null || $requestModel === '') {
+            return $defaultModel;
         }
 
-        return Config::getString('claude_model', 'claude-sonnet-4-20250514');
+        $enabledJson = $this->getSetting('enabled_models', '');
+        if ($enabledJson !== '') {
+            $enabledIds = @json_decode($enabledJson, true);
+            if (is_array($enabledIds) && in_array($requestModel, $enabledIds, true)) {
+                return $requestModel;
+            }
+        }
+
+        return $defaultModel;
+    }
+
+    private function getSetting(string $key, string $default = ''): string
+    {
+        $row = QueryBuilder::query('settings')
+            ->select('value')
+            ->where('key', $key)
+            ->first();
+
+        return ($row !== null && $row['value'] !== null) ? $row['value'] : $default;
+    }
+
+    /**
+     * Build user message content with optional image blocks for Claude Vision.
+     *
+     * @return string|array String for text-only, array of content blocks for vision
+     */
+    private function buildUserContent(string $message, array $attachments): string|array
+    {
+        if (empty($attachments)) {
+            return $message;
+        }
+
+        $blocks = [];
+        $urlMap = [];
+        $publicDir = dirname(__DIR__, 2) . '/public';
+        $imageIndex = 1;
+
+        foreach ($attachments as $att) {
+            if (!is_array($att) || empty($att['url']) || empty($att['mime_type'])) {
+                continue;
+            }
+            if (!str_starts_with($att['mime_type'], 'image/')) {
+                continue;
+            }
+
+            $filePath = $publicDir . $att['url'];
+            try {
+                $blocks[] = ClaudeClient::imageToBase64Block($filePath, $att['mime_type']);
+                $urlMap[] = "Image {$imageIndex}: {$att['url']}";
+                $imageIndex++;
+            } catch (\RuntimeException $e) {
+                // Skip unreadable images
+            }
+        }
+
+        if (empty($blocks)) {
+            return $message;
+        }
+
+        // Append URL mapping to the text so Claude knows how to reference images in generated HTML
+        $urlInfo = "\n\n[Attached images and their URLs for use in generated content:\n"
+            . implode("\n", $urlMap) . "\n"
+            . "Use these exact URLs in <img src=\"...\"> tags when including these images in the page.]";
+
+        $blocks[] = ['type' => 'text', 'text' => $message . $urlInfo];
+        return $blocks;
+    }
+
+    private function sanitizeAttachments(array $attachments): array
+    {
+        $clean = [];
+        foreach ($attachments as $att) {
+            if (!is_array($att) || empty($att['url'])) {
+                continue;
+            }
+            $clean[] = [
+                'type'      => $att['type'] ?? 'image',
+                'url'       => $att['url'],
+                'media_id'  => $att['media_id'] ?? null,
+                'mime_type' => $att['mime_type'] ?? '',
+            ];
+        }
+        return $clean;
+    }
+
+    /**
+     * Collect all image URLs from stored conversation messages and current attachments.
+     */
+    private function collectImageUrls(array $storedMessages, array $currentAttachments): array
+    {
+        $urls = [];
+
+        // From stored messages (previous turns)
+        foreach ($storedMessages as $msg) {
+            if (empty($msg['attachments']) || !is_array($msg['attachments'])) {
+                continue;
+            }
+            foreach ($msg['attachments'] as $att) {
+                if (!empty($att['url']) && str_starts_with($att['mime_type'] ?? '', 'image/')) {
+                    $urls[] = $att['url'];
+                }
+            }
+        }
+
+        // From current message attachments
+        foreach ($currentAttachments as $att) {
+            if (!is_array($att) || empty($att['url'])) {
+                continue;
+            }
+            if (str_starts_with($att['mime_type'] ?? '', 'image/')) {
+                $urls[] = $att['url'];
+            }
+        }
+
+        return array_values(array_unique($urls));
     }
 
     private function getExistingPages(): array
@@ -317,7 +462,12 @@ class PageGeneratorController
             ->withHeader('X-Content-Type-Options', 'nosniff')
             ->withHeader(
                 'Content-Security-Policy',
-                "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; img-src 'self' data:; font-src 'self' https://cdn.jsdelivr.net"
+                "default-src 'self'; "
+                . "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+                . "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+                . "img-src 'self' data: blob:; "
+                . "connect-src 'self'; "
+                . "font-src 'self' https://cdn.jsdelivr.net"
             );
     }
 }

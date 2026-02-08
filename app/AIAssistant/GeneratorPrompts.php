@@ -27,7 +27,7 @@ Guidelines:
 PROMPT;
     }
 
-    public static function generationPrompt(string $siteName, string $contentType, ?array $contentTypeFields): string
+    public static function generationPrompt(string $siteName, string $contentType, ?array $contentTypeFields, array $imageUrls = []): string
     {
         $fieldsDesc = '';
         $fieldsJson = '';
@@ -37,17 +37,29 @@ PROMPT;
             $fieldsJson = ', "custom_fields": {' . implode(', ', $keys) . '}';
         }
 
+        $imageSection = '';
+        if (!empty($imageUrls)) {
+            $imageList = implode("\n", array_map(fn($url, $i) => "Image " . ($i + 1) . ": {$url}", $imageUrls, array_keys($imageUrls)));
+            $imageSection = <<<IMG
+
+
+AVAILABLE IMAGES — The user uploaded these images during the conversation. Use these EXACT URLs in <img src="..."> tags:
+{$imageList}
+Do NOT invent, guess, or modify image URLs. ONLY use the exact URLs listed above.
+IMG;
+        }
+
         return <<<PROMPT
 You are a professional web content generator for "{$siteName}".
 Based on the entire conversation above, generate a complete webpage.
 
-Content type: {$contentType}{$fieldsDesc}
+Content type: {$contentType}{$fieldsDesc}{$imageSection}
 
 You MUST respond with ONLY a valid JSON object (no markdown code fences, no explanatory text before or after) in this exact format:
 {"title": "Page Title", "slug": "page-title", "excerpt": "A 1-2 sentence summary for SEO and listings.", "meta_title": "SEO title (50-60 chars)", "meta_description": "SEO description (150-160 chars)", "body": "<section>...full HTML content here...</section>"{$fieldsJson}}
 
 HTML body rules:
-- Use semantic HTML5 tags: section, h2, h3, p, ul, ol, figure, blockquote, strong, em
+- Use semantic HTML5 tags: section, h2, h3, p, ul, ol, figure, figcaption, blockquote, strong, em, img
 - Do NOT use h1 (the page title is rendered separately by the site template)
 - Do NOT use inline styles, style attributes, or class attributes
 - Do NOT wrap in html, head, or body tags — just the inner content sections
@@ -55,6 +67,7 @@ HTML body rules:
 - Write real, contextual, professional content — not Lorem ipsum
 - Organize content into logical sections using <section> tags
 - Ensure the content is ready to publish on a professional business website
+- When including images, you MUST use the exact URLs from the AVAILABLE IMAGES list above. Wrap each image in <figure><img src="EXACT_URL" alt="descriptive alt text"><figcaption>caption</figcaption></figure>. Do NOT invent or guess image URLs — only use URLs that were explicitly provided.
 PROMPT;
     }
 

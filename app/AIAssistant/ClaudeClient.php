@@ -45,9 +45,8 @@ class ClaudeClient
     /**
      * Send a message to the Claude Messages API.
      *
-     * @param array  $messages     Array of message objects: [['role'=>'user','content'=>'...'], ...]
+     * @param array  $messages     Array of message objects. Content can be a string or content blocks array for vision.
      * @param string $systemPrompt System prompt providing context
-     * @param int    $maxTokens    Maximum tokens in response
      *
      * @return array{content: string, usage: array, model: string, stop_reason: string}
      *
@@ -71,6 +70,12 @@ class ClaudeClient
         }
 
         $jsonPayload = json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+
+        // Extend PHP's execution time to exceed curl timeout (prevents PHP killing the request)
+        $phpTimeLimit = $this->timeout + 30;
+        if ((int) ini_get('max_execution_time') > 0 && (int) ini_get('max_execution_time') < $phpTimeLimit) {
+            @set_time_limit($phpTimeLimit);
+        }
 
         $ch = curl_init(self::API_URL);
         $this->applySslConfig($ch);
@@ -191,5 +196,32 @@ class ClaudeClient
         usort($models, fn(array $a, array $b) => strcasecmp($a['display_name'], $b['display_name']));
 
         return $models;
+    }
+
+    /**
+     * Build a base64 image content block for Claude Vision API.
+     *
+     * @return array{type: string, source: array{type: string, media_type: string, data: string}}
+     * @throws RuntimeException if file cannot be read
+     */
+    public static function imageToBase64Block(string $filePath, string $mimeType): array
+    {
+        if (!file_exists($filePath) || !is_readable($filePath)) {
+            throw new RuntimeException("Image file not found or not readable: {$filePath}");
+        }
+
+        $data = file_get_contents($filePath);
+        if ($data === false) {
+            throw new RuntimeException("Failed to read image file: {$filePath}");
+        }
+
+        return [
+            'type'   => 'image',
+            'source' => [
+                'type'       => 'base64',
+                'media_type' => $mimeType,
+                'data'       => base64_encode($data),
+            ],
+        ];
     }
 }

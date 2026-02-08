@@ -71,8 +71,13 @@ test_pass('ai-assistant.js exists');
 
 $jsContent = file_get_contents($jsPath);
 
+// Also load shared ai-chat-core.js (refactored shared module) for combined checks
+$coreJsPath = $rootDir . '/public/assets/js/ai-chat-core.js';
+$coreJsContent = file_exists($coreJsPath) ? file_get_contents($coreJsPath) : '';
+$combinedJs = $jsContent . "\n" . $coreJsContent;
+
 // ---------------------------------------------------------------------------
-// Test 2: ai-assistant.js has all required functions
+// Test 2: ai-assistant.js (+ shared core) has all required functions
 // ---------------------------------------------------------------------------
 $requiredFunctions = [
     'initAIPanel'          => 'entry point / initialization',
@@ -93,8 +98,10 @@ $requiredFunctions = [
 $allFunctionsFound = true;
 $missingFunctions = [];
 foreach ($requiredFunctions as $fn => $purpose) {
-    // Match "function functionName" pattern
-    if (!preg_match('/function\s+' . preg_quote($fn, '/') . '\s*\(/', $jsContent)) {
+    // Match "function functionName" or prototype method pattern in combined JS
+    if (!preg_match('/function\s+' . preg_quote($fn, '/') . '\s*\(/', $combinedJs)
+        && !preg_match('/\._?' . preg_quote($fn, '/') . '\s*=\s*function/', $combinedJs)
+        && !preg_match('/\.' . preg_quote($fn, '/') . '\s*=\s*function/', $combinedJs)) {
         $allFunctionsFound = false;
         $missingFunctions[] = $fn;
     }
@@ -119,14 +126,14 @@ $eventChecks = [
 $allEventsFound = true;
 $missingEvents = [];
 foreach ($eventChecks as $pattern => $purpose) {
-    if (strpos($jsContent, $pattern) === false) {
+    if (strpos($combinedJs, $pattern) === false) {
         $allEventsFound = false;
         $missingEvents[] = "{$pattern} ({$purpose})";
     }
 }
 
-// Check for Enter key handling (send on Enter, newline on Shift+Enter)
-if (strpos($jsContent, 'Enter') === false || strpos($jsContent, 'shiftKey') === false) {
+// Check for Enter key handling (send on Enter, newline on Shift+Enter) — may be in core
+if (strpos($combinedJs, 'Enter') === false || strpos($combinedJs, 'shiftKey') === false) {
     $allEventsFound = false;
     $missingEvents[] = 'Enter/Shift+Enter key handling';
 }
@@ -146,14 +153,14 @@ if ($isSmoke) {
 // ---------------------------------------------------------------------------
 // Test 4: ai-assistant.js sends CSRF token header in fetch requests
 // ---------------------------------------------------------------------------
-if (str_contains($jsContent, 'X-CSRF-Token') && str_contains($jsContent, '_csrf_token')) {
+if (str_contains($combinedJs, 'X-CSRF-Token') && str_contains($combinedJs, '_csrf_token')) {
     test_pass('ai-assistant.js reads CSRF token and sends X-CSRF-Token header');
 } else {
     test_fail('ai-assistant.js CSRF handling', 'missing X-CSRF-Token header or _csrf_token input read');
 }
 
 // Verify it sends JSON content type
-if (str_contains($jsContent, 'application/json')) {
+if (str_contains($combinedJs, 'application/json')) {
     test_pass('ai-assistant.js sends Content-Type: application/json');
 } else {
     test_fail('ai-assistant.js Content-Type', 'application/json not found in fetch headers');
@@ -162,19 +169,19 @@ if (str_contains($jsContent, 'application/json')) {
 // ---------------------------------------------------------------------------
 // Test 5: ai-assistant.js has TinyMCE integration
 // ---------------------------------------------------------------------------
-if (str_contains($jsContent, 'tinymce') && str_contains($jsContent, 'insertContent')) {
+if (str_contains($combinedJs, 'tinymce') && str_contains($combinedJs, 'insertContent')) {
     test_pass('insertToEditor() uses tinymce.activeEditor.insertContent()');
 } else {
     test_fail('TinyMCE insert integration', 'tinymce or insertContent not found');
 }
 
-if (str_contains($jsContent, 'setContent')) {
+if (str_contains($combinedJs, 'setContent')) {
     test_pass('replaceEditorContent() uses tinymce.activeEditor.setContent()');
 } else {
     test_fail('TinyMCE replace integration', 'setContent not found');
 }
 
-if (str_contains($jsContent, 'confirm(')) {
+if (str_contains($combinedJs, 'confirm(')) {
     test_pass('replaceEditorContent() shows confirm() dialog before replacing');
 } else {
     test_fail('Replace confirmation', 'confirm() dialog not found');
@@ -183,13 +190,13 @@ if (str_contains($jsContent, 'confirm(')) {
 // ---------------------------------------------------------------------------
 // Test 6: ai-assistant.js has conversation loading from backend
 // ---------------------------------------------------------------------------
-if (str_contains($jsContent, '/admin/ai/chat') && str_contains($jsContent, '/admin/ai/conversations')) {
+if (str_contains($combinedJs, '/admin/ai/chat') && str_contains($combinedJs, '/admin/ai/conversations')) {
     test_pass('ai-assistant.js calls both API endpoints (chat + conversations)');
 } else {
     test_fail('API endpoint calls', 'missing /admin/ai/chat or /admin/ai/conversations');
 }
 
-if (str_contains($jsContent, 'conversation_id') && str_contains($jsContent, 'content_id')) {
+if (str_contains($combinedJs, 'conversation_id') && str_contains($combinedJs, 'content_id')) {
     test_pass('ai-assistant.js sends conversation_id and content_id in requests');
 } else {
     test_fail('Request payload fields', 'missing conversation_id or content_id');
@@ -200,10 +207,15 @@ if (str_contains($jsContent, 'conversation_id') && str_contains($jsContent, 'con
 // ---------------------------------------------------------------------------
 $cssPath = $rootDir . '/public/assets/css/admin.css';
 
+$aiChatCssPath = $rootDir . '/public/assets/css/ai-chat.css';
 if (!file_exists($cssPath)) {
     test_fail('admin.css exists', 'public/assets/css/admin.css not found');
 } else {
+    // AI panel styles may be in admin.css or the dedicated ai-chat.css
     $cssContent = file_get_contents($cssPath);
+    if (file_exists($aiChatCssPath)) {
+        $cssContent .= "\n" . file_get_contents($aiChatCssPath);
+    }
 
     $layoutSelectors = [
         '#ai-panel'             => 'panel container',
@@ -378,11 +390,11 @@ if (!file_exists($editPath)) {
 // Test 14: ai-assistant.js uses textContent for user messages (XSS safe)
 // ---------------------------------------------------------------------------
 // User messages should use textContent, assistant messages use innerHTML
-if (str_contains($jsContent, 'textContent') && str_contains($jsContent, 'innerHTML')) {
+if (str_contains($combinedJs, 'textContent') && str_contains($combinedJs, 'innerHTML')) {
     // Verify the pattern: user messages get textContent, assistant messages get innerHTML
     // Check that appendMessage function differentiates by role
-    if (preg_match('/role\s*===?\s*[\'"]assistant[\'"]/', $jsContent) &&
-        preg_match('/role\s*===?\s*[\'"]user[\'"]/', $jsContent)) {
+    if (preg_match('/role\s*===?\s*[\'"]assistant[\'"]/', $combinedJs) &&
+        preg_match('/role\s*===?\s*[\'"]user[\'"]/', $combinedJs)) {
         test_pass('ai-assistant.js differentiates user (textContent) and assistant (innerHTML) messages');
     } else {
         test_fail('Message role differentiation', 'role checks for user/assistant not found');
@@ -394,14 +406,14 @@ if (str_contains($jsContent, 'textContent') && str_contains($jsContent, 'innerHT
 // ---------------------------------------------------------------------------
 // Test 15: ai-assistant.js has loading indicator
 // ---------------------------------------------------------------------------
-if (str_contains($jsContent, 'ai-message-loading') && str_contains($jsContent, 'ai-typing-indicator')) {
+if (str_contains($combinedJs, 'ai-message-loading') && str_contains($combinedJs, 'ai-typing-indicator')) {
     test_pass('ai-assistant.js creates loading/typing indicator elements');
 } else {
     test_fail('Loading indicator', 'missing ai-message-loading or ai-typing-indicator class');
 }
 
 // Check isLoading guard prevents double-send
-if (str_contains($jsContent, 'isLoading')) {
+if (str_contains($combinedJs, 'isLoading')) {
     test_pass('ai-assistant.js uses isLoading flag to prevent double-send');
 } else {
     test_fail('Double-send prevention', 'isLoading flag not found');
@@ -410,13 +422,13 @@ if (str_contains($jsContent, 'isLoading')) {
 // ---------------------------------------------------------------------------
 // Test 16: ai-assistant.js has new conversation support
 // ---------------------------------------------------------------------------
-if (str_contains($jsContent, 'ai-new-conversation') || str_contains($jsContent, 'new-conversation')) {
+if (str_contains($combinedJs, 'ai-new-conversation') || str_contains($combinedJs, 'new-conversation') || str_contains($combinedJs, 'newConversation')) {
     test_pass('ai-assistant.js handles new conversation button');
 } else {
     test_fail('New conversation handler', 'ai-new-conversation reference not found');
 }
 
-if (str_contains($jsContent, 'conversationId') && str_contains($jsContent, 'null')) {
+if (str_contains($combinedJs, 'conversationId') && str_contains($combinedJs, 'null')) {
     test_pass('ai-assistant.js resets conversationId for new conversations');
 } else {
     test_fail('Conversation ID reset', 'conversationId = null pattern not found');

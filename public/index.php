@@ -116,6 +116,8 @@ $router->group('/admin', function($router) use ($app) {
     // AI Assistant routes
     $router->post('/ai/chat', [AIController::class, 'chat']);
     $router->get('/ai/conversations', [AIController::class, 'conversations']);
+    $router->post('/ai/compact', [AIController::class, 'compact']);
+    $router->get('/ai/models/enabled', [AIController::class, 'enabledModels']);
     $router->post('/ai/models/fetch', [AIController::class, 'fetchModels']);
     $router->post('/ai/models/enable', [AIController::class, 'saveEnabledModels']);
 

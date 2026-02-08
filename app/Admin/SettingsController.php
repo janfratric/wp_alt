@@ -160,6 +160,27 @@ class SettingsController
             $this->saveSetting('contact_notification_email', $contactEmail);
         }
 
+        // --- Media & Image Settings ---
+        $maxUploadSize = $request->input('max_upload_size');
+        if ($maxUploadSize !== null && $maxUploadSize !== '') {
+            $this->saveSetting('max_upload_size', (string) max(102400, min(104857600, (int) $maxUploadSize)));
+        }
+
+        $imageResizeThreshold = $request->input('image_resize_threshold');
+        if ($imageResizeThreshold !== null && $imageResizeThreshold !== '') {
+            $this->saveSetting('image_resize_threshold', (string) max(102400, min(104857600, (int) $imageResizeThreshold)));
+        }
+
+        $imageMaxDimension = $request->input('image_max_dimension');
+        if ($imageMaxDimension !== null && $imageMaxDimension !== '') {
+            $this->saveSetting('image_max_dimension', (string) max(100, min(10000, (int) $imageMaxDimension)));
+        }
+
+        $jpegQuality = $request->input('image_jpeg_quality');
+        if ($jpegQuality !== null && $jpegQuality !== '') {
+            $this->saveSetting('image_jpeg_quality', (string) max(10, min(100, (int) $jpegQuality)));
+        }
+
         // --- Advanced ---
         $this->saveCheckbox($request, 'registration_enabled');
         $this->saveCheckbox($request, 'maintenance_mode');

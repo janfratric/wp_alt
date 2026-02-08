@@ -692,17 +692,20 @@ try {
         test_fail('page-generator.js exists', 'public/assets/js/page-generator.js not found');
     } else {
         $js = file_get_contents($jsPath);
+        // Also load shared ai-chat-core.js for combined checks
+        $coreJsPath53 = $rootDir . '/public/assets/js/ai-chat-core.js';
+        $combinedJs53 = $js . (file_exists($coreJsPath53) ? "\n" . file_get_contents($coreJsPath53) : '');
 
-        $hasSendMessage = str_contains($js, 'sendMessage');
-        $hasGoToStep = str_contains($js, 'goToStep');
-        $hasOnTypeSelected = str_contains($js, 'onTypeSelected') || str_contains($js, 'TypeSelected');
-        $hasRequestGen = str_contains($js, 'requestGeneration');
-        $hasCreateContent = str_contains($js, 'createContent');
-        $hasAppendMessage = str_contains($js, 'appendMessage');
-        $hasApiCall = str_contains($js, 'apiCall') || (str_contains($js, 'fetch') && str_contains($js, '/admin/generator'));
-        $hasCsrf = str_contains($js, 'X-CSRF-Token') || str_contains($js, 'csrf');
-        $hasReadyCheck = str_contains($js, 'ready') && str_contains($js, 'Generate');
-        $hasDomReady = str_contains($js, 'DOMContentLoaded');
+        $hasSendMessage = str_contains($combinedJs53, 'sendMessage');
+        $hasGoToStep = str_contains($combinedJs53, 'goToStep');
+        $hasOnTypeSelected = str_contains($combinedJs53, 'onTypeSelected') || str_contains($combinedJs53, 'TypeSelected');
+        $hasRequestGen = str_contains($combinedJs53, 'requestGeneration');
+        $hasCreateContent = str_contains($combinedJs53, 'createContent');
+        $hasAppendMessage = str_contains($combinedJs53, 'appendMessage');
+        $hasApiCall = str_contains($combinedJs53, 'apiCall') || (str_contains($combinedJs53, 'fetch') && str_contains($combinedJs53, '/admin/generator'));
+        $hasCsrf = str_contains($combinedJs53, 'X-CSRF-Token') || str_contains($combinedJs53, 'csrf');
+        $hasReadyCheck = str_contains($combinedJs53, 'ready') && str_contains($combinedJs53, 'Generate');
+        $hasDomReady = str_contains($combinedJs53, 'DOMContentLoaded');
 
         if ($hasSendMessage && $hasGoToStep && $hasRequestGen && $hasCreateContent
             && $hasAppendMessage && $hasApiCall && $hasCsrf && $hasDomReady) {
@@ -720,8 +723,8 @@ try {
             test_fail('page-generator.js functions', 'missing: ' . implode(', ', $missing));
         }
 
-        // Check for Enter key handling
-        if (str_contains($js, 'Enter') && str_contains($js, 'shiftKey')) {
+        // Check for Enter key handling (may be in shared ai-chat-core.js)
+        if (str_contains($combinedJs53, 'Enter') && str_contains($combinedJs53, 'shiftKey')) {
             test_pass('page-generator.js handles Enter key (send) and Shift+Enter (newline)');
         } else {
             test_fail('page-generator.js Enter key', 'Enter/shiftKey handling not found');

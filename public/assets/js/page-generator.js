@@ -3,15 +3,14 @@
 
     // --- State ---
     var csrfToken = '';
-    var conversationId = null;
     var contentType = '';
     var currentStep = 'setup';
     var generatedData = null;
     var isLoading = false;
+    var core = null;
 
     // --- DOM refs ---
     var appEl;
-    var messagesEl, inputEl, sendBtn;
 
     // --- Init ---
     function init() {
@@ -19,28 +18,12 @@
         if (!appEl) return;
 
         csrfToken = appEl.getAttribute('data-csrf') || '';
-        messagesEl = document.getElementById('generator-messages');
-        inputEl = document.getElementById('generator-input');
-        sendBtn = document.getElementById('generator-send');
 
         // Type selection
         var typeButtons = appEl.querySelectorAll('.type-option');
         for (var i = 0; i < typeButtons.length; i++) {
             typeButtons[i].addEventListener('click', function() {
                 onTypeSelected(this.getAttribute('data-type'));
-            });
-        }
-
-        // Chat input
-        if (sendBtn) {
-            sendBtn.addEventListener('click', sendMessage);
-        }
-        if (inputEl) {
-            inputEl.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
             });
         }
 
@@ -53,6 +36,43 @@
 
         var publishBtn = document.getElementById('btn-create-publish');
         if (publishBtn) publishBtn.addEventListener('click', function() { createContent('published'); });
+    }
+
+    // --- AIChatCore instance (created on first type selection) ---
+    function initChatCore() {
+        if (core) return;
+
+        core = new window.AIChatCore({
+            messagesEl:      document.getElementById('generator-messages'),
+            inputEl:         document.getElementById('generator-input'),
+            sendBtnEl:       document.getElementById('generator-send'),
+            headerEl:        document.getElementById('generator-chat-header'),
+            attachPreviewEl: document.getElementById('generator-attach-preview'),
+            attachBtnEl:     document.getElementById('generator-attach-btn'),
+            chatEndpoint:    '/admin/generator/chat',
+            compactEndpoint: '/admin/ai/compact',
+            modelsEndpoint:  '/admin/ai/models/enabled',
+            conversationsEndpoint: null,
+            csrfToken:       csrfToken,
+            contentId:       null,
+            enableAttachments: true,
+            enableModelSelector: true,
+            enableContextMeter: true,
+            enableCompact: true,
+            enableConversationHistory: false,
+            enableMarkdown: true,
+            enableResizable: false,
+            messageActions: null,
+            extraPayload: function() {
+                return {
+                    content_type: contentType,
+                    step: currentStep
+                };
+            },
+            onAssistantMessage: function(content, data) {
+                checkReadyState(data);
+            }
+        });
     }
 
     // --- Step Management ---
@@ -83,78 +103,34 @@
             }
         }
 
-        if (step === 'gathering' && inputEl) {
-            inputEl.focus();
+        if (step === 'gathering') {
+            var inputEl = document.getElementById('generator-input');
+            if (inputEl) inputEl.focus();
         }
     }
 
     // --- Setup ---
     function onTypeSelected(typeSlug) {
         contentType = typeSlug;
-        conversationId = null;
         generatedData = null;
 
-        // Clear any previous chat
-        if (messagesEl) messagesEl.innerHTML = '';
+        initChatCore();
+
+        // Start fresh conversation
+        core.newConversation();
 
         goToStep('gathering');
 
-        // Send initial message to start the conversation
-        appendMessage('user', 'I want to create a new ' + typeSlug + '.');
-        showLoading();
-
-        apiCall('/admin/generator/chat', {
-            message: 'I want to create a new ' + typeSlug + '. Please help me plan it.',
-            conversation_id: null,
-            content_type: contentType,
-            step: 'gathering'
-        }).then(function(data) {
-            hideLoading();
-            if (data.success) {
-                conversationId = data.conversation_id;
-                appendMessage('assistant', data.response);
-                checkReadyState(data);
-            } else {
-                appendMessage('assistant', 'Error: ' + (data.error || 'Something went wrong.'));
-            }
-        }).catch(function(err) {
-            hideLoading();
-            appendMessage('assistant', 'Error: Could not reach the server.');
-        });
-    }
-
-    // --- Chat ---
-    function sendMessage() {
-        if (isLoading) return;
-        var message = inputEl ? inputEl.value.trim() : '';
-        if (message === '') return;
-
-        inputEl.value = '';
-        appendMessage('user', message);
-        showLoading();
-
-        apiCall('/admin/generator/chat', {
-            message: message,
-            conversation_id: conversationId,
-            content_type: contentType,
-            step: 'gathering'
-        }).then(function(data) {
-            hideLoading();
-            if (data.success) {
-                conversationId = data.conversation_id;
-                appendMessage('assistant', data.response);
-                checkReadyState(data);
-            } else {
-                appendMessage('assistant', 'Error: ' + (data.error || 'Something went wrong.'));
-            }
-        }).catch(function(err) {
-            hideLoading();
-            appendMessage('assistant', 'Error: Could not reach the server.');
-        });
+        // Send initial message
+        var msg = 'I want to create a new ' + typeSlug + '. Please help me plan it.';
+        core.sendMessage(msg);
     }
 
     function checkReadyState(data) {
         if (data.step === 'ready') {
+            var messagesEl = document.getElementById('generator-messages');
+            if (!messagesEl) return;
+
             var btnDiv = document.createElement('div');
             btnDiv.style.textAlign = 'center';
             btnDiv.style.margin = '1rem 0';
@@ -165,97 +141,57 @@
             btn.addEventListener('click', requestGeneration);
             btnDiv.appendChild(btn);
             messagesEl.appendChild(btnDiv);
-            scrollMessages();
+            messagesEl.scrollTop = messagesEl.scrollHeight;
         }
     }
 
     function requestGeneration() {
-        if (isLoading) return;
-        showLoading();
+        if (isLoading || !core) return;
+        isLoading = true;
 
-        // Disable the generate button if it exists
-        var genBtns = messagesEl.querySelectorAll('.btn-generate');
-        for (var i = 0; i < genBtns.length; i++) {
-            genBtns[i].disabled = true;
+        var messagesEl = document.getElementById('generator-messages');
+        var sendBtn = document.getElementById('generator-send');
+
+        // Disable generate buttons
+        if (messagesEl) {
+            var genBtns = messagesEl.querySelectorAll('.btn-generate');
+            for (var i = 0; i < genBtns.length; i++) {
+                genBtns[i].disabled = true;
+            }
         }
+        if (sendBtn) sendBtn.disabled = true;
+
+        // Show loading indicator
+        core.appendMessage('user', 'Generate the page now based on everything we discussed.');
 
         apiCall('/admin/generator/chat', {
             message: 'Generate the page now based on everything we discussed.',
-            conversation_id: conversationId,
+            conversation_id: core.getConversationId(),
             content_type: contentType,
-            step: 'generating'
+            step: 'generating',
+            model: core.currentModel || undefined
         }).then(function(data) {
-            hideLoading();
+            isLoading = false;
+            if (sendBtn) sendBtn.disabled = false;
+
             if (data.success && data.step === 'generated' && data.generated) {
                 generatedData = data.generated;
                 populatePreview(data.generated);
                 goToStep('preview');
             } else if (data.success && data.step === 'generation_failed') {
-                appendMessage('assistant', 'I had trouble generating structured output. Let me try again. ' + (data.response || ''));
-                var btns = messagesEl.querySelectorAll('.btn-generate');
-                for (var j = 0; j < btns.length; j++) { btns[j].disabled = false; }
+                core.appendMessage('assistant', 'I had trouble generating structured output. Let me try again. ' + (data.response || ''));
+                if (messagesEl) {
+                    var btns = messagesEl.querySelectorAll('.btn-generate');
+                    for (var j = 0; j < btns.length; j++) { btns[j].disabled = false; }
+                }
             } else {
-                appendMessage('assistant', 'Error: ' + (data.error || 'Generation failed.'));
+                core.appendMessage('assistant', 'Error: ' + (data.error || 'Generation failed.'));
             }
-        }).catch(function(err) {
-            hideLoading();
-            appendMessage('assistant', 'Error: Could not reach the server.');
+        }).catch(function() {
+            isLoading = false;
+            if (sendBtn) sendBtn.disabled = false;
+            core.appendMessage('assistant', 'Error: Could not reach the server.');
         });
-    }
-
-    // --- Messages UI ---
-    function appendMessage(role, content) {
-        if (!messagesEl) return;
-
-        var wrapper = document.createElement('div');
-        wrapper.className = 'chat-message chat-message-' + role;
-
-        var bubble = document.createElement('div');
-        bubble.className = 'chat-bubble';
-
-        if (role === 'assistant') {
-            bubble.innerHTML = formatResponse(content);
-        } else {
-            bubble.textContent = content;
-        }
-
-        wrapper.appendChild(bubble);
-        messagesEl.appendChild(wrapper);
-        scrollMessages();
-    }
-
-    function formatResponse(text) {
-        // Basic markdown-like formatting
-        text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-        text = text.replace(/\n/g, '<br>');
-        return text;
-    }
-
-    function showLoading() {
-        isLoading = true;
-        var el = document.createElement('div');
-        el.className = 'chat-loading';
-        el.id = 'generator-loading';
-        el.textContent = 'AI is thinking...';
-        if (messagesEl) {
-            messagesEl.appendChild(el);
-            scrollMessages();
-        }
-        if (sendBtn) sendBtn.disabled = true;
-    }
-
-    function hideLoading() {
-        isLoading = false;
-        var el = document.getElementById('generator-loading');
-        if (el) el.remove();
-        if (sendBtn) sendBtn.disabled = false;
-    }
-
-    function scrollMessages() {
-        if (messagesEl) {
-            messagesEl.scrollTop = messagesEl.scrollHeight;
-        }
     }
 
     // --- Preview ---
@@ -271,7 +207,6 @@
             bodyEl.innerHTML = data.body || '';
         }
 
-        // Custom fields
         var cfEl = document.getElementById('preview-custom-fields');
         if (cfEl && data.custom_fields && Object.keys(data.custom_fields).length > 0) {
             var html = '<h3>Custom Fields</h3><div class="preview-meta">';
@@ -330,7 +265,7 @@
                 if (draftBtn) draftBtn.disabled = false;
                 if (publishBtn) publishBtn.disabled = false;
             }
-        }).catch(function(err) {
+        }).catch(function() {
             isLoading = false;
             alert('Error: Could not reach the server.');
             if (draftBtn) draftBtn.disabled = false;
