@@ -17,6 +17,7 @@ use App\Auth\AuthController;
 use App\Admin\DashboardController;
 use App\Admin\ContentController;
 use App\Admin\MediaController;
+use App\Admin\UserController;
 
 // Bootstrap
 $app = new App();
@@ -89,16 +90,15 @@ $router->group('/admin', function($router) use ($app) {
     $router->post('/media/upload', [MediaController::class, 'upload']);
     $router->delete('/media/{id}', [MediaController::class, 'delete']);
 
+    // User management routes
+    $router->get('/users', [UserController::class, 'index']);
+    $router->get('/users/create', [UserController::class, 'create']);
+    $router->post('/users', [UserController::class, 'store']);
+    $router->get('/users/{id}/edit', [UserController::class, 'edit']);
+    $router->put('/users/{id}', [UserController::class, 'update']);
+    $router->delete('/users/{id}', [UserController::class, 'delete']);
+
     // Placeholder routes for sidebar links (to be replaced in future chunks)
-    $router->get('/users', function($request) use ($app) {
-        return new Response(
-            $app->template()->render('admin/placeholder', [
-                'title' => 'Users',
-                'activeNav' => 'users',
-                'message' => 'User management is coming in Chunk 2.4.',
-            ])
-        );
-    });
     $router->get('/settings', function($request) use ($app) {
         return new Response(
             $app->template()->render('admin/placeholder', [

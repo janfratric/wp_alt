@@ -1,8 +1,8 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management)
 >
-> **Last updated**: 2026-02-07
+> **Last updated**: 2026-02-08
 
 ---
 
@@ -43,7 +43,7 @@ php -S localhost:8000 -t public
 2. **Expected**: Shows "404 Not Found"
 3. Try: `/admin`, `/login`
 4. **Expected**: Both return 404 (these routes aren't registered)
-5. Note: `/admin/content` is now a full content list (Chunk 2.2); `/admin/media` is now the media library (Chunk 2.3); `/admin/users`, `/admin/settings` still have placeholder pages
+5. Note: `/admin/content` is now a full content list (Chunk 2.2); `/admin/media` is now the media library (Chunk 2.3); `/admin/users` is now the user management section (Chunk 2.4); `/admin/settings` still has a placeholder page
 
 ### A5. Query strings don't break routing
 1. Open [http://localhost:8000/?foo=bar](http://localhost:8000/?foo=bar)
@@ -430,7 +430,7 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 ### K3. All sidebar links work (no 404s)
 1. Click each of the 5 sidebar links in order
 2. **Verify**: All pages load (no 404 errors)
-3. **Verify**: Content shows a content list with filters and "+ New Content" button (Chunk 2.2); Media shows the media library with upload form (Chunk 2.3); Users, Settings show "coming soon" placeholder messages
+3. **Verify**: Content shows a content list with filters and "+ New Content" button (Chunk 2.2); Media shows the media library with upload form (Chunk 2.3); Users shows the user management list with "+ New User" button (Chunk 2.4); Settings shows "coming soon" placeholder message
 4. **Verify**: Dashboard shows the full stats dashboard
 
 ### K4. Sidebar user info and logout
@@ -858,6 +858,190 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 
 ---
 
+## Test Group V: User List — Display & Search (Chunk 2.4)
+
+### V1. User list loads with default admin
+1. Log in as admin (fresh database)
+2. Open [http://localhost:8000/admin/users](http://localhost:8000/admin/users)
+3. **Verify**: Page loads with "Users" heading and "+ New User" button
+4. **Verify**: Admin user appears in the table with username, email, role badge, and created date
+5. **Verify**: Sidebar highlights "Users" nav link
+6. **Verify**: "1 user(s)" count shown in card header
+
+### V2. Search by username
+1. Create additional users (see Test Group W)
+2. Type a username in the search box, click "Search"
+3. **Verify**: Only matching users appear
+4. **Verify**: Search term is preserved in the input field
+5. Click "Reset" — all users return
+
+### V3. Search by email
+1. Type an email in the search box, click "Search"
+2. **Verify**: Users with matching email appear
+3. **Verify**: Partial matches work (e.g., "example.com" matches all example.com emails)
+
+### V4. User list pagination
+1. Create 12+ users
+2. Open /admin/users
+3. **Verify**: First page shows 10 items, "Next »" link appears
+4. Click "Next" — page 2 shows remaining items, "« Prev" link appears
+5. **Verify**: "Page X of Y" info is displayed
+
+### V5. Delete button hidden for own account
+1. View the user list as admin
+2. **Verify**: The "Delete" button is NOT shown on admin's own row
+3. **Verify**: Other users have both "Edit" and "Delete" buttons
+
+---
+
+## Test Group W: User Editor — Create & Edit (Chunk 2.4)
+
+### W1. Create user form loads
+1. Click "+ New User" or visit [http://localhost:8000/admin/users/create](http://localhost:8000/admin/users/create)
+2. **Verify**: Form has username, email, role select, and password fields
+3. **Verify**: Role defaults to "Editor"
+4. **Verify**: Password field is required (has `required` attribute)
+5. **Verify**: Submit button reads "Create User"
+
+### W2. Create a new editor user
+1. Fill in: username=`testuser`, email=`test@example.com`, password=`password123`, role=Editor
+2. Click "Create User"
+3. **Expected**: Redirected to /admin/users with success flash "User created successfully."
+4. **Verify**: "testuser" appears in the list with "Editor" badge
+5. Log out, log in as `testuser`/`password123`
+6. **Verify**: Login succeeds, dashboard loads
+
+### W3. Create a new admin user
+1. Fill in: username=`admin2`, email=`admin2@example.com`, password=`password123`, role=Admin
+2. Click "Create User"
+3. **Verify**: User appears with "Admin" badge
+4. **Verify**: New admin can access /admin/users (not blocked by role check)
+
+### W4. Edit existing user
+1. From the user list, click "Edit" on a user
+2. **Verify**: Form loads with existing username, email, and role pre-filled
+3. **Verify**: Password field is empty (not pre-filled) and NOT required
+4. **Verify**: Submit button reads "Save Changes"
+5. **Verify**: Form has `_method=PUT` hidden input and CSRF token
+6. Change the username and email, click "Save Changes"
+7. **Expected**: Flash success "User updated successfully."
+8. **Verify**: Changes are persisted (refresh to confirm)
+
+### W5. Change user role
+1. Edit an editor user, change role to "Admin"
+2. Save — verify role badge updates to "Admin"
+3. Edit same user, change role back to "Editor"
+4. Save — verify role badge updates to "Editor"
+
+### W6. Reset another user's password
+1. Edit another user (not your own account)
+2. Enter a new password in the password field (no current password needed)
+3. Save — verify success
+4. Log out, log in as that user with the new password — verify it works
+
+### W7. Edit own account — role field disabled
+1. Navigate to /admin/users/{own-id}/edit
+2. **Verify**: Role field is disabled (shows current role as read-only text)
+3. **Verify**: Hidden input preserves the current role value
+4. **Verify**: Help text "You cannot change your own role." is shown
+
+### W8. Change own password (requires current password)
+1. Edit own account (/admin/users/{own-id}/edit)
+2. **Verify**: "Current Password" field is shown
+3. Enter new password WITHOUT entering current password
+4. Save — **Expected**: Error "Current password is incorrect."
+5. Enter correct current password + new password
+6. Save — **Expected**: Success. Log out, log in with new password — works
+
+### W9. Edit own username — session syncs
+1. Edit own account, change username
+2. Save — **Verify**: Sidebar immediately shows the new username (no re-login needed)
+
+---
+
+## Test Group X: User — Delete & Validation (Chunk 2.4)
+
+### X1. Delete user without content
+1. Create a user who has no content
+2. Click "Delete" on the user list — modal appears
+3. Select a reassignment target and confirm deletion
+4. **Verify**: User removed from list, flash "User deleted."
+
+### X2. Delete user with content — reassignment
+1. Create a user and create content authored by them
+2. Delete that user via the delete modal
+3. **Verify**: Modal shows "Reassign their content to:" with a dropdown
+4. Select admin as the reassignment target, confirm
+5. **Verify**: User deleted. Content still exists with author changed to admin
+
+### X3. Self-deletion prevented
+1. As admin, try to delete your own account (the Delete button should be hidden)
+2. Manually POST DELETE /admin/users/{own-id} (via curl or form manipulation)
+3. **Expected**: Error flash "You cannot delete your own account." Redirect to /admin/users
+
+### X4. Self-role-change prevented
+1. Edit own account, try to submit with a changed role (via browser dev tools)
+2. **Expected**: Error flash "You cannot change your own role."
+3. **Verify**: Role unchanged in database
+
+### X5. Validation — empty username rejected
+1. Create form, leave username empty, submit
+2. **Expected**: Error flash "Username is required." No user created
+
+### X6. Validation — invalid username format
+1. Create form, enter username with spaces or special chars (e.g., "test user!")
+2. **Expected**: Error flash about invalid characters
+
+### X7. Validation — duplicate username rejected
+1. Try to create a user with username "admin"
+2. **Expected**: Error flash "Username is already taken."
+
+### X8. Validation — duplicate email rejected
+1. Try to create a user with email "admin@localhost"
+2. **Expected**: Error flash "Email is already in use."
+
+### X9. Validation — invalid email rejected
+1. Create form, enter email "not-an-email"
+2. **Expected**: Error flash about invalid email
+
+### X10. Validation — short password rejected
+1. Create form, enter password with < 6 chars
+2. **Expected**: Error flash "Password must be at least 6 characters."
+
+---
+
+## Test Group Y: User — Security & Role Enforcement (Chunk 2.4)
+
+### Y1. Editor cannot access user management
+1. Log in as an editor user
+2. Navigate to /admin/users
+3. **Expected**: 403 Forbidden ("You do not have permission to access this page.")
+4. Try /admin/users/create — also 403
+5. **Verify**: Editor CAN still access /admin/dashboard and /admin/content
+
+### Y2. CSRF on user forms
+1. Open create user form, view page source
+2. **Verify**: `_csrf_token` hidden input is present
+3. Open edit user form
+4. **Verify**: `_csrf_token` and `_method=PUT` hidden inputs are present
+
+### Y3. Security headers on user pages
+1. Open browser DevTools > Network tab
+2. Visit /admin/users
+3. **Verify**: `X-Frame-Options: DENY` header is present
+4. **Verify**: `Content-Security-Policy` header includes `default-src 'self'`
+
+### Y4. XSS prevention
+1. Create a user with username containing HTML (if bypassing client validation): `<script>alert('xss')</script>`
+2. **Verify**: On the user list, the username is displayed as escaped text, NOT executed
+
+### Y5. Dashboard users count updates
+1. Create several users
+2. Visit /admin/dashboard
+3. **Verify**: "Users" stat card shows the correct count
+
+---
+
 ## Summary Checklist
 
 (continued from previous chunks)
@@ -962,3 +1146,32 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | U4 | Uploads directory .htaccess | ☐ |
 | U5 | Randomized filenames on disk | ☐ |
 | U6 | Dashboard media files count updates | ☐ |
+| V1 | User list loads with default admin | ☐ |
+| V2 | Search by username | ☐ |
+| V3 | Search by email | ☐ |
+| V4 | User list pagination | ☐ |
+| V5 | Delete button hidden for own account | ☐ |
+| W1 | Create user form loads | ☐ |
+| W2 | Create a new editor user | ☐ |
+| W3 | Create a new admin user | ☐ |
+| W4 | Edit existing user | ☐ |
+| W5 | Change user role | ☐ |
+| W6 | Reset another user's password | ☐ |
+| W7 | Edit own account — role disabled | ☐ |
+| W8 | Change own password (requires current) | ☐ |
+| W9 | Edit own username — session syncs | ☐ |
+| X1 | Delete user without content | ☐ |
+| X2 | Delete user with content — reassignment | ☐ |
+| X3 | Self-deletion prevented | ☐ |
+| X4 | Self-role-change prevented | ☐ |
+| X5 | Empty username rejected | ☐ |
+| X6 | Invalid username format rejected | ☐ |
+| X7 | Duplicate username rejected | ☐ |
+| X8 | Duplicate email rejected | ☐ |
+| X9 | Invalid email rejected | ☐ |
+| X10 | Short password rejected | ☐ |
+| Y1 | Editor cannot access user management | ☐ |
+| Y2 | CSRF on user forms | ☐ |
+| Y3 | Security headers on user pages | ☐ |
+| Y4 | XSS prevention | ☐ |
+| Y5 | Dashboard users count updates | ☐ |

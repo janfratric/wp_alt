@@ -14,7 +14,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
@@ -27,7 +27,9 @@ This starts PHP's built-in development server with `public/` as the document roo
 | 7 | [http://localhost:8000/admin/content/1/edit](http://localhost:8000/admin/content/1/edit) | Content editor (edit mode) — loads existing content, shows "Update" button instead of "Create", includes `_method=PUT` hidden field |
 | 8 | [http://localhost:8000/admin/media](http://localhost:8000/admin/media) | Media library — upload form with drag & drop zone, media grid with thumbnails, pagination, delete buttons. Sidebar highlights "Media" |
 | 8a | [http://localhost:8000/admin/media/browse?type=image](http://localhost:8000/admin/media/browse?type=image) | JSON endpoint — returns paginated list of image media items (used by media browser modal) |
-| 9 | [http://localhost:8000/admin/users](http://localhost:8000/admin/users) | Users placeholder — "Coming soon" message, sidebar highlights "Users" |
+| 9 | [http://localhost:8000/admin/users](http://localhost:8000/admin/users) | User list — searchable table with username, email, role badge, created date, edit/delete actions, pagination, and "+ New User" button. Admin-only (editors get 403) |
+| 9a | [http://localhost:8000/admin/users/create](http://localhost:8000/admin/users/create) | Create user form — username, email, role select, password fields. Admin-only |
+| 9b | [http://localhost:8000/admin/users/1/edit](http://localhost:8000/admin/users/1/edit) | Edit user form — pre-filled fields, `_method=PUT`, current password required for own password change, role field disabled when editing self |
 | 10 | [http://localhost:8000/admin/settings](http://localhost:8000/admin/settings) | Settings placeholder — "Coming soon" message, sidebar highlights "Settings" |
 | 11 | [http://localhost:8000/nonexistent](http://localhost:8000/nonexistent) | 404 page — shows "404 Not Found" (no route matches) |
 
@@ -81,6 +83,22 @@ The media management section (`/admin/media`) provides file upload and library b
 - **Featured image picker** — Browse Media button opens modal, selected image shows preview, Remove button clears it; stored as hidden input URL
 - **Security** — `.htaccess` in uploads directory disables PHP execution; CSP headers on all media pages; CSRF required on POST/DELETE
 - **AJAX support** — upload and delete return JSON for AJAX requests, redirect with flash for form submissions
+
+### User Management (Chunk 2.4)
+
+The user management section (`/admin/users`) provides admin-only user CRUD:
+- **User list** — table with username, email, role badge, created date, and edit/delete actions
+- **Search** — filter users by username or email via search input
+- **Pagination** — page navigation with "Prev/Next" links when users exceed page size
+- **Create user** — form with username, email, role (admin/editor), and password fields
+- **Edit user** — update username, email, role; change password (optional on edit)
+- **Role enforcement** — every action requires admin role; editors get 403 Forbidden
+- **Self-protection** — admins cannot delete their own account or change their own role
+- **Password security** — changing own password requires entering current password; admin can reset other users' passwords without it
+- **Session sync** — editing own username updates the sidebar display without re-login
+- **Delete with reassignment** — deleting a user who has content prompts to reassign content to another user via modal
+- **Validation** — username (alphanumeric+underscore, max 50, unique), email (valid format, unique), password (min 6 chars, required on create)
+- **Security headers** — `X-Frame-Options: DENY` and `Content-Security-Policy` on all user management pages
 
 ---
 
