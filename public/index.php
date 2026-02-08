@@ -23,6 +23,7 @@ use App\AIAssistant\AIController;
 use App\Admin\SettingsController;
 use App\Admin\ContentTypeController;
 use App\AIAssistant\PageGeneratorController;
+use App\Admin\ElementController;
 
 // Bootstrap
 $app = new App();
@@ -112,6 +113,16 @@ $router->group('/admin', function($router) use ($app) {
     $router->get('/content-types/{id}/edit', [ContentTypeController::class, 'edit']);
     $router->put('/content-types/{id}', [ContentTypeController::class, 'update']);
     $router->delete('/content-types/{id}', [ContentTypeController::class, 'delete']);
+
+    // Element catalogue routes
+    $router->get('/elements', [ElementController::class, 'index']);
+    $router->get('/elements/api/list', [ElementController::class, 'apiList']);
+    $router->get('/elements/create', [ElementController::class, 'create']);
+    $router->post('/elements', [ElementController::class, 'store']);
+    $router->get('/elements/{id}/edit', [ElementController::class, 'edit']);
+    $router->get('/elements/{id}/preview', [ElementController::class, 'preview']);
+    $router->put('/elements/{id}', [ElementController::class, 'update']);
+    $router->delete('/elements/{id}', [ElementController::class, 'delete']);
 
     // AI Assistant routes
     $router->post('/ai/chat', [AIController::class, 'chat']);

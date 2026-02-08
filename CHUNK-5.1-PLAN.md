@@ -1433,7 +1433,7 @@ Add a small script block after the existing `<script>` tags at the end of the te
 - No drag-and-drop reordering (uses up/down buttons instead — simpler, no library needed)
 - No inline editing of content type fields from the content editor
 - No custom display templates per content type (uses the generic `page` template)
-- No field-level validation on content save (e.g., "required" flag is informational in the editor, not enforced server-side in this chunk — can be added in 5.4 polish)
+- No field-level validation on content save (e.g., "required" flag is informational in the editor, not enforced server-side in this chunk — can be added in 7.1 polish)
 
 ---
 

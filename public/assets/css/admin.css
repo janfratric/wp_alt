@@ -1159,3 +1159,406 @@ table.data-table td:first-child {
 .generator-panel.hidden {
     display: none;
 }
+
+/* =========================================================
+   Element Catalogue & Editor
+   ========================================================= */
+
+/* --- Catalogue Grid --- */
+.elements-filters {
+    margin-bottom: 1.5rem;
+}
+
+.elements-filters .filter-form {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.elements-filters select,
+.elements-filters input[type="text"] {
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: inherit;
+}
+
+.elements-filters input[type="text"] {
+    flex: 1;
+    max-width: 300px;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0.45rem 0.5rem;
+}
+
+.btn-link:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+.btn-secondary {
+    background: var(--color-border-light);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+    background: var(--color-border);
+}
+
+.elements-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.element-card {
+    background: var(--color-white);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow var(--transition-fast);
+    overflow: hidden;
+}
+
+.element-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.element-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    background: var(--color-border-light);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.element-category-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-primary);
+    background: var(--color-primary-light);
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+}
+
+.element-status {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.element-status-active {
+    color: var(--color-success);
+}
+
+.element-status-draft {
+    color: var(--color-warning);
+}
+
+.element-status-archived {
+    color: var(--color-text-muted);
+}
+
+.element-card-body {
+    padding: 1rem;
+    flex: 1;
+}
+
+.element-card-body h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.element-slug {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    background: var(--color-border-light);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+}
+
+.element-desc {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    margin-top: 0.5rem;
+    line-height: 1.4;
+}
+
+.element-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    border-top: 1px solid var(--color-border);
+    font-size: 0.8rem;
+}
+
+.element-usage {
+    color: var(--color-text-muted);
+}
+
+.element-card-actions {
+    display: flex;
+    gap: 0.4rem;
+}
+
+/* --- Element Editor --- */
+.element-editor-page .page-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.element-editor-grid {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.element-meta-panel,
+.element-code-panel {
+    background: var(--color-white);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    padding: 1.25rem;
+}
+
+.element-meta-panel h3,
+.element-code-panel h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    margin-top: 1rem;
+}
+
+.element-meta-panel h3:first-of-type {
+    margin-top: 0.25rem;
+}
+
+.section-desc {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-bottom: 0.75rem;
+}
+
+.section-desc code {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    background: var(--color-border-light);
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+/* Code editor textareas */
+.code-editor {
+    width: 100%;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    resize: vertical;
+    tab-size: 2;
+}
+
+.code-editor:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.code-section {
+    margin-bottom: 1.25rem;
+}
+
+.code-section:last-child {
+    margin-bottom: 0;
+}
+
+/* Live preview container */
+.element-preview-container {
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 1rem;
+    margin-top: 0.5rem;
+    min-height: 100px;
+    background: #fff;
+    overflow: auto;
+}
+
+/* --- Slot Builder --- */
+.slot-item {
+    background: var(--color-border-light);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    position: relative;
+}
+
+.slot-item .slot-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.slot-item .slot-header .slot-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.slot-item .slot-header .slot-type-badge {
+    font-size: 0.7rem;
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-weight: 500;
+}
+
+.slot-item .slot-actions {
+    display: flex;
+    gap: 0.3rem;
+}
+
+.slot-item .slot-actions button {
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 0.2rem 0.4rem;
+    cursor: pointer;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.slot-item .slot-actions button:hover {
+    background: var(--color-white);
+    color: var(--color-text);
+}
+
+.slot-item .slot-actions button.remove-slot {
+    color: var(--color-error);
+    border-color: var(--color-error-border);
+}
+
+.slot-item .slot-actions button.remove-slot:hover {
+    background: var(--color-error-bg);
+}
+
+.slot-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.slot-fields label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 0.15rem;
+    color: var(--color-text-muted);
+}
+
+.slot-fields input,
+.slot-fields select {
+    width: 100%;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    font-size: 0.82rem;
+    font-family: inherit;
+}
+
+.slot-fields input:focus,
+.slot-fields select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+/* Sub-slots (for list type) */
+.sub-slots-container {
+    grid-column: 1 / -1;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: var(--color-white);
+    border: 1px dashed var(--color-border);
+    border-radius: 4px;
+}
+
+.sub-slots-container h4 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    color: var(--color-text-muted);
+}
+
+.sub-slot-item {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.35rem;
+}
+
+.sub-slot-item input,
+.sub-slot-item select {
+    flex: 1;
+    padding: 0.25rem 0.4rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.sub-slot-item button {
+    background: none;
+    border: none;
+    color: var(--color-error);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0.15rem 0.3rem;
+}
+
+.form-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* --- Responsive --- */
+@media (max-width: 900px) {
+    .element-editor-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .elements-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .elements-filters .filter-form {
+        flex-wrap: wrap;
+    }
+}

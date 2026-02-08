@@ -1902,7 +1902,7 @@ The `parseGeneratedContent()` method handles common AI output quirks:
 - **Duplicate slug**: `ensureUniqueSlug()` prevents conflicts with existing content.
 - **Custom type deleted**: If user selects a custom type that's later deleted, the content is still created with that type slug (the content table allows any string in the type field).
 - **Large HTML body**: No artificial size limit — the body TEXT column handles arbitrary length.
-- **Conversation cleanup**: Generator conversations (content_id = null) are not automatically cleaned up. This is acceptable; cleanup could be added in Chunk 5.4 if needed.
+- **Conversation cleanup**: Generator conversations (content_id = null) are not automatically cleaned up. This is acceptable; cleanup could be added in Chunk 7.1 if needed.
 
 ### Security Considerations
 - All API calls require CSRF token (validated by existing middleware).

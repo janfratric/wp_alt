@@ -10,6 +10,9 @@
     <meta property="og:site_name" content="<?= $this->e($siteName ?? 'LiteCMS') ?>">
     <link rel="stylesheet" href="/assets/css/style.css">
 <?= $this->yieldSection('head') ?>
+<?php if (!empty($elementCss)): ?>
+    <style id="litecms-element-styles"><?= $elementCss ?></style>
+<?php endif; ?>
 </head>
 <body<?php if (!empty($gaId)): ?> data-ga-id="<?= $this->e($gaId) ?>"<?php endif; ?>>
     <header class="site-header">

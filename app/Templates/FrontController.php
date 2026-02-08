@@ -7,6 +7,7 @@ use App\Core\Config;
 use App\Core\Request;
 use App\Core\Response;
 use App\Database\QueryBuilder;
+use App\PageBuilder\PageRenderer;
 
 class FrontController
 {
@@ -123,12 +124,21 @@ class FrontController
             return $this->notFound($request);
         }
 
+        // Element-based rendering for blog posts
+        $elementCss = '';
+        if (($content['editor_mode'] ?? 'html') === 'elements') {
+            $contentId = (int) $content['id'];
+            $content['body'] = PageRenderer::renderPage($contentId);
+            $elementCss = PageRenderer::getPageCss($contentId);
+        }
+
         $meta = $this->buildMeta($content, 'article');
 
         return $this->renderPublic('public/blog-post', [
-            'title'   => $content['title'],
-            'content' => $content,
-            'meta'    => $meta,
+            'title'      => $content['title'],
+            'content'    => $content,
+            'meta'       => $meta,
+            'elementCss' => $elementCss,
         ]);
     }
 
@@ -161,12 +171,21 @@ class FrontController
             }
         }
 
+        // Element-based rendering: assemble body from page_elements
+        $elementCss = '';
+        if (($content['editor_mode'] ?? 'html') === 'elements') {
+            $contentId = (int) $content['id'];
+            $content['body'] = PageRenderer::renderPage($contentId);
+            $elementCss = PageRenderer::getPageCss($contentId);
+        }
+
         $meta = $this->buildMeta($content, 'website');
 
         return $this->renderPublic($template, [
-            'title'   => $content['title'],
-            'content' => $content,
-            'meta'    => $meta,
+            'title'      => $content['title'],
+            'content'    => $content,
+            'meta'       => $meta,
+            'elementCss' => $elementCss,
         ]);
     }
 

@@ -746,7 +746,7 @@ $consentEnabled = ($settings['cookie_consent_enabled'] ?? '1') === '1';
 'consentEnabled' => $consentEnabled,
 ```
 
-3. Also add `contact_notification_email` to the fetched keys (for chunk 5.4 contact email feature to reference, but we fetch it now for consistency):
+3. Also add `contact_notification_email` to the fetched keys (for chunk 7.1 contact email feature to reference, but we fetch it now for consistency):
 ```php
 ':k7' => 'contact_notification_email',
 ```

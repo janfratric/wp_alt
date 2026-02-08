@@ -1221,7 +1221,7 @@ A content item is publicly visible only if:
 This means setting `published_at` to a future date effectively schedules the content, even though its status is already "published".
 
 ### Navigation building
-Navigation pages are fetched once per page render via `getNavPages()`. In a future performance optimization (Chunk 5.4), this could be cached. For now, a single extra query per page load is acceptable.
+Navigation pages are fetched once per page render via `getNavPages()`. In a future performance optimization (Chunk 7.1), this could be cached. For now, a single extra query per page load is acceptable.
 
 ### Section/Yield system
 The section/yield system is intentionally simple — it does NOT support section inheritance or appending. A section defined in a child template replaces whatever the layout yields for that section. This is sufficient for injecting per-page `<head>` content and `<script>` tags.

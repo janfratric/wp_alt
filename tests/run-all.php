@@ -39,7 +39,10 @@ $chunks = [
     '5.1' => 'chunk-5.1-verify.php',
     '5.2' => 'chunk-5.2-verify.php',
     '5.3' => 'chunk-5.3-verify.php',
-    '5.4' => 'chunk-5.4-verify.php',
+    '6.1' => 'chunk-6.1-verify.php',
+    '6.2' => 'chunk-6.2-verify.php',
+    '6.3' => 'chunk-6.3-verify.php',
+    '7.1' => 'chunk-7.1-verify.php',
 ];
 
 // Discover which test files actually exist
@@ -172,7 +175,10 @@ function updateStatusFile(
         '5.1' => 'Custom Content Types',
         '5.2' => 'Settings Panel & Site Configuration',
         '5.3' => 'AI Page Generator',
-        '5.4' => 'Final Polish, Error Handling & Documentation',
+        '6.1' => 'Element Catalogue & Rendering Engine',
+        '6.2' => 'Content Editor Element Mode & Page Builder UI',
+        '6.3' => 'AI Element Integration',
+        '7.1' => 'Final Polish, Error Handling & Documentation',
     ];
 
     // Dependency graph: chunk => prerequisites
@@ -191,7 +197,10 @@ function updateStatusFile(
         '5.1' => ['4.2'],
         '5.2' => ['5.1'],
         '5.3' => ['5.2'],
-        '5.4' => ['5.3'],
+        '6.1' => ['5.3'],
+        '6.2' => ['6.1'],
+        '6.3' => ['6.2'],
+        '7.1' => ['6.3'],
     ];
 
     // Determine which chunks passed

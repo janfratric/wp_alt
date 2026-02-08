@@ -485,11 +485,155 @@ Each chunk below is designed to be implemented in a single focused session with 
 
 ---
 
-### Chunk 5.4: Final Polish, Error Handling & Documentation
+---
+
+## Phase 6 — Element-Based Page Builder
+
+### Chunk 6.1: Element Catalogue & Rendering Engine
+
+**Description**: Build the database schema for reusable UI elements, the micro-mustache template engine (SlotRenderer) for rendering element templates with typed content slots, the PageRenderer for assembling element-based pages, the admin CRUD for managing the element catalogue, and seed the catalogue with 7 starter elements.
+
+**Input Prerequisites**: Phases 1–5 complete (content CRUD, front controller, AI integration, custom types)
+
+**Key Files Created**:
+- `migrations/004_page_builder.sqlite.sql` — Elements, page_elements, element_proposals tables + editor_mode column
+- `migrations/004_page_builder.mysql.sql` — MySQL variant
+- `migrations/004_page_builder.pgsql.sql` — PostgreSQL variant
+- `app/PageBuilder/SlotRenderer.php` — Micro-mustache template engine (`{{key}}`, `{{{key}}}`, `{{#key}}...{{/key}}`, `{{^key}}...{{/key}}`, `{{key.sub}}`)
+- `app/PageBuilder/PageRenderer.php` — Renders element-based pages, collects scoped CSS
+- `app/PageBuilder/SeedElements.php` — 7 starter elements (hero-section, text-section, feature-grid, cta-banner, image-text, testimonial-section, faq-section)
+- `app/Admin/ElementController.php` — Full CRUD + preview API + apiList JSON endpoint
+- `templates/admin/elements/index.php` — Catalogue grid view with category filters
+- `templates/admin/elements/edit.php` — Element editor (meta, slots, HTML/CSS code editors, live preview)
+- `public/assets/js/element-editor.js` — Slot builder UI + live preview
+
+**Key Files Modified**:
+- `app/Templates/FrontController.php` — Element-mode rendering branch in `page()` and `blogPost()`
+- `templates/public/layout.php` — `<style id="litecms-element-styles">` block in `<head>`
+- `public/index.php` — Element admin routes (CRUD + preview + apiList)
+- `templates/admin/layout.php` — "Elements" nav item
+- `public/assets/css/admin.css` — Element catalogue grid, editor layout, slot builder, code editor styles
+
+**Slot Type System**: text, richtext, image, link, select, boolean, number, list (with sub_slots)
+
+**Routes**:
+```
+GET    /admin/elements              → ElementController::index
+GET    /admin/elements/create       → ElementController::create
+POST   /admin/elements              → ElementController::store
+GET    /admin/elements/{id}/edit    → ElementController::edit
+GET    /admin/elements/{id}/preview → ElementController::preview
+PUT    /admin/elements/{id}         → ElementController::update
+DELETE /admin/elements/{id}         → ElementController::delete
+GET    /admin/elements/api/list     → ElementController::apiList
+```
+
+**Output Deliverables**: Admin can create, edit, preview, and delete elements in the catalogue. Elements have HTML templates with typed content slots and scoped CSS. The front controller renders element-based pages (when `editor_mode = 'elements'`). 7 seed elements provide a starter kit.
+
+**Acceptance Tests** (31 tests in `tests/chunk-6.1-verify.php`):
+1. All PageBuilder classes autoloadable
+2. Migration creates tables + editor_mode column
+3. SeedElements populates 7 elements (idempotent)
+4. SlotRenderer: escaping, raw HTML, conditionals, loops, inverted sections, dot notation
+5. PageRenderer: instance wrapping, full page assembly with CSS
+6. ElementController CRUD (create, read, update, delete, preview, apiList)
+7. Validation (duplicate slot keys, slot JSON structure)
+8. FrontController element-mode branch, public layout, admin nav, routes, CSS, JS
+
+---
+
+### Chunk 6.2: Content Editor Element Mode & Page Builder UI
+
+**Description**: Add element-based editing mode to the content editor. When `editor_mode = 'elements'`, the editor shows a page builder panel instead of TinyMCE — with an element picker, slot data forms auto-generated from slot definitions, drag-and-drop reordering, and JSON serialization of page composition.
+
+**Input Prerequisites**: Chunk 6.1 complete (element catalogue, SlotRenderer, PageRenderer)
+
+**Key Files to Create**:
+- `public/assets/js/page-builder.js` — Page builder UI: element picker modal, slot forms by type, drag-drop reorder, JSON serialization to hidden input
+
+**Key Files to Modify**:
+- `templates/admin/content/edit.php` — Editor mode toggle (HTML / Elements), page builder panel
+- `app/Admin/ContentController.php` — Handle `editor_mode` in `readFormData()`, save/load `page_elements` in `store()`/`update()`/`edit()`
+- `public/assets/css/admin.css` — Page builder styles (element cards, drag handles, picker modal, slot forms)
+
+**Features**:
+- Editor mode toggle: radio buttons — "HTML Editor" | "Page Builder"
+- Page builder panel: ordered list of element instances as collapsible cards
+- "Add Element" button → catalogue picker modal (searchable, categorized)
+- Drag handle per element for reordering, remove button
+- Slot forms auto-generated from `slots_json` (text input, textarea, media browser, link fields, select, checkbox, number, repeatable list groups)
+- All data serialized to `elements_json` hidden input on form submit
+- ContentController saves/loads `page_elements` rows with correct `sort_order` and `slot_data_json`
+
+**Output Deliverables**: Admin can toggle between HTML editor and page builder when editing content. Page builder lets users compose pages from catalogue elements, fill slot data via auto-generated forms, reorder elements, and save. Existing HTML-mode content is unaffected.
+
+**Acceptance Tests**:
+1. Editor mode toggle switches UI panels
+2. Element picker shows catalogue (searchable, categorized)
+3. Slot forms render correctly for all slot types
+4. Saving persists `page_elements` rows with correct sort_order and slot_data_json
+5. Loading editor restores all element instances with filled slot data
+6. Existing HTML-mode content completely unaffected
+
+---
+
+### Chunk 6.3: AI Element Integration
+
+**Description**: Make the AI agent aware of the element catalogue — injecting catalogue context into generation prompts, generating element-based pages (reusing existing elements or proposing new ones), and providing an approval flow for AI-proposed elements.
+
+**Input Prerequisites**: Chunks 6.1 + 6.2 complete, Chunk 5.3 complete (AI Page Generator)
+
+**Key Files to Create**:
+- `templates/admin/elements/proposals.php` — Proposal review UI
+
+**Key Files to Modify**:
+- `app/AIAssistant/GeneratorPrompts.php` — Add `formatElementCatalogue()`, `elementGenerationPrompt()`
+- `app/AIAssistant/PageGeneratorController.php` — Handle element-based generation, create proposals for new elements
+- `app/AIAssistant/AIController.php` — Include element catalogue in assistant system prompt
+- `app/Admin/ElementController.php` — Add proposal review endpoints (list, approve, reject)
+- `templates/admin/generator/index.php` — Editor mode toggle in step 1 (HTML vs Elements)
+- `public/assets/js/page-generator.js` — Handle element-based preview with new element proposals
+- `public/index.php` — Proposal routes
+
+**AI Generation Format** (element mode):
+```json
+{
+  "editor_mode": "elements",
+  "elements": [
+    {"element_slug": "hero-section", "slot_data": {"title": "Welcome"}},
+    {"element_slug": "__new__", "new_element": {"name": "Team Section", "slug": "team-section", ...}, "slot_data": {...}}
+  ]
+}
+```
+- `element_slug` = existing slug → reuse from catalogue
+- `element_slug` = `__new__` → AI proposes new element → goes to `element_proposals` table
+
+**Routes**:
+```
+GET    /admin/element-proposals              → ElementController::proposals
+POST   /admin/element-proposals/{id}/approve → ElementController::approveProposal
+POST   /admin/element-proposals/{id}/reject  → ElementController::rejectProposal
+```
+
+**Output Deliverables**: AI page generator can produce element-based pages that reuse catalogue elements or propose new ones. Proposals go through an approval flow before entering the catalogue. The AI assistant in the content editor is also aware of available elements.
+
+**Acceptance Tests**:
+1. AI generation prompt includes element catalogue context
+2. AI output with existing elements creates correct page_elements
+3. AI output with `__new__` elements creates proposals in element_proposals table
+4. Proposal approval creates element in catalogue
+5. Full round-trip: generate → preview → create → view on frontend
+6. HTML-mode generation completely unaffected
+
+---
+
+## Phase 7 — Final Polish
+
+### Chunk 7.1: Final Polish, Error Handling & Documentation
 
 **Description**: Final pass over the entire codebase — comprehensive error handling and logging, input validation tightening, performance verification, security audit, and production of README.md with installation guide.
 
-**Input Prerequisites**: All previous chunks complete
+**Input Prerequisites**: All previous chunks complete (Phases 1–6)
 
 **Key Files to Create/Modify**:
 - `app/Admin/ContactSubmissionsController.php` — List submissions with pagination, view individual submission, delete
@@ -560,10 +704,13 @@ Each chunk below is designed to be implemented in a single focused session with 
                                     └── 5.1 Custom Content Types
                                          └── 5.2 Settings Panel
                                               └── 5.3 AI Page Generator
-                                                   └── 5.4 Final Polish & Docs
+                                                   └── 6.1 Element Catalogue
+                                                        └── 6.2 Page Builder UI
+                                                             └── 6.3 AI Element Integration
+                                                                  └── 7.1 Final Polish & Docs
 ```
 
-**Total: 15 chunks across 5 phases**
+**Total: 18 chunks across 7 phases**
 
 ## Parallel Execution Strategy
 
@@ -576,7 +723,9 @@ Step 1 (sequential):  1.1 → 1.2 → 1.3 → 2.1
 Step 2 (parallel A):  2.2 + 2.4           ← both depend only on 2.1, no shared files
 Step 3 (parallel B):  2.3 + 3.1           ← 2.3 depends on 2.2; 3.1 depends on 2.1
 Step 4 (parallel C):  3.2 + 4.1           ← 3.2 is public frontend; 4.1 is admin backend
-Step 5 (sequential):  4.2 → 5.1 → 5.2 → 5.3 → 5.4
+Step 5 (sequential):  4.2 → 5.1 → 5.2 → 5.3
+Step 6 (sequential):  6.1 → 6.2 → 6.3    ← element catalogue, page builder UI, AI integration
+Step 7 (sequential):  7.1                 ← final polish after all features complete
 ```
 
 ### Why These Groups Are Safe

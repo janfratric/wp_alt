@@ -45,6 +45,10 @@ $imgSettings = json_encode([
                    class="<?= ($activeNav ?? '') === 'content-types' ? 'active' : '' ?>">
                     <span class="nav-icon">&#128209;</span> Content Types
                 </a>
+                <a href="/admin/elements"
+                   class="<?= ($activeNav ?? '') === 'elements' ? 'active' : '' ?>">
+                    <span class="nav-icon">&#9647;</span> Elements
+                </a>
                 <a href="/admin/generator"
                    class="<?= ($activeNav ?? '') === 'generator' ? 'active' : '' ?>">
                     <span class="nav-icon">&#9733;</span> Generate Page
