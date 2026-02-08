@@ -430,6 +430,7 @@ Each chunk below is designed to be implemented in a single focused session with 
 - AI: Claude API key (encrypted), model selection, system prompt customization
 - SEO: default meta description, Open Graph default image
 - **Cookie Consent & Analytics**: enable/disable cookie consent banner, consent banner text (customizable message), consent banner link (e.g., link to privacy policy page), Google Analytics enable/disable toggle, GA Measurement ID field (e.g., `G-XXXXXXXXXX`)
+- **Contact Form**: notification email address (when set, new contact submissions trigger an email via `mail()`)
 - Advanced: enable/disable registration, maintenance mode
 
 **Output Deliverables**: Admin can configure all site settings through a web interface, including cookie consent text and Google Analytics integration. Settings persist in the database and take effect immediately.
@@ -443,6 +444,7 @@ Each chunk below is designed to be implemented in a single focused session with 
 6. Enable Google Analytics and enter a Measurement ID — GA script appears on public site (after cookie consent)
 7. Disable Google Analytics toggle — GA script no longer injected regardless of consent
 8. Change cookie consent banner text — updated text appears on public site for new visitors
+9. Setting a contact notification email address saves correctly and is retrievable via Config
 
 ---
 
@@ -490,12 +492,29 @@ Each chunk below is designed to be implemented in a single focused session with 
 **Input Prerequisites**: All previous chunks complete
 
 **Key Files to Create/Modify**:
+- `app/Admin/ContactSubmissionsController.php` — List submissions with pagination, view individual submission, delete
+- `templates/admin/contact-submissions/index.php` — Submissions list table (name, email, subject, date, truncated message)
+- `templates/admin/contact-submissions/view.php` — Full submission detail view
+- Update `templates/admin/layout.php` — Add "Messages" link to sidebar nav
+- Update `public/index.php` — Register admin routes for contact submissions
 - `storage/logs/` — Error logging implementation (file-based, rotation)
 - Add error handling throughout: try/catch in controllers, user-friendly error pages, logging
 - `templates/public/error.php` — Generic error page
 - `README.md` — Project description, requirements, installation steps, usage guide
 - `composer.json` — Final review of dependencies (ensure <= 10 packages)
 - Review all files for: missing input validation, unescaped output, error edge cases
+
+**Contact Submissions Admin UI**:
+- List view at `/admin/contact-submissions` with pagination, sorted newest-first
+- Each row shows: name, email, subject, date, truncated message preview
+- Click to view full submission detail
+- Delete individual submissions (with confirmation)
+- Admin-only access (auth + role middleware)
+
+**Contact Form Email Notification**:
+- Update `FrontController::contactSubmit()` — after storing submission, if `contact_notification_email` setting is configured, send a notification email via `mail()`
+- Email contains: sender name, email, subject, message, timestamp
+- Fail silently if `mail()` fails (log the error, don't break the user-facing flow)
 
 **Polish checklist**:
 - All form inputs have server-side validation (not just client-side)
@@ -516,6 +535,10 @@ Each chunk below is designed to be implemented in a single focused session with 
 4. Load test: homepage renders in under 50ms (use `microtime()` measurement)
 5. Run `find app/ -name '*.php' | xargs wc -l` — total under 5,000 lines
 6. README covers: requirements, installation, configuration, first-time setup, usage basics
+7. Contact submissions list at `/admin/contact-submissions` shows submitted messages with pagination
+8. Viewing a single submission shows all fields (name, email, subject, message, IP, date)
+9. Deleting a submission removes it from the database
+10. With `contact_notification_email` set, submitting the contact form triggers an email (or logs gracefully if `mail()` is unavailable)
 
 ---
 
