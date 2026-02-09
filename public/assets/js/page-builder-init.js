@@ -7,15 +7,19 @@ document.addEventListener('DOMContentLoaded', function() {
     var builderPanel = document.getElementById('page-builder-panel');
     var modeRadios = document.querySelectorAll('input[name="editor_mode"]');
 
+    var pageStylesCard = document.getElementById('page-styles-card');
+
     // Editor mode toggle
     modeRadios.forEach(function(radio) {
         radio.addEventListener('change', function() {
             if (this.value === 'html') {
                 htmlPanel.classList.remove('hidden');
                 builderPanel.classList.add('hidden');
+                if (pageStylesCard) pageStylesCard.style.display = 'none';
             } else {
                 htmlPanel.classList.add('hidden');
                 builderPanel.classList.remove('hidden');
+                if (pageStylesCard) pageStylesCard.style.display = '';
             }
         });
     });

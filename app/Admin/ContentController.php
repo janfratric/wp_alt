@@ -8,6 +8,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Database\QueryBuilder;
 use App\Auth\Session;
+use App\PageBuilder\StyleRenderer;
 
 class ContentController
 {
@@ -128,6 +129,7 @@ class ContentController
             'customFieldDefinitions' => $customFieldDefinitions,
             'customFieldValues'      => $customFieldValues,
             'pageElements'           => [],
+            'pageStyles'             => [],
             'csrfToken'              => Session::get('csrf_token', ''),
         ]);
 
@@ -173,6 +175,7 @@ class ContentController
         // Save page elements if in elements mode
         if ($editorMode === 'elements') {
             $this->savePageElements((int) $id, $request);
+            $this->savePageStyles((int) $id, $request);
         }
 
         // Save custom fields
@@ -247,6 +250,7 @@ class ContentController
             'customFieldDefinitions' => $customFieldDefinitions,
             'customFieldValues'      => $customFieldValues,
             'pageElements'           => $pageElements,
+            'pageStyles'             => $this->loadPageStyles((int) $id),
             'csrfToken'              => Session::get('csrf_token', ''),
         ]);
 
@@ -301,6 +305,7 @@ class ContentController
         // Save page elements if in elements mode
         if ($editorMode === 'elements') {
             $this->savePageElements((int) $id, $request);
+            $this->savePageStyles((int) $id, $request);
         }
 
         // Update custom fields: delete old, insert new
@@ -517,11 +522,18 @@ class ContentController
                 $slotData = [];
             }
 
+            $styleData = $element['style_data'] ?? [];
+            if (!is_array($styleData)) {
+                $styleData = [];
+            }
+            $styleData = StyleRenderer::sanitizeStyleData($styleData);
+
             QueryBuilder::query('page_elements')->insert([
-                'content_id'     => $contentId,
-                'element_id'     => $elementId,
-                'sort_order'     => $sortOrder,
-                'slot_data_json' => json_encode($slotData, JSON_UNESCAPED_UNICODE),
+                'content_id'      => $contentId,
+                'element_id'      => $elementId,
+                'sort_order'      => $sortOrder,
+                'slot_data_json'  => json_encode($slotData, JSON_UNESCAPED_UNICODE),
+                'style_data_json' => json_encode($styleData, JSON_UNESCAPED_UNICODE),
             ]);
         }
     }
@@ -538,6 +550,7 @@ class ContentController
                 'page_elements.element_id',
                 'page_elements.sort_order',
                 'page_elements.slot_data_json',
+                'page_elements.style_data_json',
                 'elements.slug',
                 'elements.name',
                 'elements.category',
@@ -557,10 +570,70 @@ class ContentController
                 'elementCategory' => $row['category'] ?? 'general',
                 'slots'           => json_decode($row['slots_json'] ?? '[]', true) ?: [],
                 'slotData'        => json_decode($row['slot_data_json'] ?? '{}', true) ?: [],
+                'styleData'       => json_decode($row['style_data_json'] ?? '{}', true) ?: [],
             ];
         }
 
         return $result;
+    }
+
+    /**
+     * Save page-level layout styles from page_styles_json form input.
+     */
+    private function savePageStyles(int $contentId, Request $request): void
+    {
+        $pageStylesJson = (string) $request->input('page_styles_json', '{}');
+        $data = json_decode($pageStylesJson, true);
+
+        if (!is_array($data)) {
+            return;
+        }
+
+        // Sanitize each target
+        $allowedTargets = ['page_body', 'container', 'site_main'];
+        $sanitized = [];
+        foreach ($allowedTargets as $target) {
+            if (isset($data[$target]) && is_array($data[$target])) {
+                $sanitized[$target] = StyleRenderer::sanitizeStyleData($data[$target]);
+            }
+        }
+
+        // Only persist if there's data
+        if (empty($sanitized)) {
+            // Delete existing row if any
+            QueryBuilder::query('page_styles')
+                ->where('content_id', $contentId)
+                ->delete();
+            return;
+        }
+
+        // Upsert: delete + insert
+        QueryBuilder::query('page_styles')
+            ->where('content_id', $contentId)
+            ->delete();
+
+        QueryBuilder::query('page_styles')->insert([
+            'content_id'      => $contentId,
+            'style_data_json' => json_encode($sanitized, JSON_UNESCAPED_UNICODE),
+            'updated_at'      => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /**
+     * Load page-level layout styles for a content item.
+     */
+    private function loadPageStyles(int $contentId): array
+    {
+        $row = QueryBuilder::query('page_styles')
+            ->select('style_data_json')
+            ->where('content_id', (string) $contentId)
+            ->first();
+
+        if ($row === null) {
+            return [];
+        }
+
+        return json_decode($row['style_data_json'] ?? '{}', true) ?: [];
     }
 
     private function withSecurityHeaders(Response $response): Response

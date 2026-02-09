@@ -625,51 +625,84 @@ GET    /admin/elements/api/list     → ElementController::apiList
 
 ### Chunk 6.4: AI Element Integration
 
-**Description**: Make the AI agent aware of the element catalogue — injecting catalogue context into generation prompts, generating element-based pages (reusing existing elements or proposing new ones), and providing an approval flow for AI-proposed elements.
+**Description**: Connect the AI system to the element-based page builder across four sub-features: (A) an AI coding assistant in the element editor for writing/refining HTML templates and CSS, (B) element-aware page generation that reuses catalogue elements or proposes new ones, (C) an approval flow for AI-proposed elements, and (D) element catalogue context in the content editor AI.
 
-**Input Prerequisites**: Chunk 6.3 complete (styled page builder), Chunk 5.3 complete (AI Page Generator)
+**Input Prerequisites**: Chunk 6.3 complete (styled page builder), Chunk 5.3 complete (AI Page Generator), Chunk 4.1-4.2 complete (AI infrastructure)
+
+**Sub-feature A — Element Editor AI Assistant**:
+
+The primary AI integration point. An AI coding assistant panel embedded in the element editor (`/admin/elements/create` and `/admin/elements/{id}/edit`) that helps users write and refine HTML templates, CSS, and element structure. Uses the same `AIChatCore` pattern as the content editor AI panel.
+
+**Sub-feature B — Page Generator Element Awareness**:
+
+Extend the AI page generator to produce element-based pages. When `editor_mode = 'elements'`, the generator uses element-aware prompts that include the catalogue, and outputs element-based JSON instead of raw HTML.
+
+**Sub-feature C — Element Proposal Approval Flow**:
+
+When the AI generates a page needing an element that doesn't exist in the catalogue, it proposes a new element (`__new__`). Proposals are stored in `element_proposals` (already exists from migration 004) and go through an admin approval flow.
+
+**Sub-feature D — Content Editor AI Catalogue Context**:
+
+When the content editor AI is used on element-mode content, the system prompt includes a summary of available elements so the AI can reference them in its suggestions.
 
 **Key Files to Create**:
+- `app/AIAssistant/ElementAIController.php` — Chat + conversations endpoints for element editor AI
+- `app/AIAssistant/ElementPrompts.php` — System prompt builder for element coding assistant
+- `public/assets/js/element-ai-assistant.js` — Thin wrapper around AIChatCore for element editor
+- `migrations/006_element_ai.sqlite.sql` (+ mysql, pgsql) — Add `element_id` column to `ai_conversations`
 - `templates/admin/elements/proposals.php` — Proposal review UI
 
 **Key Files to Modify**:
-- `app/AIAssistant/GeneratorPrompts.php` — Add `formatElementCatalogue()`, `elementGenerationPrompt()`
-- `app/AIAssistant/PageGeneratorController.php` — Handle element-based generation, create proposals for new elements
-- `app/AIAssistant/AIController.php` — Include element catalogue in assistant system prompt
+- `app/AIAssistant/ConversationManager.php` — Add `findOrCreateForElement()`, `getHistoryForElement()`
+- `app/AIAssistant/GeneratorPrompts.php` — Add `formatElementCatalogue()`, `elementGatheringPrompt()`, `elementGenerationPrompt()`
+- `app/AIAssistant/PageGeneratorController.php` — Handle `editor_mode = 'elements'` in chat + create
+- `app/AIAssistant/AIController.php` — Include element catalogue in system prompt for element-mode content
 - `app/Admin/ElementController.php` — Add proposal review endpoints (list, approve, reject)
-- `templates/admin/generator/index.php` — Editor mode toggle in step 1 (HTML vs Elements)
-- `public/assets/js/page-generator.js` — Handle element-based preview with new element proposals
-- `public/index.php` — Proposal routes
+- `templates/admin/elements/edit.php` — Add AI panel markup, scripts, and data attributes
+- `templates/admin/generator/index.php` — Editor mode toggle (HTML vs Elements) in step 1
+- `public/assets/js/page-generator.js` — Handle `editor_mode` in request, element-based preview
+- `public/index.php` — Element AI routes + proposal routes
+- `public/assets/css/admin.css` — Grid rule for element editor AI panel
+
+**New Routes**:
+```
+POST   /admin/ai/element/chat           → ElementAIController::chat
+GET    /admin/ai/element/conversations   → ElementAIController::conversations
+GET    /admin/element-proposals          → ElementController::proposals
+POST   /admin/element-proposals/{id}/approve → ElementController::approveProposal
+POST   /admin/element-proposals/{id}/reject  → ElementController::rejectProposal
+```
 
 **AI Generation Format** (element mode):
 ```json
 {
   "editor_mode": "elements",
+  "title": "...", "slug": "...", "excerpt": "...", "meta_title": "...", "meta_description": "...",
   "elements": [
     {"element_slug": "hero-section", "slot_data": {"title": "Welcome"}},
-    {"element_slug": "__new__", "new_element": {"name": "Team Section", "slug": "team-section", ...}, "slot_data": {...}}
+    {"element_slug": "__new__", "new_element": {"name": "Team Section", "slug": "team-section", "html_template": "...", "css": "...", "slots_json": [...]}, "slot_data": {...}}
   ]
 }
 ```
 - `element_slug` = existing slug → reuse from catalogue
 - `element_slug` = `__new__` → AI proposes new element → goes to `element_proposals` table
 
-**Routes**:
-```
-GET    /admin/element-proposals              → ElementController::proposals
-POST   /admin/element-proposals/{id}/approve → ElementController::approveProposal
-POST   /admin/element-proposals/{id}/reject  → ElementController::rejectProposal
-```
-
-**Output Deliverables**: AI page generator can produce element-based pages that reuse catalogue elements or propose new ones. Proposals go through an approval flow before entering the catalogue. The AI assistant in the content editor is also aware of available elements.
+**Output Deliverables**: Element editor has an AI coding assistant panel that helps write HTML/CSS. AI page generator can produce element-based pages reusing catalogue elements or proposing new ones. Proposals go through an approval flow. Content editor AI is aware of available elements in element-mode pages.
 
 **Acceptance Tests**:
-1. AI generation prompt includes element catalogue context
-2. AI output with existing elements creates correct page_elements
-3. AI output with `__new__` elements creates proposals in element_proposals table
-4. Proposal approval creates element in catalogue
-5. Full round-trip: generate → preview → create → view on frontend
-6. HTML-mode generation completely unaffected
+1. ElementPrompts class exists, `systemPrompt()` includes template syntax reference and CSS scoping rules
+2. ElementAIController exists with `chat()` and `conversations()` methods
+3. Migration 006: `element_id` column on `ai_conversations` table
+4. ConversationManager has `findOrCreateForElement()` and `getHistoryForElement()` methods
+5. Routes resolve: `/admin/ai/element/chat`, `/admin/ai/element/conversations`, `/admin/element-proposals`
+6. Element edit template contains AI panel markup (`element-ai-panel`, `ai-chat-core.js`, `element-ai-assistant.js`)
+7. `element-ai-assistant.js` exists with `AIChatCore` initialization and `extractCodeBlock` helper
+8. GeneratorPrompts has `formatElementCatalogue()`, `elementGatheringPrompt()`, `elementGenerationPrompt()`
+9. PageGeneratorController handles `editor_mode = 'elements'` in chat and create
+10. ElementController has `proposals()`, `approveProposal()`, `rejectProposal()` methods
+11. Proposals template exists with approve/reject UI
+12. AIController `buildSystemPrompt()` includes element catalogue for element-mode content
+13. Generator index template has editor mode toggle (HTML vs Elements)
 
 ---
 

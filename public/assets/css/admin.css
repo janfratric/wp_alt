@@ -1855,3 +1855,58 @@ table.data-table td:first-child {
     .pb-picker-grid { grid-template-columns: 1fr; }
     .pb-instance-header { flex-wrap: wrap; }
 }
+
+/* --- Page Builder Tabs --- */
+.pb-tab-bar { display: flex; gap: 0; border-bottom: 2px solid var(--color-border, #e5e7eb); margin-bottom: 0.5rem; padding: 0 1rem; }
+.pb-tab { padding: 0.5rem 1rem; border: none; background: none; cursor: pointer; font-size: 0.85rem; font-weight: 500; color: var(--color-text-muted); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.2s, border-color 0.2s; }
+.pb-tab:hover { color: var(--color-text); }
+.pb-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+
+/* --- Style Panel --- */
+.pb-style-panel { padding: 0.5rem 1rem; }
+.pb-style-panel.hidden { display: none; }
+.pb-content-panel.hidden { display: none; }
+.pb-style-group { margin-bottom: 0.5rem; }
+.pb-style-group summary { padding: 0.5rem 0; font-weight: 600; font-size: 0.85rem; cursor: pointer; color: var(--color-text); }
+.pb-style-group[open] summary { margin-bottom: 0.5rem; }
+.pb-style-group-content { padding: 0 0 0.5rem; }
+.pb-style-label { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem; color: var(--color-text-muted); }
+
+/* --- Spacing Control --- */
+.pb-spacing-control { display: flex; gap: 0.25rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.75rem; }
+.pb-spacing-control label { font-size: 0.75rem; color: var(--color-text-muted); min-width: 1rem; }
+.pb-spacing-control input[type="number"] { width: 55px; padding: 0.25rem; font-size: 0.8rem; }
+.pb-spacing-control select { font-size: 0.8rem; padding: 0.2rem; }
+.pb-spacing-link { background: none; border: 1px solid var(--color-border); border-radius: 4px; padding: 0.25rem 0.4rem; cursor: pointer; font-size: 0.75rem; line-height: 1; }
+.pb-spacing-link.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+
+/* --- Color Field --- */
+.pb-color-field { display: flex; align-items: center; gap: 0.5rem; }
+.pb-color-field input[type="color"] { width: 36px; height: 30px; padding: 0; border: 1px solid var(--color-border); border-radius: 4px; cursor: pointer; }
+.pb-color-field input[type="text"] { width: 90px; padding: 0.25rem 0.4rem; font-size: 0.8rem; font-family: monospace; }
+
+/* --- Align Button Group --- */
+.pb-align-group { display: flex; gap: 0; }
+.pb-align-group button { padding: 0.3rem 0.6rem; border: 1px solid var(--color-border); background: var(--color-bg, #fff); cursor: pointer; font-size: 0.8rem; }
+.pb-align-group button:first-child { border-radius: 4px 0 0 4px; }
+.pb-align-group button:last-child { border-radius: 0 4px 4px 0; }
+.pb-align-group button:not(:first-child) { border-left: none; }
+.pb-align-group button.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+
+/* --- Range Slider --- */
+.pb-range-field { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+.pb-range-field label { font-size: 0.8rem; min-width: 5rem; color: var(--color-text-muted); }
+.pb-range-field input[type="range"] { flex: 1; }
+.pb-range-field .pb-range-value { min-width: 3rem; text-align: right; font-size: 0.8rem; font-family: monospace; }
+
+/* --- Style Field Row --- */
+.pb-style-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+.pb-style-row label { font-size: 0.8rem; min-width: 5rem; color: var(--color-text-muted); }
+.pb-style-row select { font-size: 0.8rem; padding: 0.25rem; }
+.pb-style-row input[type="number"] { width: 70px; padding: 0.25rem; font-size: 0.8rem; }
+.pb-style-row input[type="text"] { width: 120px; padding: 0.25rem; font-size: 0.8rem; }
+
+/* --- Custom CSS Textarea --- */
+.pb-custom-css textarea { width: 100%; min-height: 100px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 0.8rem; line-height: 1.4; padding: 0.5rem; border: 1px solid var(--color-border); border-radius: 4px; background: #1e1e2e; color: #cdd6f4; resize: vertical; tab-size: 2; }
+.pb-custom-css textarea:focus { outline: 2px solid var(--color-primary); outline-offset: -1px; }
+.pb-custom-css .pb-css-hint { font-size: 0.7rem; color: var(--color-text-muted); margin-top: 0.25rem; }

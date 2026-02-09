@@ -14,7 +14,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2 + 5.3 + 6.1 + 6.2)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2 + 5.3 + 6.1 + 6.2 + 6.3)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
@@ -240,6 +240,19 @@ The content editor now supports two editing modes:
 - **Mode coexistence** — switching modes preserves body content; TinyMCE hidden but not destroyed in elements mode
 - **Media browser integration** — image slot fields reuse the existing media browser modal from the content editor
 
+### Per-Instance Element Styling (Chunk 6.3)
+
+Each element instance in the page builder now has a **Style tab** with GUI controls and a Custom CSS textarea:
+- **Content/Style tabs** — each instance card has tab buttons to switch between slot fields (Content) and style controls (Style)
+- **Style panel** — accordion sections for Spacing (margin/padding with linked toggle + unit selector), Background (color, image URL, size/position/repeat), Typography (color, size, align, weight), Border (width, style, color, radius), Effects (box-shadow, opacity slider), Layout (max-width, min-height), Custom CSS (dark-theme monospace textarea), and Advanced (custom CSS class)
+- **Inline styles** — GUI style values render as inline `style` attribute on the element wrapper div (e.g., `style="padding-top: 20px; background-color: #ff0000"`)
+- **Custom CSS scoping** — per-instance custom CSS is scoped via `[data-instance-id="N"]` attribute selector, preventing CSS leaks between instances
+- **Page Layout Styles** — sidebar card (visible in Page Builder mode) with target selector (Page Body, Container, Site Main) and the same GUI controls + custom CSS for each target
+- **CSS specificity cascade** — catalogue CSS → inline GUI styles → scoped custom CSS (each layer overrides the previous)
+- **CSS sanitization** — `@import`, `@charset`, `javascript:`, `expression()`, `behavior:`, `-moz-binding:`, `</style>`, `<script>`, and HTML comments are stripped from custom CSS
+- **Native `<details>/<summary>`** — style panel sections use native HTML accordion (no JS for expand/collapse)
+- **HTML-mode unaffected** — HTML-mode content creates no style_data or page_styles data
+
 ---
 
 ## What Happens Behind the Scenes
@@ -277,9 +290,9 @@ sqlite3 storage/database.sqlite ".tables"
 
 Expected output:
 ```
-_migrations          contact_submissions  content_types        media
-ai_conversations     content              custom_fields        settings
-users
+_migrations          content              custom_fields        media              page_styles
+ai_conversations     contact_submissions  element_proposals    page_elements      settings
+content_types        elements             users
 ```
 
 ---

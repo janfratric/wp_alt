@@ -130,6 +130,7 @@ class FrontController
             $contentId = (int) $content['id'];
             $content['body'] = PageRenderer::renderPage($contentId);
             $elementCss = PageRenderer::getPageCss($contentId);
+            $elementCss .= PageRenderer::getPageLayoutCss($contentId);
         }
 
         $meta = $this->buildMeta($content, 'article');
@@ -177,6 +178,7 @@ class FrontController
             $contentId = (int) $content['id'];
             $content['body'] = PageRenderer::renderPage($contentId);
             $elementCss = PageRenderer::getPageCss($contentId);
+            $elementCss .= PageRenderer::getPageLayoutCss($contentId);
         }
 
         $meta = $this->buildMeta($content, 'website');

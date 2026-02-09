@@ -252,10 +252,10 @@ try {
 }
 
 // ===========================================================================
-// Test 5: StyleRenderer::buildInlineStyle() generates correct CSS
+// Test 5: buildInlineStyle() has inheriting props; buildCascadeStyles() has non-inheriting
 // ===========================================================================
 try {
-    $style = \App\PageBuilder\StyleRenderer::buildInlineStyle([
+    $testData = [
         'padding_top' => '20',
         'padding_right' => '10',
         'padding_bottom' => '20',
@@ -264,29 +264,38 @@ try {
         'bg_color' => '#ff0000',
         'text_color' => '#333333',
         'opacity' => '0.8',
-    ]);
+    ];
 
-    $hasPadding = str_contains($style, 'padding-top') && str_contains($style, '20px');
-    $hasBgColor = str_contains($style, 'background-color') && str_contains($style, '#ff0000');
-    $hasTextColor = str_contains($style, 'color') && str_contains($style, '#333333');
-    $hasOpacity = str_contains($style, 'opacity') && str_contains($style, '0.8');
+    $inline = \App\PageBuilder\StyleRenderer::buildInlineStyle($testData);
+    $scope = '.lcms-el[data-instance-id="99"]';
+    $cascade = \App\PageBuilder\StyleRenderer::buildCascadeStyles($testData, $scope);
 
-    // Empty values should not produce output
-    $emptyStyle = \App\PageBuilder\StyleRenderer::buildInlineStyle([]);
-    $emptyOk = ($emptyStyle === '');
+    // Inheriting properties should be in inline style
+    $hasTextColor = str_contains($inline, 'color') && str_contains($inline, '#333333');
+    $hasOpacity = str_contains($inline, 'opacity') && str_contains($inline, '0.8');
 
-    if ($hasPadding && $hasBgColor && $hasTextColor && $hasOpacity && $emptyOk) {
-        test_pass('buildInlineStyle() generates correct CSS (padding, bg_color, text_color, opacity; empty = empty)');
+    // Non-inheriting properties should be in cascade CSS rules, NOT inline
+    $cascadeHasPadding = str_contains($cascade, 'padding-top') && str_contains($cascade, '20px');
+    $cascadeHasBgColor = str_contains($cascade, 'background-color') && str_contains($cascade, '#ff0000');
+    $cascadeHasScope = str_contains($cascade, $scope) && str_contains($cascade, '> *');
+
+    // Empty values should produce empty output
+    $emptyInline = \App\PageBuilder\StyleRenderer::buildInlineStyle([]);
+    $emptyCascade = \App\PageBuilder\StyleRenderer::buildCascadeStyles([], $scope);
+    $emptyOk = ($emptyInline === '' && $emptyCascade === '');
+
+    if ($hasTextColor && $hasOpacity && $cascadeHasPadding && $cascadeHasBgColor && $cascadeHasScope && $emptyOk) {
+        test_pass('buildInlineStyle() has inheriting props; buildCascadeStyles() has non-inheriting with scope > *');
     } else {
-        test_fail('buildInlineStyle()', 'padding=' . ($hasPadding ? 'ok' : 'FAIL')
-            . ' bgColor=' . ($hasBgColor ? 'ok' : 'FAIL')
-            . ' textColor=' . ($hasTextColor ? 'ok' : 'FAIL')
+        test_fail('buildInlineStyle()/buildCascadeStyles()', 'textColor=' . ($hasTextColor ? 'ok' : 'FAIL')
             . ' opacity=' . ($hasOpacity ? 'ok' : 'FAIL')
-            . ' empty=' . ($emptyOk ? 'ok' : 'FAIL')
-            . ' output: ' . $style);
+            . ' cascadePadding=' . ($cascadeHasPadding ? 'ok' : 'FAIL')
+            . ' cascadeBgColor=' . ($cascadeHasBgColor ? 'ok' : 'FAIL')
+            . ' cascadeScope=' . ($cascadeHasScope ? 'ok' : 'FAIL')
+            . ' empty=' . ($emptyOk ? 'ok' : 'FAIL'));
     }
 } catch (\Throwable $e) {
-    test_fail('buildInlineStyle()', $e->getMessage());
+    test_fail('buildInlineStyle()/buildCascadeStyles()', $e->getMessage());
 }
 
 // ===========================================================================
@@ -608,7 +617,7 @@ try {
 }
 
 // ===========================================================================
-// Test 15: PageRenderer::renderInstance() emits inline style + data-instance-id
+// Test 15: PageRenderer::renderInstance() emits data-instance-id; inheriting inline, non-inheriting via CSS
 // ===========================================================================
 try {
     $html = \App\PageBuilder\PageRenderer::renderInstance([
@@ -618,6 +627,7 @@ try {
         'html_template' => '<p>Hello</p>',
         'slot_data_json' => '{}',
         'style_data_json' => json_encode([
+            'text_color' => '#333333',
             'padding_top' => '20',
             'padding_unit' => 'px',
             'bg_color' => '#ff0000',
@@ -625,17 +635,20 @@ try {
     ]);
 
     $hasInstanceId = str_contains($html, 'data-instance-id="42"');
-    $hasInlineStyle = str_contains($html, 'style="');
-    $hasPadding = str_contains($html, 'padding-top');
-    $hasBgColor = str_contains($html, '#ff0000') || str_contains($html, 'background-color');
+    // Inheriting property (text_color) should be inline
+    $hasInlineColor = str_contains($html, 'style="') && str_contains($html, 'color: #333333');
+    // Non-inheriting properties (padding, bg_color) should NOT be in inline style —
+    // they are emitted by getPageCss() as CSS rules targeting data-instance-id
+    $noPaddingInline = !str_contains($html, 'padding-top');
+    $noBgColorInline = !str_contains($html, 'background-color');
 
-    if ($hasInstanceId && $hasInlineStyle && $hasPadding && $hasBgColor) {
-        test_pass('renderInstance() outputs data-instance-id and inline style with padding + bg_color');
+    if ($hasInstanceId && $hasInlineColor && $noPaddingInline && $noBgColorInline) {
+        test_pass('renderInstance() outputs data-instance-id, inheriting props inline, non-inheriting via CSS rules');
     } else {
         test_fail('renderInstance() styling', 'instanceId=' . ($hasInstanceId ? 'ok' : 'FAIL')
-            . ' inlineStyle=' . ($hasInlineStyle ? 'ok' : 'FAIL')
-            . ' padding=' . ($hasPadding ? 'ok' : 'FAIL')
-            . ' bgColor=' . ($hasBgColor ? 'ok' : 'FAIL')
+            . ' inlineColor=' . ($hasInlineColor ? 'ok' : 'FAIL')
+            . ' noPaddingInline=' . ($noPaddingInline ? 'ok' : 'FAIL')
+            . ' noBgColorInline=' . ($noBgColorInline ? 'ok' : 'FAIL')
             . ' html=' . substr($html, 0, 300));
     }
 } catch (\Throwable $e) {

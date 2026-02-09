@@ -8,7 +8,7 @@
     // -----------------------------------------------------------------------
     // State
     // -----------------------------------------------------------------------
-    var instances = [];       // Array of {elementId, elementSlug, elementName, elementCategory, slots, slotData}
+    var instances = [];       // Array of {elementId, elementSlug, elementName, elementCategory, slots, slotData, styleData}
     var catalogue = [];       // Cached element catalogue from API
     var pickerModal = null;   // DOM ref: picker modal
     var instanceList = null;  // DOM ref: instance list container
@@ -35,7 +35,8 @@
                     elementName: inst.elementName || 'Unknown',
                     elementCategory: inst.elementCategory || 'general',
                     slots: Array.isArray(inst.slots) ? inst.slots : [],
-                    slotData: (inst.slotData && typeof inst.slotData === 'object') ? inst.slotData : {}
+                    slotData: (inst.slotData && typeof inst.slotData === 'object') ? inst.slotData : {},
+                    styleData: (inst.styleData && typeof inst.styleData === 'object') ? inst.styleData : {}
                 };
             });
         }
@@ -236,7 +237,8 @@
             elementName: elementDef.name || 'Unknown',
             elementCategory: elementDef.category || 'general',
             slots: slots,
-            slotData: buildDefaultSlotData(slots)
+            slotData: buildDefaultSlotData(slots),
+            styleData: {}
         };
 
         // Read current DOM state before adding (preserve any edits)
@@ -390,22 +392,66 @@
         header.appendChild(collapseBtn);
         header.appendChild(removeBtn);
 
-        // Body (slot fields)
-        var body = document.createElement('div');
-        body.className = 'pb-instance-body';
+        // Tab bar
+        var tabBar = document.createElement('div');
+        tabBar.className = 'pb-tab-bar';
+
+        var contentTab = document.createElement('button');
+        contentTab.type = 'button';
+        contentTab.className = 'pb-tab active';
+        contentTab.textContent = 'Content';
+
+        var styleTab = document.createElement('button');
+        styleTab.type = 'button';
+        styleTab.className = 'pb-tab';
+        styleTab.textContent = 'Style';
+
+        tabBar.appendChild(contentTab);
+        tabBar.appendChild(styleTab);
+
+        // Content panel (slot fields)
+        var contentPanel = document.createElement('div');
+        contentPanel.className = 'pb-content-panel';
 
         if (Array.isArray(instance.slots) && instance.slots.length > 0) {
             instance.slots.forEach(function(slot) {
-                body.appendChild(createSlotField(slot, instance.slotData, index));
+                contentPanel.appendChild(createSlotField(slot, instance.slotData, index));
             });
         } else {
             var noSlots = document.createElement('p');
             noSlots.style.cssText = 'color:var(--color-text-muted);font-size:0.85rem;margin:0;';
             noSlots.textContent = 'This element has no configurable slots.';
-            body.appendChild(noSlots);
+            contentPanel.appendChild(noSlots);
         }
 
+        // Style panel
+        var stylePanel = createStylePanel(instance, index);
+
+        // Body wrapper
+        var body = document.createElement('div');
+        body.className = 'pb-instance-body';
+        body.appendChild(contentPanel);
+        body.appendChild(stylePanel);
+
+        // Tab click handlers
+        contentTab.addEventListener('click', function(e) {
+            e.preventDefault();
+            contentTab.classList.add('active');
+            styleTab.classList.remove('active');
+            contentPanel.classList.remove('hidden');
+            stylePanel.classList.add('hidden');
+        });
+
+        styleTab.addEventListener('click', function(e) {
+            e.preventDefault();
+            styleTab.classList.add('active');
+            contentTab.classList.remove('active');
+            stylePanel.classList.remove('hidden');
+            contentPanel.classList.add('hidden');
+        });
+
         card.appendChild(header);
+        card.appendChild(tabBar);
         card.appendChild(body);
 
         // Drag event listeners
@@ -769,6 +815,362 @@
     }
 
     // -----------------------------------------------------------------------
+    // Style Panel
+    // -----------------------------------------------------------------------
+    function createStylePanel(instance, index) {
+        var panel = document.createElement('div');
+        panel.className = 'pb-style-panel hidden';
+
+        var data = instance.styleData || {};
+
+        // 1. Spacing
+        panel.appendChild(createStyleGroup('Spacing', function(content) {
+            var mLabel = document.createElement('div');
+            mLabel.className = 'pb-style-label';
+            mLabel.textContent = 'Margin';
+            content.appendChild(mLabel);
+            content.appendChild(createSpacingControl('margin', data, index));
+
+            var pLabel = document.createElement('div');
+            pLabel.className = 'pb-style-label';
+            pLabel.textContent = 'Padding';
+            content.appendChild(pLabel);
+            content.appendChild(createSpacingControl('padding', data, index));
+        }));
+
+        // 2. Background
+        panel.appendChild(createStyleGroup('Background', function(content) {
+            content.appendChild(createColorRow('Color', 'bg_color', data, index));
+            content.appendChild(createStyleSelectRow('Size', 'bg_size', ['', 'cover', 'contain', 'auto'], data, index));
+            content.appendChild(createStyleSelectRow('Position', 'bg_position', ['', 'center center', 'top center', 'bottom center', 'left center', 'right center'], data, index));
+            content.appendChild(createStyleSelectRow('Repeat', 'bg_repeat', ['', 'no-repeat', 'repeat', 'repeat-x', 'repeat-y'], data, index));
+        }));
+
+        // 3. Typography
+        panel.appendChild(createStyleGroup('Typography', function(content) {
+            content.appendChild(createColorRow('Color', 'text_color', data, index));
+            content.appendChild(createNumberUnitRow('Size', 'text_size', 'text_size_unit', data, index));
+            content.appendChild(createAlignRow(data, index));
+            content.appendChild(createStyleSelectRow('Weight', 'text_weight', ['', '100','200','300','400','500','600','700','800','900'], data, index));
+        }));
+
+        // 4. Border
+        panel.appendChild(createStyleGroup('Border', function(content) {
+            content.appendChild(createNumberUnitRow('Width', 'border_width', 'border_unit', data, index));
+            content.appendChild(createStyleSelectRow('Style', 'border_style', ['', 'none','solid','dashed','dotted','double'], data, index));
+            content.appendChild(createColorRow('Color', 'border_color', data, index));
+            content.appendChild(createNumberUnitRow('Radius', 'border_radius', 'border_radius_unit', data, index));
+        }));
+
+        // 5. Effects
+        panel.appendChild(createStyleGroup('Effects', function(content) {
+            var shadowLabel = document.createElement('div');
+            shadowLabel.className = 'pb-style-label';
+            shadowLabel.textContent = 'Box Shadow';
+            content.appendChild(shadowLabel);
+
+            var shadowRow = document.createElement('div');
+            shadowRow.className = 'pb-spacing-control';
+            ['shadow_x','shadow_y','shadow_blur','shadow_spread'].forEach(function(key) {
+                var lbl = key.split('_').pop();
+                var l = document.createElement('label');
+                l.textContent = lbl.charAt(0).toUpperCase() + lbl.slice(1);
+                shadowRow.appendChild(l);
+                var inp = document.createElement('input');
+                inp.type = 'number';
+                inp.value = data[key] || '';
+                inp.setAttribute('data-instance', index);
+                inp.setAttribute('data-style', key);
+                shadowRow.appendChild(inp);
+            });
+            content.appendChild(shadowRow);
+            content.appendChild(createColorRow('Shadow Color', 'shadow_color', data, index));
+
+            // Opacity
+            var opRow = document.createElement('div');
+            opRow.className = 'pb-range-field';
+            var opLabel = document.createElement('label');
+            opLabel.textContent = 'Opacity';
+            opLabel.style.cssText = 'font-size:0.8rem;min-width:5rem;color:var(--color-text-muted);';
+            opRow.appendChild(opLabel);
+            var opRange = document.createElement('input');
+            opRange.type = 'range';
+            opRange.min = '0';
+            opRange.max = '1';
+            opRange.step = '0.05';
+            opRange.value = data.opacity !== undefined && data.opacity !== '' ? data.opacity : '1';
+            opRange.setAttribute('data-instance', index);
+            opRange.setAttribute('data-style', 'opacity');
+            opRow.appendChild(opRange);
+            var opVal = document.createElement('span');
+            opVal.className = 'pb-range-value';
+            opVal.textContent = opRange.value;
+            opRow.appendChild(opVal);
+            opRange.addEventListener('input', function() {
+                opVal.textContent = opRange.value;
+            });
+            content.appendChild(opRow);
+        }));
+
+        // 6. Layout
+        panel.appendChild(createStyleGroup('Layout', function(content) {
+            content.appendChild(createTextRow('Max Width', 'max_width', data, index, 'e.g. 1200px'));
+            content.appendChild(createTextRow('Min Height', 'min_height', data, index, 'e.g. 400px'));
+        }));
+
+        // 7. Custom CSS
+        panel.appendChild(createStyleGroup('Custom CSS', function(content) {
+            var wrapper = document.createElement('div');
+            wrapper.className = 'pb-custom-css';
+            var ta = document.createElement('textarea');
+            ta.placeholder = '/* CSS rules here apply to this element */';
+            ta.value = data.custom_css || '';
+            ta.setAttribute('data-instance', index);
+            ta.setAttribute('data-style', 'custom_css');
+            wrapper.appendChild(ta);
+            var hint = document.createElement('div');
+            hint.className = 'pb-css-hint';
+            hint.textContent = 'Selectors are automatically scoped to this element instance.';
+            wrapper.appendChild(hint);
+            content.appendChild(wrapper);
+        }));
+
+        // 8. Advanced
+        panel.appendChild(createStyleGroup('Advanced', function(content) {
+            content.appendChild(createTextRow('CSS Class', 'custom_class', data, index, 'Extra CSS classes'));
+        }));
+
+        return panel;
+    }
+
+    function createStyleGroup(title, buildFn) {
+        var details = document.createElement('details');
+        details.className = 'pb-style-group';
+        var summary = document.createElement('summary');
+        summary.textContent = title;
+        details.appendChild(summary);
+        var content = document.createElement('div');
+        content.className = 'pb-style-group-content';
+        buildFn(content);
+        details.appendChild(content);
+        return details;
+    }
+
+    function createSpacingControl(prefix, data, index) {
+        var row = document.createElement('div');
+        row.className = 'pb-spacing-control';
+
+        var linked = data[prefix + '_linked'] || false;
+        var linkBtn = document.createElement('button');
+        linkBtn.type = 'button';
+        linkBtn.className = 'pb-spacing-link' + (linked ? ' active' : '');
+        linkBtn.innerHTML = '&#128279;';
+        linkBtn.title = 'Link all sides';
+        linkBtn.setAttribute('data-instance', index);
+        linkBtn.setAttribute('data-style', prefix + '_linked');
+        row.appendChild(linkBtn);
+
+        var sides = ['top', 'right', 'bottom', 'left'];
+        var inputs = [];
+        sides.forEach(function(side) {
+            var lbl = document.createElement('label');
+            lbl.textContent = side.charAt(0).toUpperCase();
+            row.appendChild(lbl);
+            var inp = document.createElement('input');
+            inp.type = 'number';
+            inp.value = data[prefix + '_' + side] || '';
+            inp.setAttribute('data-instance', index);
+            inp.setAttribute('data-style', prefix + '_' + side);
+            inp.addEventListener('input', function() {
+                if (linkBtn.classList.contains('active')) {
+                    inputs.forEach(function(i) { i.value = inp.value; });
+                }
+            });
+            row.appendChild(inp);
+            inputs.push(inp);
+        });
+
+        var unitSel = document.createElement('select');
+        unitSel.setAttribute('data-instance', index);
+        unitSel.setAttribute('data-style', prefix + '_unit');
+        ['px','rem','em','%','vh','vw'].forEach(function(u) {
+            var opt = document.createElement('option');
+            opt.value = u;
+            opt.textContent = u;
+            if ((data[prefix + '_unit'] || 'px') === u) opt.selected = true;
+            unitSel.appendChild(opt);
+        });
+        row.appendChild(unitSel);
+
+        linkBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            linkBtn.classList.toggle('active');
+        });
+
+        return row;
+    }
+
+    function createColorRow(label, key, data, index) {
+        var row = document.createElement('div');
+        row.className = 'pb-style-row';
+        var lbl = document.createElement('label');
+        lbl.textContent = label;
+        row.appendChild(lbl);
+
+        var wrapper = document.createElement('div');
+        wrapper.className = 'pb-color-field';
+        var colorInp = document.createElement('input');
+        colorInp.type = 'color';
+        colorInp.value = data[key] || '#000000';
+        var textInp = document.createElement('input');
+        textInp.type = 'text';
+        textInp.value = data[key] || '';
+        textInp.placeholder = '#000000';
+        textInp.setAttribute('data-instance', index);
+        textInp.setAttribute('data-style', key);
+
+        colorInp.addEventListener('input', function() { textInp.value = colorInp.value; });
+        textInp.addEventListener('input', function() {
+            if (/^#[0-9a-fA-F]{6}$/.test(textInp.value)) colorInp.value = textInp.value;
+        });
+
+        wrapper.appendChild(colorInp);
+        wrapper.appendChild(textInp);
+        row.appendChild(wrapper);
+        return row;
+    }
+
+    function createNumberUnitRow(label, numKey, unitKey, data, index) {
+        var row = document.createElement('div');
+        row.className = 'pb-style-row';
+        var lbl = document.createElement('label');
+        lbl.textContent = label;
+        row.appendChild(lbl);
+        var inp = document.createElement('input');
+        inp.type = 'number';
+        inp.value = data[numKey] || '';
+        inp.setAttribute('data-instance', index);
+        inp.setAttribute('data-style', numKey);
+        row.appendChild(inp);
+
+        var sel = document.createElement('select');
+        sel.setAttribute('data-instance', index);
+        sel.setAttribute('data-style', unitKey);
+        ['px','rem','em','%','vh','vw'].forEach(function(u) {
+            var opt = document.createElement('option');
+            opt.value = u;
+            opt.textContent = u;
+            if ((data[unitKey] || 'px') === u) opt.selected = true;
+            sel.appendChild(opt);
+        });
+        row.appendChild(sel);
+        return row;
+    }
+
+    function createAlignRow(data, index) {
+        var row = document.createElement('div');
+        row.className = 'pb-style-row';
+        var lbl = document.createElement('label');
+        lbl.textContent = 'Align';
+        row.appendChild(lbl);
+
+        var group = document.createElement('div');
+        group.className = 'pb-align-group';
+        var aligns = [
+            { val: 'left', label: 'L' },
+            { val: 'center', label: 'C' },
+            { val: 'right', label: 'R' },
+            { val: 'justify', label: 'J' }
+        ];
+        // Hidden input for value
+        var hiddenInp = document.createElement('input');
+        hiddenInp.type = 'hidden';
+        hiddenInp.value = data.text_align || '';
+        hiddenInp.setAttribute('data-instance', index);
+        hiddenInp.setAttribute('data-style', 'text_align');
+
+        aligns.forEach(function(a) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = a.label;
+            if ((data.text_align || '') === a.val) btn.classList.add('active');
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                group.querySelectorAll('button').forEach(function(b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                hiddenInp.value = a.val;
+            });
+            group.appendChild(btn);
+        });
+
+        row.appendChild(group);
+        row.appendChild(hiddenInp);
+        return row;
+    }
+
+    function createStyleSelectRow(label, key, options, data, index) {
+        var row = document.createElement('div');
+        row.className = 'pb-style-row';
+        var lbl = document.createElement('label');
+        lbl.textContent = label;
+        row.appendChild(lbl);
+        var sel = document.createElement('select');
+        sel.setAttribute('data-instance', index);
+        sel.setAttribute('data-style', key);
+        options.forEach(function(o) {
+            var opt = document.createElement('option');
+            opt.value = o;
+            opt.textContent = o || '— None —';
+            if ((data[key] || '') === o) opt.selected = true;
+            sel.appendChild(opt);
+        });
+        row.appendChild(sel);
+        return row;
+    }
+
+    function createTextRow(label, key, data, index, placeholder) {
+        var row = document.createElement('div');
+        row.className = 'pb-style-row';
+        var lbl = document.createElement('label');
+        lbl.textContent = label;
+        row.appendChild(lbl);
+        var inp = document.createElement('input');
+        inp.type = 'text';
+        inp.value = data[key] || '';
+        inp.placeholder = placeholder || '';
+        inp.setAttribute('data-instance', index);
+        inp.setAttribute('data-style', key);
+        row.appendChild(inp);
+        return row;
+    }
+
+    function readStyleDataFromDOM(card, index) {
+        if (index < 0 || index >= instances.length) return;
+
+        var styleData = {};
+        var styleInputs = card.querySelectorAll('[data-style]');
+        styleInputs.forEach(function(inp) {
+            var instIdx = parseInt(inp.getAttribute('data-instance'), 10);
+            if (instIdx !== index) return;
+
+            var key = inp.getAttribute('data-style');
+            if (!key) return;
+
+            if (key.endsWith('_linked')) {
+                styleData[key] = inp.classList.contains('active');
+            } else if (inp.type === 'checkbox') {
+                styleData[key] = inp.checked;
+            } else if (inp.type === 'range') {
+                styleData[key] = inp.value;
+            } else {
+                styleData[key] = inp.value;
+            }
+        });
+
+        instances[index].styleData = styleData;
+    }
+
+    // -----------------------------------------------------------------------
     // Read from DOM
     // -----------------------------------------------------------------------
     function readInstancesFromDOM() {
@@ -843,6 +1245,9 @@
                     }
                 });
             }
+
+            // Read style data from DOM
+            readStyleDataFromDOM(card, idx);
         });
     }
 
@@ -855,7 +1260,8 @@
         var output = instances.map(function(inst) {
             return {
                 element_id: inst.elementId,
-                slot_data: inst.slotData || {}
+                slot_data: inst.slotData || {},
+                style_data: inst.styleData || {}
             };
         });
 

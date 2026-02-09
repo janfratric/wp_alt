@@ -1,8 +1,8 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration) + 5.3 (AI Page Generator) + 6.1 (Element Catalogue & Rendering Engine) + 6.2 (Content Editor Element Mode & Page Builder UI)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration) + 5.3 (AI Page Generator) + 6.1 (Element Catalogue & Rendering Engine) + 6.2 (Content Editor Element Mode & Page Builder UI) + 6.3 (Per-Instance Element Styling)
 >
-> **Last updated**: 2026-02-08
+> **Last updated**: 2026-02-09
 
 ---
 
@@ -2150,6 +2150,136 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 
 ---
 
+## Test Group BE: Page Builder — Style Tab & Style Panel (Chunk 6.3)
+
+### BE1. Content/Style tabs appear on instance cards
+1. Create or edit content, switch to Page Builder mode
+2. Add a Hero Section element
+3. **Verify**: Instance card shows two tabs: "Content" and "Style"
+4. **Verify**: "Content" tab is active by default, showing slot fields
+5. Click "Style" tab
+6. **Verify**: Slot fields are hidden, style controls appear
+7. Click "Content" tab
+8. **Verify**: Style controls hidden, slot fields reappear
+
+### BE2. Style panel accordion sections
+1. Click "Style" tab on an instance card
+2. **Verify**: Accordion sections visible: Spacing, Background, Typography, Border, Effects, Layout, Custom CSS, Advanced
+3. Click a section title (e.g., "Spacing") to expand it
+4. **Verify**: Section expands showing controls (uses native `<details>/<summary>`)
+5. **Verify**: Spacing section has Margin and Padding groups with 4 number inputs each, linked toggle, and unit selector
+
+### BE3. Spacing controls with linked toggle
+1. Open the Spacing section in the Style panel
+2. Enter "20" in the Margin Top field
+3. **Verify**: If linked toggle is on, all 4 margin fields update to 20
+4. Click the linked toggle to unlink
+5. Change Margin Right to "10"
+6. **Verify**: Only Margin Right changes; Top stays at 20
+
+### BE4. Color controls (synced color picker + hex input)
+1. Open the Background section
+2. Click the color picker next to "Background Color"
+3. Select a color (e.g., red)
+4. **Verify**: Hex input updates to the selected color (e.g., `#ff0000`)
+5. Type `#00ff00` in the hex input
+6. **Verify**: Color picker updates to green
+
+### BE5. Custom CSS textarea
+1. Open the "Custom CSS" section in the Style panel
+2. **Verify**: Dark-theme monospace textarea is visible
+3. Enter CSS: `h2 { color: red; } .inner { padding: 10px; }`
+4. Save the page
+5. **Verify**: Custom CSS persists after reload (edit the page again and check)
+
+---
+
+## Test Group BF: Page Builder — Style Rendering (Chunk 6.3)
+
+### BF1. GUI styles render as inline style attribute
+1. Edit content in Page Builder mode
+2. Add a Hero Section, click the "Style" tab
+3. Set Padding Top to 40px, Background Color to `#0000ff`
+4. Save the page
+5. Visit the public page URL
+6. **Verify**: The hero wrapper div has `style="padding-top: 40px; background-color: #0000ff"` (or similar)
+7. **Verify**: The wrapper div has `data-instance-id` attribute
+
+### BF2. Custom CSS renders scoped in style block
+1. Edit the same page, add Custom CSS to the Hero: `h2 { color: white; }`
+2. Save the page
+3. Visit the public page URL
+4. **Verify**: Page source has a `<style>` block containing a rule like `.lcms-el[data-instance-id="N"] h2 { color: white; }`
+5. **Verify**: The scoping prevents the CSS from affecting other elements
+
+### BF3. Empty style data produces no inline style
+1. Add a Text Section element with no style changes (empty style data)
+2. Save and visit the public page
+3. **Verify**: The text section wrapper div does NOT have a `style` attribute
+
+### BF4. Custom CSS class applied to wrapper
+1. Edit an element instance, open the "Advanced" section
+2. Enter "highlight special" in the Custom Class field
+3. Save the page
+4. Visit the public page
+5. **Verify**: The wrapper div has `class="lcms-el lcms-el-{slug} highlight special"`
+
+---
+
+## Test Group BG: Page Layout Styles (Chunk 6.3)
+
+### BG1. Page Layout Styles card visible in Page Builder mode
+1. Create or edit content, switch to Page Builder mode
+2. **Verify**: A "Page Layout Styles" card appears in the sidebar
+3. Switch to HTML mode
+4. **Verify**: The Page Layout Styles card is hidden
+
+### BG2. Page layout style controls work
+1. In Page Builder mode, find the "Page Layout Styles" card
+2. Select "Page Body" target from the dropdown
+3. Set Background Color to `#f0f0f0`
+4. Set Padding Top to 20px
+5. Save the page
+6. Visit the public page URL
+7. **Verify**: Page source has a `<style>` block containing `.page-body { background-color: #f0f0f0; padding-top: 20px; }`
+
+### BG3. Page layout custom CSS
+1. In the Page Layout Styles card, select "Page Body" target
+2. Enter in the Custom CSS textarea: `background: linear-gradient(135deg, #667eea, #764ba2);`
+3. Save the page
+4. Visit the public page URL
+5. **Verify**: Page source has `.page-body { background: linear-gradient(...); }` in the style block
+
+### BG4. Page layout styles persist on reload
+1. Save page layout styles as in BG2
+2. Edit the page again
+3. **Verify**: The Page Layout Styles card shows the previously saved values
+
+---
+
+## Test Group BH: Element Styling — Security & Edge Cases (Chunk 6.3)
+
+### BH1. CSS injection blocked in custom CSS
+1. Edit an element instance, open Custom CSS
+2. Enter: `@import url('evil.css'); .x { color: red; } </style><script>alert(1)</script>`
+3. Save the page
+4. **Verify**: Page source does NOT contain `@import`, `</style>`, or `<script>` in the CSS block
+5. **Verify**: Legitimate CSS (`.x { color: red; }`) is preserved
+
+### BH2. HTML-mode content unaffected
+1. Create a new content item in HTML mode (default)
+2. Add title and body text, save
+3. **Verify**: No `page_elements` rows in database for this content
+4. **Verify**: No `page_styles` rows in database for this content
+5. Visit the public page — renders normally with HTML content
+
+### BH3. Custom class sanitization
+1. Enter `<script>alert(1)</script> my-class` in the Advanced > Custom Class field
+2. Save the page
+3. **Verify**: Only `scriptalert1script my-class` (or similar sanitized version) is applied — no HTML tags
+
+---
+
 ## Summary Checklist
 
 (continued from previous chunks)
@@ -2430,3 +2560,19 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | BD3 | Updating reorders and updates data | ☐ |
 | BD4 | HTML-mode content unaffected | ☐ |
 | BD5 | Element-based page renders publicly | ☐ |
+| BE1 | Content/Style tabs appear on instance cards | ☐ |
+| BE2 | Style panel accordion sections | ☐ |
+| BE3 | Spacing controls with linked toggle | ☐ |
+| BE4 | Color controls synced | ☐ |
+| BE5 | Custom CSS textarea | ☐ |
+| BF1 | GUI styles render as inline style | ☐ |
+| BF2 | Custom CSS renders scoped | ☐ |
+| BF3 | Empty style data produces no inline style | ☐ |
+| BF4 | Custom CSS class applied to wrapper | ☐ |
+| BG1 | Page Layout Styles card visible | ☐ |
+| BG2 | Page layout style controls work | ☐ |
+| BG3 | Page layout custom CSS | ☐ |
+| BG4 | Page layout styles persist | ☐ |
+| BH1 | CSS injection blocked | ☐ |
+| BH2 | HTML-mode content unaffected (6.3) | ☐ |
+| BH3 | Custom class sanitization | ☐ |

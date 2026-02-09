@@ -30,6 +30,7 @@ class PageRenderer
 
     /**
      * Collect CSS for all elements used on a page (deduplicated by element ID).
+     * Also includes per-instance custom CSS scoped to each instance.
      */
     public static function getPageCss(int $contentId): string
     {
@@ -50,6 +51,32 @@ class PageRenderer
             }
         }
 
+        // Per-instance style overrides via CSS rules (cascades into child elements)
+        foreach ($instances as $instance) {
+            $styleData = $instance['style_data_json'] ?? '{}';
+            if (is_string($styleData)) {
+                $styleData = json_decode($styleData, true) ?: [];
+            }
+
+            $instanceId = (int) ($instance['id'] ?? 0);
+            $scope = '.lcms-el[data-instance-id="' . $instanceId . '"]';
+
+            // Non-inheriting properties (background, padding, border, border-radius)
+            // are emitted as CSS rules so they cascade into child elements whose
+            // own catalogue CSS would otherwise cover the wrapper's inline styles.
+            $cascadeCss = StyleRenderer::buildCascadeStyles($styleData, $scope);
+            if ($cascadeCss !== '') {
+                $css .= $cascadeCss;
+            }
+
+            // Custom CSS scoped to this instance
+            $customCss = trim($styleData['custom_css'] ?? '');
+            if ($customCss !== '') {
+                $css .= "/* Custom CSS: instance #{$instanceId} */\n"
+                     . StyleRenderer::scopeCustomCss($customCss, $scope) . "\n\n";
+            }
+        }
+
         return $css;
     }
 
@@ -67,12 +94,74 @@ class PageRenderer
             $slotData = json_decode($slotData, true) ?: [];
         }
 
+        // Read and apply style data
+        $instanceId = (int) ($instance['id'] ?? 0);
+        $styleData = $instance['style_data_json'] ?? '{}';
+        if (is_string($styleData)) {
+            $styleData = json_decode($styleData, true) ?: [];
+        }
+
+        $inlineStyle = StyleRenderer::buildInlineStyle($styleData);
+        $extraClasses = StyleRenderer::getCustomClasses($styleData);
+
         $rendered = SlotRenderer::render($template, $slotData);
 
         return '<div class="lcms-el lcms-el-' . htmlspecialchars($slug, ENT_QUOTES, 'UTF-8')
-            . '" data-element-id="' . $elementId . '">'
+            . ($extraClasses !== '' ? ' ' . htmlspecialchars($extraClasses, ENT_QUOTES, 'UTF-8') : '')
+            . '" data-element-id="' . $elementId . '"'
+            . ' data-instance-id="' . $instanceId . '"'
+            . ($inlineStyle !== '' ? ' style="' . htmlspecialchars($inlineStyle, ENT_QUOTES, 'UTF-8') . '"' : '')
+            . '>'
             . "\n" . $rendered . "\n"
             . "</div>\n";
+    }
+
+    /**
+     * Build page-level layout CSS from page_styles table.
+     */
+    public static function getPageLayoutCss(int $contentId): string
+    {
+        $row = QueryBuilder::query('page_styles')
+            ->select('style_data_json')
+            ->where('content_id', (string) $contentId)
+            ->first();
+
+        if ($row === null) {
+            return '';
+        }
+
+        $data = json_decode($row['style_data_json'] ?? '{}', true) ?: [];
+        if (empty($data)) {
+            return '';
+        }
+
+        $css = '';
+
+        // GUI styles
+        $guiCss = StyleRenderer::buildPageLayoutCss($data);
+        if ($guiCss !== '') {
+            $css .= "/* Page Layout Styles */\n" . $guiCss . "\n";
+        }
+
+        // Custom CSS per target
+        $targets = [
+            'page_body'  => '.page-body',
+            'container'  => '.container',
+            'site_main'  => '.site-main',
+        ];
+        foreach ($targets as $key => $selector) {
+            $targetData = $data[$key] ?? [];
+            if (!is_array($targetData)) {
+                continue;
+            }
+            $customCss = trim($targetData['custom_css'] ?? '');
+            if ($customCss !== '') {
+                $css .= "/* Page Layout Custom CSS: {$key} */\n"
+                     . StyleRenderer::scopeCustomCss($customCss, $selector) . "\n\n";
+            }
+        }
+
+        return $css;
     }
 
     /**
@@ -87,6 +176,7 @@ class PageRenderer
                 'page_elements.element_id',
                 'page_elements.sort_order',
                 'page_elements.slot_data_json',
+                'page_elements.style_data_json',
                 'elements.slug',
                 'elements.name',
                 'elements.html_template',

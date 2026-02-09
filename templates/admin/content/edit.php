@@ -297,6 +297,25 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Page Layout Styles (visible when editor_mode = elements) -->
+            <div class="card" id="page-styles-card"
+                 style="<?= ($content['editor_mode'] ?? 'html') !== 'elements' ? 'display:none;' : '' ?>">
+                <div class="card-header">Page Layout Styles</div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="page-style-target">Target</label>
+                        <select id="page-style-target">
+                            <option value="page_body">Page Body</option>
+                            <option value="container">Container</option>
+                            <option value="site_main">Site Main</option>
+                        </select>
+                    </div>
+                    <div id="page-style-controls"></div>
+                    <input type="hidden" name="page_styles_json" id="page-styles-json"
+                           value="<?= $this->e(json_encode($pageStyles ?? [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>">
+                </div>
+            </div>
         </div>
 
         <!-- AI Assistant Panel (hidden by default, shown when toggled) -->
@@ -341,6 +360,7 @@
 
 <script src="/assets/js/page-builder.js"></script>
 <script src="/assets/js/page-builder-init.js"></script>
+<script src="/assets/js/page-styles-init.js"></script>
 <script src="/assets/js/editor.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
