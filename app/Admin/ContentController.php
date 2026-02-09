@@ -120,6 +120,12 @@ class ContentController
             $customFieldDefinitions = json_decode($contentTypeRecord['fields_json'], true) ?: [];
         }
 
+        $layoutTemplates = QueryBuilder::query('layout_templates')
+            ->select('id', 'name', 'is_default')
+            ->orderBy('is_default', 'DESC')
+            ->orderBy('name', 'ASC')
+            ->get();
+
         $html = $this->app->template()->render('admin/content/edit', [
             'title'                  => 'Create Content',
             'activeNav'              => 'content',
@@ -131,6 +137,7 @@ class ContentController
             'pageElements'           => [],
             'pageStyles'             => [],
             'csrfToken'              => Session::get('csrf_token', ''),
+            'layoutTemplates'        => $layoutTemplates,
         ]);
 
         return $this->withSecurityHeaders(Response::html($html));
@@ -155,21 +162,24 @@ class ContentController
         $editorMode = in_array($data['editor_mode'], ['html', 'elements'], true)
             ? $data['editor_mode'] : 'html';
 
+        $layoutTemplateId = $data['layout_template_id'] !== '' ? (int) $data['layout_template_id'] : null;
+
         $id = QueryBuilder::query('content')->insert([
-            'type'             => $data['type'],
-            'title'            => $data['title'],
-            'slug'             => $data['slug'],
-            'body'             => $data['body'],
-            'excerpt'          => $data['excerpt'],
-            'status'           => $data['status'],
-            'author_id'        => (int) Session::get('user_id'),
-            'sort_order'       => $data['sort_order'],
-            'meta_title'       => $data['meta_title'] ?: null,
-            'meta_description' => $data['meta_description'] ?: null,
-            'featured_image'   => $data['featured_image'] ?: null,
-            'published_at'     => $data['published_at'] ?: null,
-            'updated_at'       => date('Y-m-d H:i:s'),
-            'editor_mode'      => $editorMode,
+            'type'               => $data['type'],
+            'title'              => $data['title'],
+            'slug'               => $data['slug'],
+            'body'               => $data['body'],
+            'excerpt'            => $data['excerpt'],
+            'status'             => $data['status'],
+            'author_id'          => (int) Session::get('user_id'),
+            'sort_order'         => $data['sort_order'],
+            'meta_title'         => $data['meta_title'] ?: null,
+            'meta_description'   => $data['meta_description'] ?: null,
+            'featured_image'     => $data['featured_image'] ?: null,
+            'published_at'       => $data['published_at'] ?: null,
+            'updated_at'         => date('Y-m-d H:i:s'),
+            'editor_mode'        => $editorMode,
+            'layout_template_id' => $layoutTemplateId,
         ]);
 
         // Save page elements if in elements mode
@@ -241,6 +251,12 @@ class ContentController
             $pageElements = $this->loadPageElements((int) $id);
         }
 
+        $layoutTemplates = QueryBuilder::query('layout_templates')
+            ->select('id', 'name', 'is_default')
+            ->orderBy('is_default', 'DESC')
+            ->orderBy('name', 'ASC')
+            ->get();
+
         $html = $this->app->template()->render('admin/content/edit', [
             'title'                  => 'Edit: ' . $content['title'],
             'activeNav'              => 'content',
@@ -252,6 +268,7 @@ class ContentController
             'pageElements'           => $pageElements,
             'pageStyles'             => $this->loadPageStyles((int) $id),
             'csrfToken'              => Session::get('csrf_token', ''),
+            'layoutTemplates'        => $layoutTemplates,
         ]);
 
         return $this->withSecurityHeaders(Response::html($html));
@@ -286,20 +303,23 @@ class ContentController
         $editorMode = in_array($data['editor_mode'], ['html', 'elements'], true)
             ? $data['editor_mode'] : 'html';
 
+        $layoutTemplateId = $data['layout_template_id'] !== '' ? (int) $data['layout_template_id'] : null;
+
         QueryBuilder::query('content')->where('id', (int) $id)->update([
-            'type'             => $data['type'],
-            'title'            => $data['title'],
-            'slug'             => $data['slug'],
-            'body'             => $data['body'],
-            'excerpt'          => $data['excerpt'],
-            'status'           => $data['status'],
-            'sort_order'       => $data['sort_order'],
-            'meta_title'       => $data['meta_title'] ?: null,
-            'meta_description' => $data['meta_description'] ?: null,
-            'featured_image'   => $data['featured_image'] ?: null,
-            'published_at'     => $data['published_at'] ?: null,
-            'updated_at'       => date('Y-m-d H:i:s'),
-            'editor_mode'      => $editorMode,
+            'type'               => $data['type'],
+            'title'              => $data['title'],
+            'slug'               => $data['slug'],
+            'body'               => $data['body'],
+            'excerpt'            => $data['excerpt'],
+            'status'             => $data['status'],
+            'sort_order'         => $data['sort_order'],
+            'meta_title'         => $data['meta_title'] ?: null,
+            'meta_description'   => $data['meta_description'] ?: null,
+            'featured_image'     => $data['featured_image'] ?: null,
+            'published_at'       => $data['published_at'] ?: null,
+            'updated_at'         => date('Y-m-d H:i:s'),
+            'editor_mode'        => $editorMode,
+            'layout_template_id' => $layoutTemplateId,
         ]);
 
         // Save page elements if in elements mode
@@ -409,6 +429,7 @@ class ContentController
             'published_at'     => trim((string) $request->input('published_at', '')),
             'sort_order'       => (int) $request->input('sort_order', '0'),
             'editor_mode'      => (string) $request->input('editor_mode', 'html'),
+            'layout_template_id' => trim((string) $request->input('layout_template_id', '')),
         ];
     }
 

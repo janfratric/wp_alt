@@ -9,6 +9,7 @@ use App\Core\Response;
 use App\Database\QueryBuilder;
 use App\PageBuilder\PageRenderer;
 use App\Admin\StyleController;
+use App\Admin\LayoutController;
 
 class FrontController
 {
@@ -129,18 +130,42 @@ class FrontController
         $elementCss = '';
         if (($content['editor_mode'] ?? 'html') === 'elements') {
             $contentId = (int) $content['id'];
-            $content['body'] = PageRenderer::renderPage($contentId);
+            $blocks = PageRenderer::loadBlocks($contentId);
+            if (!empty($blocks)) {
+                $content['body'] = PageRenderer::renderPageWithBlocks($contentId);
+            } else {
+                $content['body'] = PageRenderer::renderPage($contentId);
+            }
             $elementCss = PageRenderer::getPageCss($contentId);
             $elementCss .= PageRenderer::getPageLayoutCss($contentId);
+        }
+
+        // Resolve layout template
+        $layoutTemplateId = isset($content['layout_template_id']) ? (int) $content['layout_template_id'] : null;
+        $layoutTemplate = LayoutController::resolveTemplate($layoutTemplateId ?: null);
+
+        // Render block-mode header/footer if needed
+        $headerBlockHtml = '';
+        $footerBlockHtml = '';
+        if (($layoutTemplate['header_mode'] ?? 'standard') === 'block' && !empty($layoutTemplate['header_element_id'])) {
+            $headerBlockHtml = PageRenderer::renderSingleElement((int) $layoutTemplate['header_element_id']);
+            $elementCss .= PageRenderer::getSingleElementCss((int) $layoutTemplate['header_element_id']);
+        }
+        if (($layoutTemplate['footer_mode'] ?? 'standard') === 'block' && !empty($layoutTemplate['footer_element_id'])) {
+            $footerBlockHtml = PageRenderer::renderSingleElement((int) $layoutTemplate['footer_element_id']);
+            $elementCss .= PageRenderer::getSingleElementCss((int) $layoutTemplate['footer_element_id']);
         }
 
         $meta = $this->buildMeta($content, 'article');
 
         return $this->renderPublic('public/blog-post', [
-            'title'      => $content['title'],
-            'content'    => $content,
-            'meta'       => $meta,
-            'elementCss' => $elementCss,
+            'title'           => $content['title'],
+            'content'         => $content,
+            'meta'            => $meta,
+            'elementCss'      => $elementCss,
+            'layoutTemplate'  => $layoutTemplate,
+            'headerBlockHtml' => $headerBlockHtml,
+            'footerBlockHtml' => $footerBlockHtml,
         ]);
     }
 
@@ -177,18 +202,42 @@ class FrontController
         $elementCss = '';
         if (($content['editor_mode'] ?? 'html') === 'elements') {
             $contentId = (int) $content['id'];
-            $content['body'] = PageRenderer::renderPage($contentId);
+            $blocks = PageRenderer::loadBlocks($contentId);
+            if (!empty($blocks)) {
+                $content['body'] = PageRenderer::renderPageWithBlocks($contentId);
+            } else {
+                $content['body'] = PageRenderer::renderPage($contentId);
+            }
             $elementCss = PageRenderer::getPageCss($contentId);
             $elementCss .= PageRenderer::getPageLayoutCss($contentId);
+        }
+
+        // Resolve layout template
+        $layoutTemplateId = isset($content['layout_template_id']) ? (int) $content['layout_template_id'] : null;
+        $layoutTemplate = LayoutController::resolveTemplate($layoutTemplateId ?: null);
+
+        // Render block-mode header/footer if needed
+        $headerBlockHtml = '';
+        $footerBlockHtml = '';
+        if (($layoutTemplate['header_mode'] ?? 'standard') === 'block' && !empty($layoutTemplate['header_element_id'])) {
+            $headerBlockHtml = PageRenderer::renderSingleElement((int) $layoutTemplate['header_element_id']);
+            $elementCss .= PageRenderer::getSingleElementCss((int) $layoutTemplate['header_element_id']);
+        }
+        if (($layoutTemplate['footer_mode'] ?? 'standard') === 'block' && !empty($layoutTemplate['footer_element_id'])) {
+            $footerBlockHtml = PageRenderer::renderSingleElement((int) $layoutTemplate['footer_element_id']);
+            $elementCss .= PageRenderer::getSingleElementCss((int) $layoutTemplate['footer_element_id']);
         }
 
         $meta = $this->buildMeta($content, 'website');
 
         return $this->renderPublic($template, [
-            'title'      => $content['title'],
-            'content'    => $content,
-            'meta'       => $meta,
-            'elementCss' => $elementCss,
+            'title'           => $content['title'],
+            'content'         => $content,
+            'meta'            => $meta,
+            'elementCss'      => $elementCss,
+            'layoutTemplate'  => $layoutTemplate,
+            'headerBlockHtml' => $headerBlockHtml,
+            'footerBlockHtml' => $footerBlockHtml,
         ]);
     }
 
@@ -340,19 +389,24 @@ class FrontController
         $settings = $this->getPublicSettings();
         $consentEnabled = ($settings['cookie_consent_enabled'] ?? '1') === '1';
 
+        $layoutTemplate = LayoutController::resolveTemplate(null);
+
         $html = $this->app->template()->render('public/404', [
-            'title'          => 'Page Not Found',
-            'navPages'       => $this->getNavPages(),
-            'siteName'       => Config::getString('site_name', 'LiteCMS'),
-            'siteUrl'        => Config::getString('site_url', ''),
-            'currentSlug'    => '',
-            'consentText'    => $consentEnabled ? ($settings['cookie_consent_text'] ?? '') : '',
-            'consentLink'    => $consentEnabled ? ($settings['cookie_consent_link'] ?? '') : '',
-            'consentEnabled' => $consentEnabled,
-            'gaId'           => ($settings['ga_enabled'] ?? '') === '1' ? ($settings['ga_measurement_id'] ?? '') : '',
-            'styleOverrides' => StyleController::buildStyleOverrides($settings),
-            'googleFontLinks'=> StyleController::buildGoogleFontLinks($settings),
-            'meta'           => [
+            'title'           => 'Page Not Found',
+            'navPages'        => $this->getNavPages(),
+            'siteName'        => Config::getString('site_name', 'LiteCMS'),
+            'siteUrl'         => Config::getString('site_url', ''),
+            'currentSlug'     => '',
+            'consentText'     => $consentEnabled ? ($settings['cookie_consent_text'] ?? '') : '',
+            'consentLink'     => $consentEnabled ? ($settings['cookie_consent_link'] ?? '') : '',
+            'consentEnabled'  => $consentEnabled,
+            'gaId'            => ($settings['ga_enabled'] ?? '') === '1' ? ($settings['ga_measurement_id'] ?? '') : '',
+            'styleOverrides'  => StyleController::buildStyleOverrides($settings),
+            'googleFontLinks' => StyleController::buildGoogleFontLinks($settings),
+            'layoutTemplate'  => $layoutTemplate,
+            'headerBlockHtml' => '',
+            'footerBlockHtml' => '',
+            'meta'            => [
                 'title' => 'Page Not Found — ' . Config::getString('site_name', 'LiteCMS'),
             ],
         ]);
@@ -453,6 +507,17 @@ class FrontController
     {
         $settings = $this->getPublicSettings();
         $consentEnabled = ($settings['cookie_consent_enabled'] ?? '1') === '1';
+
+        // Ensure layout template is always available
+        if (!isset($data['layoutTemplate'])) {
+            $data['layoutTemplate'] = LayoutController::resolveTemplate(null);
+        }
+        if (!isset($data['headerBlockHtml'])) {
+            $data['headerBlockHtml'] = '';
+        }
+        if (!isset($data['footerBlockHtml'])) {
+            $data['footerBlockHtml'] = '';
+        }
 
         $data = array_merge([
             'navPages'       => $this->getNavPages(),

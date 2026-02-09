@@ -59,6 +59,10 @@ $imgSettings = json_encode([
                    class="<?= ($activeNav ?? '') === 'style' ? 'active' : '' ?>">
                     <span class="nav-icon">&#127912;</span> Master Style
                 </a>
+                <a href="/admin/layouts"
+                   class="<?= ($activeNav ?? '') === 'layouts' ? 'active' : '' ?>">
+                    <span class="nav-icon">&#9638;</span> Layouts
+                </a>
 
                 <div class="nav-section">System</div>
                 <a href="/admin/users"

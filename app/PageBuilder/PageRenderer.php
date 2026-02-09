@@ -165,6 +165,169 @@ class PageRenderer
     }
 
     /**
+     * Render page content with block support.
+     * Elements assigned to blocks are grouped inside block wrappers;
+     * unassigned elements (block_id=NULL) render flat for backward compat.
+     */
+    public static function renderPageWithBlocks(int $contentId): string
+    {
+        $blocks = self::loadBlocks($contentId);
+        $instances = self::loadInstancesWithBlocks($contentId);
+
+        if (empty($instances) && empty($blocks)) {
+            return '';
+        }
+
+        // Separate unassigned (flat) instances from block-assigned ones
+        $flatInstances = [];
+        $blockInstances = []; // blockId => [instances]
+        foreach ($instances as $inst) {
+            $bid = $inst['block_id'] ?? null;
+            if ($bid === null || $bid === '' || $bid === '0') {
+                $flatInstances[] = $inst;
+            } else {
+                $blockInstances[(int) $bid][] = $inst;
+            }
+        }
+
+        $html = '';
+
+        // Render flat instances first (backward compat)
+        foreach ($flatInstances as $inst) {
+            $html .= self::renderInstance($inst);
+        }
+
+        // Render blocks
+        foreach ($blocks as $block) {
+            $html .= self::renderBlock($block, $blockInstances[(int) $block['id']] ?? []);
+        }
+
+        return $html;
+    }
+
+    /**
+     * Render a single block wrapper with its child elements.
+     */
+    public static function renderBlock(array $block, array $instances): string
+    {
+        $blockId = (int) $block['id'];
+        $columns = max(1, min(12, (int) ($block['columns'] ?? 1)));
+        $widthPercent = max(10, min(100, (int) ($block['width_percent'] ?? 100)));
+        $alignment = in_array($block['alignment'] ?? 'center', ['left', 'center', 'right'], true)
+            ? $block['alignment'] : 'center';
+        $displayMode = in_array($block['display_mode'] ?? 'flex', ['flex', 'block', 'grid'], true)
+            ? $block['display_mode'] : 'flex';
+
+        // Build inline styles
+        $styles = [];
+        if ($widthPercent < 100) {
+            $styles[] = 'width:' . $widthPercent . '%';
+            if ($alignment === 'center') {
+                $styles[] = 'margin-left:auto;margin-right:auto';
+            } elseif ($alignment === 'right') {
+                $styles[] = 'margin-left:auto';
+            }
+        }
+
+        if ($displayMode === 'grid') {
+            $styles[] = 'display:grid';
+            $styles[] = 'grid-template-columns:repeat(' . $columns . ',1fr)';
+            $styles[] = 'gap:1rem';
+        } elseif ($displayMode === 'flex') {
+            $styles[] = 'display:flex';
+            $styles[] = 'flex-wrap:wrap';
+            $styles[] = 'gap:1rem';
+        }
+        // 'block' display mode needs no special styles
+
+        $styleAttr = !empty($styles) ? ' style="' . htmlspecialchars(implode(';', $styles), ENT_QUOTES, 'UTF-8') . '"' : '';
+
+        $html = '<div class="lcms-block" data-block-id="' . $blockId . '"' . $styleAttr . '>' . "\n";
+
+        foreach ($instances as $inst) {
+            $html .= self::renderInstance($inst);
+        }
+
+        $html .= "</div>\n";
+
+        return $html;
+    }
+
+    /**
+     * Render a single element from the catalogue (by element ID).
+     * Used for header/footer block-mode rendering with empty slot data.
+     */
+    public static function renderSingleElement(int $elementId): string
+    {
+        $element = QueryBuilder::query('elements')
+            ->select('id', 'slug', 'name', 'html_template', 'css', 'slots_json')
+            ->where('id', (string) $elementId)
+            ->where('status', 'active')
+            ->first();
+
+        if ($element === null) {
+            return '';
+        }
+
+        // Render with default slot values
+        $slots = json_decode($element['slots_json'] ?? '[]', true) ?: [];
+        $slotData = [];
+        foreach ($slots as $slot) {
+            if (isset($slot['key'], $slot['default'])) {
+                $slotData[$slot['key']] = $slot['default'];
+            }
+        }
+
+        $instance = [
+            'id'             => 0,
+            'element_id'     => (int) $element['id'],
+            'slug'           => $element['slug'],
+            'name'           => $element['name'],
+            'html_template'  => $element['html_template'],
+            'css'            => $element['css'],
+            'slot_data_json' => $slotData,
+            'style_data_json' => '{}',
+        ];
+
+        return self::renderInstance($instance);
+    }
+
+    /**
+     * Get CSS for a single element from the catalogue (for header/footer block mode).
+     */
+    public static function getSingleElementCss(int $elementId): string
+    {
+        $element = QueryBuilder::query('elements')
+            ->select('name', 'css')
+            ->where('id', (string) $elementId)
+            ->where('status', 'active')
+            ->first();
+
+        if ($element === null) {
+            return '';
+        }
+
+        $css = trim($element['css'] ?? '');
+        if ($css !== '') {
+            return "/* Element: {$element['name']} */\n{$css}\n\n";
+        }
+
+        return '';
+    }
+
+    /**
+     * Load page blocks ordered by sort_order.
+     */
+    public static function loadBlocks(int $contentId): array
+    {
+        return QueryBuilder::query('page_blocks')
+            ->select()
+            ->where('content_id', (string) $contentId)
+            ->orderBy('sort_order')
+            ->get();
+    }
+
+    /**
      * Load all element instances for a content item, ordered by sort_order.
      * Joins with elements table to get template, CSS, and slug.
      */
@@ -177,6 +340,30 @@ class PageRenderer
                 'page_elements.sort_order',
                 'page_elements.slot_data_json',
                 'page_elements.style_data_json',
+                'elements.slug',
+                'elements.name',
+                'elements.html_template',
+                'elements.css'
+            )
+            ->leftJoin('elements', 'elements.id', '=', 'page_elements.element_id')
+            ->where('page_elements.content_id', (string) $contentId)
+            ->orderBy('page_elements.sort_order')
+            ->get();
+    }
+
+    /**
+     * Load instances including block_id for block-aware rendering.
+     */
+    private static function loadInstancesWithBlocks(int $contentId): array
+    {
+        return QueryBuilder::query('page_elements')
+            ->select(
+                'page_elements.id',
+                'page_elements.element_id',
+                'page_elements.sort_order',
+                'page_elements.slot_data_json',
+                'page_elements.style_data_json',
+                'page_elements.block_id',
                 'elements.slug',
                 'elements.name',
                 'elements.html_template',

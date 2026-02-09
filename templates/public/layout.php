@@ -18,7 +18,20 @@
 <?php endif; ?>
 </head>
 <body<?php if (!empty($gaId)): ?> data-ga-id="<?= $this->e($gaId) ?>"<?php endif; ?>>
-    <header class="site-header">
+<?php
+    $lt = $layoutTemplate ?? [];
+    $headerVisible = ((int)($lt['header_visible'] ?? 1)) === 1;
+    $headerMode = $lt['header_mode'] ?? 'standard';
+    $headerHeight = $lt['header_height'] ?? 'auto';
+    $footerVisible = ((int)($lt['footer_visible'] ?? 1)) === 1;
+    $footerMode = $lt['footer_mode'] ?? 'standard';
+    $footerHeight = $lt['footer_height'] ?? 'auto';
+?>
+<?php if ($headerVisible): ?>
+    <header class="site-header"<?= ($headerHeight !== 'auto') ? ' style="height:' . $this->e($headerHeight) . '"' : '' ?>>
+<?php if ($headerMode === 'block' && !empty($headerBlockHtml)): ?>
+        <?= $headerBlockHtml ?>
+<?php else: ?>
         <div class="container">
             <a href="/" class="site-logo"><?= $this->e($siteName ?? 'LiteCMS') ?></a>
             <button type="button" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
@@ -39,7 +52,9 @@
                 </ul>
             </nav>
         </div>
+<?php endif; ?>
     </header>
+<?php endif; ?>
 
     <main class="site-main">
         <div class="container">
@@ -47,11 +62,17 @@
         </div>
     </main>
 
-    <footer class="site-footer">
+<?php if ($footerVisible): ?>
+    <footer class="site-footer"<?= ($footerHeight !== 'auto') ? ' style="height:' . $this->e($footerHeight) . '"' : '' ?>>
+<?php if ($footerMode === 'block' && !empty($footerBlockHtml)): ?>
+        <?= $footerBlockHtml ?>
+<?php else: ?>
         <div class="container">
             <p>&copy; <?= date('Y') ?> <?= $this->e($siteName ?? 'LiteCMS') ?>. All rights reserved.</p>
         </div>
+<?php endif; ?>
     </footer>
+<?php endif; ?>
 
 <?php if ($consentEnabled ?? true): ?>
 <?= $this->partial('public/partials/cookie-consent', [

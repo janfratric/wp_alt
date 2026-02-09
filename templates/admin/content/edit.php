@@ -239,6 +239,21 @@
                                value="<?= (int)($content['sort_order'] ?? 0) ?>" min="0">
                     </div>
 
+                    <?php if (!empty($layoutTemplates)): ?>
+                    <div class="form-group">
+                        <label for="layout_template_id">Layout</label>
+                        <select id="layout_template_id" name="layout_template_id">
+                            <option value="">Default</option>
+                            <?php foreach ($layoutTemplates as $lt): ?>
+                                <option value="<?= (int)$lt['id'] ?>"
+                                    <?= ((int)($content['layout_template_id'] ?? 0) === (int)$lt['id']) ? 'selected' : '' ?>>
+                                    <?= $this->e($lt['name']) ?><?= ((int)($lt['is_default'] ?? 0) === 1) ? ' (default)' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php endif; ?>
+
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary" style="width:100%;">
                             <?= $isNew ? 'Create' : 'Update' ?>

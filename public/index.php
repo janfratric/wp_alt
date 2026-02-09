@@ -25,6 +25,7 @@ use App\Admin\ContentTypeController;
 use App\AIAssistant\PageGeneratorController;
 use App\Admin\ElementController;
 use App\Admin\StyleController;
+use App\Admin\LayoutController;
 use App\AIAssistant\ElementAIController;
 
 // Bootstrap
@@ -111,6 +112,14 @@ $router->group('/admin', function($router) use ($app) {
     // Master Style routes
     $router->get('/style', [StyleController::class, 'index']);
     $router->put('/style', [StyleController::class, 'update']);
+
+    // Layout template routes
+    $router->get('/layouts', [LayoutController::class, 'index']);
+    $router->get('/layouts/create', [LayoutController::class, 'create']);
+    $router->post('/layouts', [LayoutController::class, 'store']);
+    $router->get('/layouts/{id}/edit', [LayoutController::class, 'edit']);
+    $router->put('/layouts/{id}', [LayoutController::class, 'update']);
+    $router->delete('/layouts/{id}', [LayoutController::class, 'delete']);
 
     // Content type management routes
     $router->get('/content-types', [ContentTypeController::class, 'index']);
