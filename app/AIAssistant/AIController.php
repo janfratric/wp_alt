@@ -196,7 +196,7 @@ class AIController
 
         if ($contentId !== null) {
             $content = QueryBuilder::query('content')
-                ->select('type', 'title', 'body', 'excerpt', 'status')
+                ->select('type', 'title', 'body', 'excerpt', 'status', 'editor_mode')
                 ->where('id', $contentId)
                 ->first();
 
@@ -217,6 +217,20 @@ class AIController
                 $excerpt = $content['excerpt'] ?? '';
                 if ($excerpt !== '') {
                     $prompt .= "- Excerpt: {$excerpt}\n";
+                }
+
+                // Include element catalogue for element-mode content
+                if (($content['editor_mode'] ?? 'html') === 'elements') {
+                    $elements = QueryBuilder::query('elements')
+                        ->select('name', 'slug', 'description', 'slots_json')
+                        ->where('status', 'active')
+                        ->get();
+
+                    if (!empty($elements)) {
+                        $prompt .= "\n\nThis page uses the element-based editor. Available elements:\n";
+                        $prompt .= GeneratorPrompts::formatElementCatalogue($elements);
+                        $prompt .= "\nYou can reference these elements when suggesting page structure changes.";
+                    }
                 }
             }
         }

@@ -24,6 +24,8 @@ use App\Admin\SettingsController;
 use App\Admin\ContentTypeController;
 use App\AIAssistant\PageGeneratorController;
 use App\Admin\ElementController;
+use App\Admin\StyleController;
+use App\AIAssistant\ElementAIController;
 
 // Bootstrap
 $app = new App();
@@ -106,6 +108,10 @@ $router->group('/admin', function($router) use ($app) {
     $router->get('/settings', [SettingsController::class, 'index']);
     $router->put('/settings', [SettingsController::class, 'update']);
 
+    // Master Style routes
+    $router->get('/style', [StyleController::class, 'index']);
+    $router->put('/style', [StyleController::class, 'update']);
+
     // Content type management routes
     $router->get('/content-types', [ContentTypeController::class, 'index']);
     $router->get('/content-types/create', [ContentTypeController::class, 'create']);
@@ -121,6 +127,7 @@ $router->group('/admin', function($router) use ($app) {
     $router->post('/elements', [ElementController::class, 'store']);
     $router->get('/elements/{id}/edit', [ElementController::class, 'edit']);
     $router->get('/elements/{id}/preview', [ElementController::class, 'preview']);
+    $router->post('/elements/{id}/preview', [ElementController::class, 'preview']);
     $router->put('/elements/{id}', [ElementController::class, 'update']);
     $router->delete('/elements/{id}', [ElementController::class, 'delete']);
 
@@ -131,6 +138,15 @@ $router->group('/admin', function($router) use ($app) {
     $router->get('/ai/models/enabled', [AIController::class, 'enabledModels']);
     $router->post('/ai/models/fetch', [AIController::class, 'fetchModels']);
     $router->post('/ai/models/enable', [AIController::class, 'saveEnabledModels']);
+
+    // Element AI Assistant
+    $router->post('/ai/element/chat', [ElementAIController::class, 'chat']);
+    $router->get('/ai/element/conversations', [ElementAIController::class, 'conversations']);
+
+    // Element proposals
+    $router->get('/element-proposals', [ElementController::class, 'proposals']);
+    $router->post('/element-proposals/{id}/approve', [ElementController::class, 'approveProposal']);
+    $router->post('/element-proposals/{id}/reject', [ElementController::class, 'rejectProposal']);
 
     // AI Page Generator
     $router->get('/generator', [PageGeneratorController::class, 'index']);

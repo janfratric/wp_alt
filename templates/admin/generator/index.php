@@ -28,6 +28,13 @@
                 </button>
             <?php endforeach; ?>
         </div>
+        <div class="editor-mode-selector" style="margin-top:1rem;">
+            <label style="font-weight:600;">Editor Mode:</label>
+            <div class="mode-options" style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                <button type="button" class="mode-option active" data-mode="html">HTML</button>
+                <button type="button" class="mode-option" data-mode="elements">Elements</button>
+            </div>
+        </div>
     </div>
 
     <!-- Step 2: Gathering -->

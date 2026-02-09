@@ -14,7 +14,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2 + 5.3 + 6.1 + 6.2 + 6.3)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2 + 5.3 + 6.1 + 6.2 + 6.3 + 6.4)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
@@ -42,7 +42,9 @@ This starts PHP's built-in development server with `public/` as the document roo
 | 17 | [http://localhost:8000/admin/content/create?type=products](http://localhost:8000/admin/content/create?type=products) | Content editor with custom type — type dropdown shows "Products" selected, custom fields section below excerpt (after creating a "Products" content type) |
 | 18 | [http://localhost:8000/products](http://localhost:8000/products) | Custom type archive — paginated listing of published "Products" content items (requires has_archive enabled and published items) |
 | 18a | [http://localhost:8000/products/widget-pro](http://localhost:8000/products/widget-pro) | Single custom type item — renders published content by slug under the custom type URL pattern |
-| 19 | [http://localhost:8000/admin/generator](http://localhost:8000/admin/generator) | AI Page Generator — 4-step wizard (Setup → Describe → Preview → Done) with content type selector, chat interface, preview pane, and create buttons |
+| 19 | [http://localhost:8000/admin/generator](http://localhost:8000/admin/generator) | AI Page Generator — 4-step wizard (Setup → Describe → Preview → Done) with content type selector, editor mode toggle (HTML/Elements), chat interface, preview pane, and create buttons |
+| 20 | [http://localhost:8000/admin/elements/1/edit](http://localhost:8000/admin/elements/1/edit) | Element editor with AI Assistant — "AI Assistant" toggle button in header opens chat panel as third column; chat supports Apply HTML, Apply CSS, Apply Both, and Copy actions |
+| 21 | [http://localhost:8000/admin/element-proposals](http://localhost:8000/admin/element-proposals) | Element proposals list — filter tabs (Pending/Approved/Rejected), proposal cards with name, category, description, collapsible HTML/CSS preview, approve/reject buttons |
 
 ### Authentication Flow
 
@@ -239,6 +241,19 @@ The content editor now supports two editing modes:
 - **Server-side persistence** — `page_elements` rows saved with element_id, sort_order, and slot_data_json; invalid element_ids silently skipped
 - **Mode coexistence** — switching modes preserves body content; TinyMCE hidden but not destroyed in elements mode
 - **Media browser integration** — image slot fields reuse the existing media browser modal from the content editor
+
+### AI Element Integration (Chunk 6.4)
+
+The AI system is now connected to the element-based page builder:
+- **Element editor AI panel** — "AI Assistant" toggle button opens a chat panel as a third column in the element editor grid
+- **AI coding assistant** — chat with AI about the element's HTML template, CSS, and slots; AI sees current code context on first message
+- **Apply actions** — AI responses have "Apply HTML", "Apply CSS", "Apply Both", and "Copy" buttons that extract fenced code blocks and populate editor fields
+- **Element-aware page generation** — generator editor mode toggle (HTML/Elements) switches between TinyMCE HTML generation and element-based generation using the site's element catalogue
+- **Element catalogue context** — AI gathering and generation prompts include the full element catalogue (names, slugs, descriptions, slots) so AI can reference and compose existing elements
+- **New element proposals** — when AI generates a page with `__new__` elements not in the catalogue, they're saved as proposals in `element_proposals` for admin review
+- **Proposal approval flow** — `/admin/element-proposals` page with filter tabs (Pending/Approved/Rejected), collapsible HTML/CSS preview, approve/reject buttons; approved proposals become real elements
+- **Content editor catalogue context** — when editing element-mode content, the AI assistant system prompt includes the element catalogue for context-aware assistance
+- **Conversation scoping** — element AI conversations are scoped by `element_id` (separate from content conversations) with `findOrCreateForElement()` in ConversationManager
 
 ### Per-Instance Element Styling (Chunk 6.3)
 

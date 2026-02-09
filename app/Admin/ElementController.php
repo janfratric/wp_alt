@@ -228,7 +228,8 @@ class ElementController
     }
 
     /**
-     * GET /admin/elements/{id}/preview — Render element with sample data (JSON response).
+     * GET|POST /admin/elements/{id}/preview — Render element with sample data (JSON response).
+     * POST accepts {html_template, css, slots_json} to preview unsaved changes.
      */
     public function preview(Request $request, string $id): Response
     {
@@ -241,17 +242,36 @@ class ElementController
             return Response::json(['success' => false, 'error' => 'Element not found.'], 404);
         }
 
-        $slots = json_decode($element['slots_json'] ?? '[]', true) ?: [];
-        $sampleData = self::generateSampleData($slots);
+        // POST: use submitted values instead of saved ones
+        if ($request->method() === 'POST') {
+            $body = json_decode(file_get_contents('php://input') ?: '{}', true) ?: [];
+            $htmlTemplate = (string) ($body['html_template'] ?? $element['html_template'] ?? '');
+            $css          = (string) ($body['css'] ?? $element['css'] ?? '');
+            $slotsRaw     = $body['slots_json'] ?? $element['slots_json'] ?? '[]';
+            $slug         = (string) ($body['slug'] ?? $element['slug'] ?? 'preview');
+        } else {
+            $htmlTemplate = $element['html_template'] ?? '';
+            $css          = $element['css'] ?? '';
+            $slotsRaw     = $element['slots_json'] ?? '[]';
+            $slug         = $element['slug'] ?? 'preview';
+        }
 
-        $html = SlotRenderer::render($element['html_template'] ?? '', $sampleData);
-        $wrappedHtml = '<div class="lcms-el lcms-el-' . htmlspecialchars($element['slug'], ENT_QUOTES, 'UTF-8') . '">'
+        $slots = is_string($slotsRaw) ? (json_decode($slotsRaw, true) ?: []) : (is_array($slotsRaw) ? $slotsRaw : []);
+
+        // Use custom sample data from client if provided, otherwise auto-generate
+        $customSampleData = ($request->method() === 'POST') ? ($body['sample_data'] ?? null) : null;
+        $sampleData = (is_array($customSampleData) && !empty($customSampleData))
+            ? $customSampleData
+            : self::generateSampleData($slots);
+
+        $html = SlotRenderer::render($htmlTemplate, $sampleData);
+        $wrappedHtml = '<div class="lcms-el lcms-el-' . htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') . '">'
             . $html . '</div>';
 
         return Response::json([
             'success' => true,
             'html'    => $wrappedHtml,
-            'css'     => $element['css'] ?? '',
+            'css'     => $css,
         ]);
     }
 
@@ -432,6 +452,106 @@ class ElementController
         return $data;
     }
 
+    /**
+     * GET /admin/element-proposals — List element proposals.
+     */
+    public function proposals(Request $request): Response
+    {
+        $statusFilter = (string) $request->query('status', 'pending');
+        if (!in_array($statusFilter, ['pending', 'approved', 'rejected'], true)) {
+            $statusFilter = 'pending';
+        }
+
+        $proposals = QueryBuilder::query('element_proposals')
+            ->select()
+            ->where('status', $statusFilter)
+            ->orderBy('created_at', 'DESC')
+            ->get();
+
+        $html = $this->app->template()->render('admin/elements/proposals', [
+            'title'        => 'Element Proposals',
+            'activeNav'    => 'elements',
+            'proposals'    => $proposals,
+            'statusFilter' => $statusFilter,
+        ]);
+
+        return $this->withSecurityHeaders(Response::html($html));
+    }
+
+    /**
+     * POST /admin/element-proposals/{id}/approve — Create element from proposal.
+     */
+    public function approveProposal(Request $request, string $id): Response
+    {
+        $proposal = QueryBuilder::query('element_proposals')
+            ->select()
+            ->where('id', (int) $id)
+            ->first();
+
+        if ($proposal === null) {
+            Session::flash('error', 'Proposal not found.');
+            return Response::redirect('/admin/element-proposals');
+        }
+
+        if ($proposal['status'] !== 'pending') {
+            Session::flash('error', 'Proposal has already been ' . $proposal['status'] . '.');
+            return Response::redirect('/admin/element-proposals');
+        }
+
+        // Ensure unique slug
+        $slug = $proposal['slug'] ?? 'untitled';
+        $baseSlug = $slug;
+        $counter = 2;
+        while (QueryBuilder::query('elements')->select('id')->where('slug', $slug)->first() !== null) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+
+        QueryBuilder::query('elements')->insert([
+            'slug'            => $slug,
+            'name'            => $proposal['name'] ?? 'Untitled',
+            'description'     => $proposal['description'] ?? '',
+            'category'        => $proposal['category'] ?? 'general',
+            'html_template'   => $proposal['html_template'] ?? '',
+            'css'             => $proposal['css'] ?? '',
+            'slots_json'      => $proposal['slots_json'] ?? '[]',
+            'status'          => 'active',
+            'is_ai_generated' => 1,
+            'author_id'       => (int) Session::get('user_id'),
+            'updated_at'      => date('Y-m-d H:i:s'),
+        ]);
+
+        QueryBuilder::query('element_proposals')
+            ->where('id', (int) $id)
+            ->update(['status' => 'approved']);
+
+        Session::flash('success', 'Element "' . ($proposal['name'] ?? '') . '" approved and added to the catalogue.');
+        return Response::redirect('/admin/element-proposals');
+    }
+
+    /**
+     * POST /admin/element-proposals/{id}/reject — Reject proposal.
+     */
+    public function rejectProposal(Request $request, string $id): Response
+    {
+        $proposal = QueryBuilder::query('element_proposals')
+            ->select()
+            ->where('id', (int) $id)
+            ->first();
+
+        if ($proposal === null) {
+            Session::flash('error', 'Proposal not found.');
+            return Response::redirect('/admin/element-proposals');
+        }
+
+        QueryBuilder::query('element_proposals')
+            ->where('id', (int) $id)
+            ->update(['status' => 'rejected']);
+
+        Session::flash('success', 'Proposal rejected.');
+        return Response::redirect('/admin/element-proposals');
+    }
+
     private function withSecurityHeaders(Response $response): Response
     {
         return $response
@@ -440,7 +560,7 @@ class ElementController
                 "default-src 'self'; "
                 . "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
                 . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-                . "img-src 'self' data: blob:; "
+                . "img-src 'self' data: blob: https://placehold.co; "
                 . "connect-src 'self'; "
                 . "font-src 'self' https://cdn.jsdelivr.net"
             );

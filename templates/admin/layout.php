@@ -54,6 +54,12 @@ $imgSettings = json_encode([
                     <span class="nav-icon">&#9733;</span> Generate Page
                 </a>
 
+                <div class="nav-section">Design</div>
+                <a href="/admin/style"
+                   class="<?= ($activeNav ?? '') === 'style' ? 'active' : '' ?>">
+                    <span class="nav-icon">&#127912;</span> Master Style
+                </a>
+
                 <div class="nav-section">System</div>
                 <a href="/admin/users"
                    class="<?= ($activeNav ?? '') === 'users' ? 'active' : '' ?>">

@@ -1,6 +1,6 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration) + 5.3 (AI Page Generator) + 6.1 (Element Catalogue & Rendering Engine) + 6.2 (Content Editor Element Mode & Page Builder UI) + 6.3 (Per-Instance Element Styling)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration) + 5.3 (AI Page Generator) + 6.1 (Element Catalogue & Rendering Engine) + 6.2 (Content Editor Element Mode & Page Builder UI) + 6.3 (Per-Instance Element Styling) + 6.4 (AI Element Integration)
 >
 > **Last updated**: 2026-02-09
 
@@ -2576,3 +2576,164 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | BH1 | CSS injection blocked | ☐ |
 | BH2 | HTML-mode content unaffected (6.3) | ☐ |
 | BH3 | Custom class sanitization | ☐ |
+
+---
+
+## Test Group CA: Element Editor AI Assistant (Chunk 6.4)
+
+### CA1. AI Assistant toggle button appears in element editor
+1. Navigate to `/admin/elements/1/edit` (or any element)
+2. **Expected**: "AI Assistant" toggle button visible in page header area
+3. **Verify**: Button text reads "AI Assistant"
+4. **Verify**: Clicking the button toggles the AI panel open/closed
+
+### CA2. AI panel opens as third column
+1. On the element editor page, click "AI Assistant" button
+2. **Expected**: AI chat panel appears as a third column on the right
+3. **Verify**: The element editor grid layout expands to `380px 1fr 380px` (3 columns)
+4. **Verify**: Panel has header, messages area, and input area
+5. **Verify**: Clicking the toggle button again hides the panel and restores 2-column layout
+
+### CA3. AI chat sends messages with element context
+1. Open AI panel on an element editor page
+2. Type a message and press Enter or click Send
+3. **Expected**: Message appears in chat as user bubble
+4. **Verify**: Request payload includes `element_id`, `current_html`, `current_css`
+5. **Verify**: AI response appears as assistant bubble (requires valid API key configured)
+
+### CA4. Apply HTML action extracts and applies code
+1. Get an AI response that contains a fenced HTML code block (````html ... ````)
+2. Click "Apply HTML" button on the response
+3. **Expected**: The HTML template textarea (`#el-html-template`) is populated with the extracted code
+4. **Verify**: Only the content inside the HTML code fence is extracted
+
+### CA5. Apply CSS action extracts and applies code
+1. Get an AI response that contains a fenced CSS code block (````css ... ````)
+2. Click "Apply CSS" button on the response
+3. **Expected**: The CSS textarea (`#el-css`) is populated with the extracted code
+
+### CA6. Apply Both action applies HTML and CSS
+1. Get an AI response that contains both HTML and CSS code blocks
+2. Click "Apply Both" button
+3. **Expected**: Both HTML template and CSS textareas are populated with their respective code
+
+### CA7. Copy action copies response text
+1. Click "Copy" button on any AI response
+2. **Expected**: Response content copied to clipboard
+3. **Verify**: Button text changes to "Copied!" briefly
+
+---
+
+## Test Group CB: Element-Aware Page Generation (Chunk 6.4)
+
+### CB1. Editor mode toggle appears on generator page
+1. Navigate to `/admin/generator`
+2. **Expected**: Editor mode selector visible with "HTML" and "Elements" options
+3. **Verify**: HTML mode is selected by default
+4. **Verify**: Clicking "Elements" highlights that option
+
+### CB2. HTML mode generation works as before
+1. On generator page, keep HTML mode selected
+2. Select a content type and chat with AI through gathering phase
+3. Click "Generate Page" when ready
+4. **Expected**: Preview shows title, slug, excerpt, meta fields, and rendered HTML body
+5. **Verify**: "Create as Draft" and "Create & Publish" buttons work
+
+### CB3. Elements mode generation uses element catalogue
+1. On generator page, select "Elements" mode
+2. Select a content type and start chatting
+3. **Verify**: AI responses reference available elements from the catalogue
+4. **Verify**: AI asks about which elements to use for page sections
+
+### CB4. Elements mode preview shows element cards
+1. Complete gathering in Elements mode and click "Generate Page"
+2. **Expected**: Preview shows title, slug, excerpt, meta fields
+3. **Verify**: Body section shows "Elements" heading with element cards
+4. **Verify**: Each card shows element slug, slot data summary
+5. **Verify**: New proposed elements show "Proposed" badge
+
+### CB5. Elements mode creates content with page_elements
+1. From elements mode preview, click "Create as Draft" or "Create & Publish"
+2. **Expected**: Content is created successfully
+3. **Verify**: Content appears in `/admin/content` list
+4. **Verify**: Editing the content shows element instances in Page Builder mode
+
+---
+
+## Test Group CC: Element Proposal Approval Flow (Chunk 6.4)
+
+### CC1. Proposals page loads with filter tabs
+1. Navigate to `/admin/element-proposals`
+2. **Expected**: Page loads with filter tabs: Pending, Approved, Rejected
+3. **Verify**: Pending tab is active by default
+4. **Verify**: If no proposals exist, shows empty state message
+
+### CC2. Proposal cards display correctly
+1. Generate a page in Elements mode that includes `__new__` elements
+2. Navigate to `/admin/element-proposals`
+3. **Expected**: Proposal cards show name, category, description
+4. **Verify**: Collapsible HTML/CSS preview sections are present
+5. **Verify**: Approve and Reject buttons are visible on pending proposals
+
+### CC3. Approving a proposal creates an element
+1. On a pending proposal, click "Approve"
+2. **Expected**: Proposal status changes to "approved"
+3. **Verify**: A new element appears in `/admin/elements` with the proposal's name, HTML, CSS, and slots
+4. **Verify**: New element has `is_ai_generated = 1`
+5. **Verify**: Proposal no longer shows in Pending tab, appears in Approved tab
+
+### CC4. Rejecting a proposal marks it rejected
+1. On a pending proposal, click "Reject"
+2. **Expected**: Proposal status changes to "rejected"
+3. **Verify**: Proposal no longer shows in Pending tab, appears in Rejected tab
+4. **Verify**: No element is created
+
+### CC5. Filter tabs work correctly
+1. Create proposals in various states (pending, approved, rejected)
+2. Click each filter tab
+3. **Expected**: Each tab shows only proposals with the matching status
+4. **Verify**: Counts/content update when switching tabs
+
+---
+
+## Test Group CD: Content Editor AI with Element Context (Chunk 6.4)
+
+### CD1. AI assistant includes element catalogue for element-mode content
+1. Create or edit content in Page Builder (elements) mode
+2. Open the AI Assistant panel
+3. Send a message asking about available elements
+4. **Expected**: AI response references elements from the catalogue
+5. **Verify**: AI knows about element names, slots, and capabilities
+
+### CD2. AI assistant works normally for HTML-mode content
+1. Create or edit content in HTML mode
+2. Open the AI Assistant panel
+3. Send a message
+4. **Expected**: AI responds normally without element catalogue references
+5. **Verify**: Chat functions the same as before chunk 6.4
+
+---
+
+## Chunk 6.4 Quick Checklist
+
+| ID | Test | Pass? |
+|----|------|-------|
+| CA1 | AI toggle button in element editor | ☐ |
+| CA2 | AI panel opens as third column | ☐ |
+| CA3 | Chat sends messages with element context | ☐ |
+| CA4 | Apply HTML action | ☐ |
+| CA5 | Apply CSS action | ☐ |
+| CA6 | Apply Both action | ☐ |
+| CA7 | Copy action | ☐ |
+| CB1 | Editor mode toggle on generator | ☐ |
+| CB2 | HTML mode generation unchanged | ☐ |
+| CB3 | Elements mode uses catalogue | ☐ |
+| CB4 | Elements mode preview shows cards | ☐ |
+| CB5 | Elements mode creates content | ☐ |
+| CC1 | Proposals page with filter tabs | ☐ |
+| CC2 | Proposal cards display | ☐ |
+| CC3 | Approving creates element | ☐ |
+| CC4 | Rejecting marks rejected | ☐ |
+| CC5 | Filter tabs work | ☐ |
+| CD1 | AI includes element catalogue context | ☐ |
+| CD2 | HTML-mode AI unaffected | ☐ |

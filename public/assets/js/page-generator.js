@@ -4,6 +4,7 @@
     // --- State ---
     var csrfToken = '';
     var contentType = '';
+    var editorMode = 'html';
     var currentStep = 'setup';
     var generatedData = null;
     var isLoading = false;
@@ -24,6 +25,17 @@
         for (var i = 0; i < typeButtons.length; i++) {
             typeButtons[i].addEventListener('click', function() {
                 onTypeSelected(this.getAttribute('data-type'));
+            });
+        }
+
+        // Editor mode selection
+        var modeButtons = appEl.querySelectorAll('.mode-option');
+        for (var j = 0; j < modeButtons.length; j++) {
+            modeButtons[j].addEventListener('click', function() {
+                editorMode = this.getAttribute('data-mode');
+                var allModes = appEl.querySelectorAll('.mode-option');
+                for (var k = 0; k < allModes.length; k++) { allModes[k].classList.remove('active'); }
+                this.classList.add('active');
             });
         }
 
@@ -66,7 +78,8 @@
             extraPayload: function() {
                 return {
                     content_type: contentType,
-                    step: currentStep
+                    step: currentStep,
+                    editor_mode: editorMode
                 };
             },
             onAssistantMessage: function(content, data) {
@@ -169,6 +182,7 @@
             conversation_id: core.getConversationId(),
             content_type: contentType,
             step: 'generating',
+            editor_mode: editorMode,
             model: core.currentModel || undefined
         }).then(function(data) {
             isLoading = false;
@@ -204,7 +218,34 @@
 
         var bodyEl = document.getElementById('preview-body');
         if (bodyEl) {
-            bodyEl.innerHTML = data.body || '';
+            if (data.editor_mode === 'elements' && data.elements && data.elements.length > 0) {
+                var elHtml = '<h3>Elements</h3>';
+                for (var i = 0; i < data.elements.length; i++) {
+                    var el = data.elements[i];
+                    var isNew = el.element_slug === '__new__';
+                    elHtml += '<div class="card" style="margin-bottom:0.5rem;padding:0.75rem;">';
+                    elHtml += '<strong>' + escapeHtml(el.element_slug) + '</strong>';
+                    if (isNew && el.new_element) {
+                        elHtml += ' <span class="badge" style="background:#f59e0b;color:#fff;">Proposed</span>';
+                        elHtml += '<div style="font-size:0.85rem;margin-top:0.25rem;">' + escapeHtml(el.new_element.name || '') + '</div>';
+                    }
+                    if (el.slot_data) {
+                        elHtml += '<div style="font-size:0.8rem;color:#666;margin-top:0.25rem;">';
+                        for (var sk in el.slot_data) {
+                            if (el.slot_data.hasOwnProperty(sk)) {
+                                var sv = String(el.slot_data[sk]);
+                                if (sv.length > 80) sv = sv.substring(0, 80) + '...';
+                                elHtml += escapeHtml(sk) + ': ' + escapeHtml(sv) + '<br>';
+                            }
+                        }
+                        elHtml += '</div>';
+                    }
+                    elHtml += '</div>';
+                }
+                bodyEl.innerHTML = elHtml;
+            } else {
+                bodyEl.innerHTML = data.body || '';
+            }
         }
 
         var cfEl = document.getElementById('preview-custom-fields');
@@ -244,17 +285,23 @@
         if (draftBtn) draftBtn.disabled = true;
         if (publishBtn) publishBtn.disabled = true;
 
-        apiCall('/admin/generator/create', {
+        var createPayload = {
             title:            generatedData.title,
             slug:             generatedData.slug,
-            body:             generatedData.body,
+            body:             generatedData.body || '',
             excerpt:          generatedData.excerpt || '',
             meta_title:       generatedData.meta_title || '',
             meta_description: generatedData.meta_description || '',
             content_type:     contentType,
             status:           status,
-            custom_fields:    generatedData.custom_fields || {}
-        }).then(function(data) {
+            custom_fields:    generatedData.custom_fields || {},
+            editor_mode:      editorMode
+        };
+        if (editorMode === 'elements' && generatedData.elements) {
+            createPayload.elements = generatedData.elements;
+        }
+
+        apiCall('/admin/generator/create', createPayload).then(function(data) {
             isLoading = false;
             if (data.success) {
                 var editLink = document.getElementById('btn-edit-content');

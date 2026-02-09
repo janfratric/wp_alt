@@ -231,6 +231,57 @@ class ConversationManager
     }
 
     /**
+     * Find or create a conversation scoped to a specific element.
+     */
+    public function findOrCreateForElement(int $userId, ?int $elementId): array
+    {
+        $qb = QueryBuilder::query('ai_conversations')
+            ->select()
+            ->where('user_id', $userId)
+            ->whereRaw('content_id IS NULL');
+
+        if ($elementId !== null) {
+            $qb->where('element_id', $elementId);
+        } else {
+            $qb->whereRaw('element_id IS NULL');
+        }
+
+        $conversation = $qb->orderBy('updated_at', 'DESC')->first();
+
+        if ($conversation !== null) {
+            return $conversation;
+        }
+
+        $id = QueryBuilder::query('ai_conversations')->insert([
+            'user_id'       => $userId,
+            'content_id'    => null,
+            'element_id'    => $elementId,
+            'messages_json' => '[]',
+        ]);
+
+        return $this->findById((int) $id);
+    }
+
+    /**
+     * Get conversation history for a specific element.
+     */
+    public function getHistoryForElement(int $userId, ?int $elementId): array
+    {
+        $qb = QueryBuilder::query('ai_conversations')
+            ->select()
+            ->where('user_id', $userId)
+            ->whereRaw('content_id IS NULL');
+
+        if ($elementId !== null) {
+            $qb->where('element_id', $elementId);
+        } else {
+            $qb->whereRaw('element_id IS NULL');
+        }
+
+        return $qb->orderBy('updated_at', 'DESC')->get();
+    }
+
+    /**
      * Set a human-readable title for the conversation.
      */
     public function setTitle(int $conversationId, string $title): void

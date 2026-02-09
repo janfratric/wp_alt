@@ -62,6 +62,7 @@ class PageGeneratorController
         $contentType  = $data['content_type'] ?? 'page';
         $step         = $data['step'] ?? 'gathering';
         $attachments  = $data['attachments'] ?? [];
+        $editorMode   = $data['editor_mode'] ?? 'html';
 
         $model  = $this->resolveModel($data['model'] ?? null);
 
@@ -114,12 +115,27 @@ class PageGeneratorController
         $typeFields = $this->getContentTypeFields($contentType);
         $siteName = Config::getString('site_name', 'LiteCMS');
 
-        if ($step === 'generating') {
-            // Collect all image URLs from conversation history so the generation prompt knows them
-            $imageUrls = $this->collectImageUrls($existingMessages, $attachments);
-            $systemPrompt = GeneratorPrompts::generationPrompt($siteName, $contentType, $typeFields, $imageUrls);
+        if ($editorMode === 'elements') {
+            $catalogueElements = QueryBuilder::query('elements')
+                ->select()
+                ->where('status', 'active')
+                ->get();
+            $catalogue = GeneratorPrompts::formatElementCatalogue($catalogueElements);
+
+            if ($step === 'generating') {
+                $imageUrls = $this->collectImageUrls($existingMessages, $attachments);
+                $systemPrompt = GeneratorPrompts::elementGenerationPrompt($siteName, $contentType, $typeFields, $catalogue, $imageUrls);
+            } else {
+                $systemPrompt = GeneratorPrompts::elementGatheringPrompt($siteName, $existingPages, $typeFields, $catalogue);
+            }
         } else {
-            $systemPrompt = GeneratorPrompts::gatheringPrompt($siteName, $existingPages, $typeFields);
+            if ($step === 'generating') {
+                // Collect all image URLs from conversation history so the generation prompt knows them
+                $imageUrls = $this->collectImageUrls($existingMessages, $attachments);
+                $systemPrompt = GeneratorPrompts::generationPrompt($siteName, $contentType, $typeFields, $imageUrls);
+            } else {
+                $systemPrompt = GeneratorPrompts::gatheringPrompt($siteName, $existingPages, $typeFields);
+            }
         }
 
         try {
@@ -143,7 +159,11 @@ class PageGeneratorController
         $generated = null;
 
         if ($step === 'generating') {
-            $generated = $this->parseGeneratedContent($aiContent);
+            if ($editorMode === 'elements') {
+                $generated = $this->parseGeneratedContent($aiContent, true);
+            } else {
+                $generated = $this->parseGeneratedContent($aiContent);
+            }
             if ($generated !== null) {
                 $responseStep = 'generated';
                 if (empty($generated['slug'])) {
@@ -179,8 +199,17 @@ class PageGeneratorController
         $rawBody = file_get_contents('php://input');
         $data = json_decode($rawBody, true);
 
-        if (!is_array($data) || empty(trim($data['title'] ?? '')) || empty(trim($data['body'] ?? ''))) {
-            return Response::json(['success' => false, 'error' => 'Title and body are required.'], 400);
+        $editorMode = $data['editor_mode'] ?? 'html';
+
+        // Element mode doesn't require body
+        if ($editorMode === 'elements') {
+            if (!is_array($data) || empty(trim($data['title'] ?? ''))) {
+                return Response::json(['success' => false, 'error' => 'Title is required.'], 400);
+            }
+        } else {
+            if (!is_array($data) || empty(trim($data['title'] ?? '')) || empty(trim($data['body'] ?? ''))) {
+                return Response::json(['success' => false, 'error' => 'Title and body are required.'], 400);
+            }
         }
 
         $title           = trim($data['title']);
@@ -191,11 +220,11 @@ class PageGeneratorController
         );
         $publishedAt     = $status === 'published' ? date('Y-m-d H:i:s') : null;
 
-        $id = QueryBuilder::query('content')->insert([
+        $contentData = [
             'type'             => $contentType,
             'title'            => $title,
             'slug'             => $slug,
-            'body'             => $data['body'],
+            'body'             => $data['body'] ?? '',
             'excerpt'          => $data['excerpt'] ?? '',
             'status'           => $status,
             'author_id'        => (int) Session::get('user_id'),
@@ -205,7 +234,13 @@ class PageGeneratorController
             'featured_image'   => null,
             'published_at'     => $publishedAt,
             'updated_at'       => date('Y-m-d H:i:s'),
-        ]);
+        ];
+
+        if ($editorMode === 'elements') {
+            $contentData['editor_mode'] = 'elements';
+        }
+
+        $id = QueryBuilder::query('content')->insert($contentData);
 
         $customFields = $data['custom_fields'] ?? [];
         if (is_array($customFields)) {
@@ -221,10 +256,67 @@ class PageGeneratorController
             }
         }
 
+        // Handle element-based page creation
+        if ($editorMode === 'elements' && !empty($data['elements']) && is_array($data['elements'])) {
+            $userId = (int) Session::get('user_id');
+            $sortOrder = 0;
+            foreach ($data['elements'] as $elData) {
+                if (!is_array($elData)) {
+                    continue;
+                }
+                $elSlug = $elData['element_slug'] ?? '';
+                $slotData = $elData['slot_data'] ?? [];
+
+                if ($elSlug === '__new__' && !empty($elData['new_element'])) {
+                    // Create element proposal
+                    $this->createElementProposal($elData['new_element'], $userId, null);
+                } else {
+                    // Look up existing element by slug
+                    $existingEl = QueryBuilder::query('elements')
+                        ->select('id')
+                        ->where('slug', $elSlug)
+                        ->first();
+                    if ($existingEl !== null) {
+                        QueryBuilder::query('page_elements')->insert([
+                            'content_id'     => (int) $id,
+                            'element_id'     => (int) $existingEl['id'],
+                            'sort_order'     => $sortOrder,
+                            'slot_data_json' => json_encode($slotData, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+                        ]);
+                        $sortOrder++;
+                    }
+                }
+            }
+        }
+
         return Response::json([
             'success'    => true,
             'content_id' => (int) $id,
             'edit_url'   => '/admin/content/' . (int) $id . '/edit',
+        ]);
+    }
+
+    /**
+     * Create an element proposal from AI-generated data.
+     */
+    private function createElementProposal(array $newElement, int $userId, ?int $conversationId): int
+    {
+        $slotsJson = $newElement['slots_json'] ?? [];
+        if (is_array($slotsJson)) {
+            $slotsJson = json_encode($slotsJson, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        }
+
+        return (int) QueryBuilder::query('element_proposals')->insert([
+            'name'          => $newElement['name'] ?? 'Untitled Element',
+            'slug'          => $newElement['slug'] ?? 'untitled',
+            'description'   => $newElement['description'] ?? '',
+            'category'      => $newElement['category'] ?? 'general',
+            'html_template' => $newElement['html_template'] ?? '',
+            'css'           => $newElement['css'] ?? '',
+            'slots_json'    => $slotsJson,
+            'proposed_by'   => $userId,
+            'conversation_id' => $conversationId,
+            'status'        => 'pending',
         ]);
     }
 
@@ -429,7 +521,7 @@ class PageGeneratorController
         return $slug;
     }
 
-    private function parseGeneratedContent(string $aiResponse): ?array
+    private function parseGeneratedContent(string $aiResponse, bool $elementMode = false): ?array
     {
         $text = trim($aiResponse);
 
@@ -440,7 +532,33 @@ class PageGeneratorController
         }
 
         $parsed = json_decode($text, true);
-        if (!is_array($parsed) || empty($parsed['title']) || empty($parsed['body'])) {
+        if (!is_array($parsed) || empty($parsed['title'])) {
+            return null;
+        }
+
+        if ($elementMode) {
+            // Element mode: requires elements array instead of body
+            if (empty($parsed['elements']) || !is_array($parsed['elements'])) {
+                // Fall back to body if present
+                if (empty($parsed['body'])) {
+                    return null;
+                }
+            }
+
+            return [
+                'editor_mode'      => 'elements',
+                'title'            => $parsed['title'],
+                'slug'             => $parsed['slug'] ?? '',
+                'body'             => $parsed['body'] ?? '',
+                'excerpt'          => $parsed['excerpt'] ?? '',
+                'meta_title'       => $parsed['meta_title'] ?? $parsed['title'],
+                'meta_description' => $parsed['meta_description'] ?? '',
+                'custom_fields'    => $parsed['custom_fields'] ?? [],
+                'elements'         => $parsed['elements'] ?? [],
+            ];
+        }
+
+        if (empty($parsed['body'])) {
             return null;
         }
 

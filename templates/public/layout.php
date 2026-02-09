@@ -9,6 +9,9 @@
 <?php endif; ?>
     <meta property="og:site_name" content="<?= $this->e($siteName ?? 'LiteCMS') ?>">
     <link rel="stylesheet" href="/assets/css/style.css">
+<?= $googleFontLinks ?? '' ?><?php if (!empty($styleOverrides)): ?>
+    <style id="litecms-style-overrides"><?= $styleOverrides ?></style>
+<?php endif; ?>
 <?= $this->yieldSection('head') ?>
 <?php if (!empty($elementCss)): ?>
     <style id="litecms-element-styles"><?= $elementCss ?></style>

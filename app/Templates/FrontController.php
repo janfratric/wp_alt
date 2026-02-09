@@ -8,6 +8,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Database\QueryBuilder;
 use App\PageBuilder\PageRenderer;
+use App\Admin\StyleController;
 
 class FrontController
 {
@@ -349,6 +350,8 @@ class FrontController
             'consentLink'    => $consentEnabled ? ($settings['cookie_consent_link'] ?? '') : '',
             'consentEnabled' => $consentEnabled,
             'gaId'           => ($settings['ga_enabled'] ?? '') === '1' ? ($settings['ga_measurement_id'] ?? '') : '',
+            'styleOverrides' => StyleController::buildStyleOverrides($settings),
+            'googleFontLinks'=> StyleController::buildGoogleFontLinks($settings),
             'meta'           => [
                 'title' => 'Page Not Found — ' . Config::getString('site_name', 'LiteCMS'),
             ],
@@ -461,6 +464,8 @@ class FrontController
             'consentLink'    => $consentEnabled ? ($settings['cookie_consent_link'] ?? '') : '',
             'consentEnabled' => $consentEnabled,
             'gaId'           => ($settings['ga_enabled'] ?? '') === '1' ? ($settings['ga_measurement_id'] ?? '') : '',
+            'styleOverrides' => StyleController::buildStyleOverrides($settings),
+            'googleFontLinks'=> StyleController::buildGoogleFontLinks($settings),
         ], $data);
 
         if (isset($data['content']['slug'])) {
@@ -491,13 +496,14 @@ class FrontController
         try {
             $rows = QueryBuilder::query('settings')
                 ->select('key', 'value')
-                ->whereRaw("key IN (:k1, :k2, :k3, :k4, :k5, :k6)", [
+                ->whereRaw("key IN (:k1, :k2, :k3, :k4, :k5, :k6) OR key LIKE :prefix", [
                     ':k1' => 'site_tagline',
                     ':k2' => 'cookie_consent_text',
                     ':k3' => 'cookie_consent_link',
                     ':k4' => 'ga_enabled',
                     ':k5' => 'ga_measurement_id',
                     ':k6' => 'cookie_consent_enabled',
+                    ':prefix' => 'style_%',
                 ])
                 ->get();
 

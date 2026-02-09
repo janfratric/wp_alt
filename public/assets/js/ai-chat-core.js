@@ -71,6 +71,12 @@
                 }
             });
 
+            // Auto-grow textarea up to CSS max-height, then scroll
+            c.inputEl.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+            });
+
             // Clipboard paste for images
             if (c.enableAttachments !== false) {
                 c.inputEl.addEventListener('paste', function(e) {
@@ -494,6 +500,7 @@
     };
 
     AIChatCore.prototype._addCodeCopyButtons = function(container) {
+        var COLLAPSE_HEIGHT = 150; // px threshold for collapsing
         var pres = container.querySelectorAll('pre');
         for (var i = 0; i < pres.length; i++) {
             var pre = pres[i];
@@ -519,6 +526,24 @@
                 };
             })(pre));
             wrapper.appendChild(btn);
+
+            // Collapsible: defer measurement until DOM is rendered
+            (function(preEl, wrapperEl) {
+                setTimeout(function() {
+                    if (preEl.scrollHeight > COLLAPSE_HEIGHT) {
+                        preEl.classList.add('ai-code-collapsed');
+                        var toggle = document.createElement('button');
+                        toggle.type = 'button';
+                        toggle.className = 'ai-code-toggle-btn';
+                        toggle.textContent = 'Show more';
+                        toggle.addEventListener('click', function() {
+                            var collapsed = preEl.classList.toggle('ai-code-collapsed');
+                            toggle.textContent = collapsed ? 'Show more' : 'Show less';
+                        });
+                        wrapperEl.appendChild(toggle);
+                    }
+                }, 0);
+            })(pre, wrapper);
         }
     };
 
