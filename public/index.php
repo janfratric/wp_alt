@@ -207,6 +207,10 @@ $router->group('/admin', function($router) use ($app) {
     $router->post('/design/save', [DesignController::class, 'save']);
     $router->post('/design/import-file', [DesignController::class, 'importFile']);
     $router->get('/design/list', [DesignController::class, 'list']);
+
+    // Design Converter (Chunk 7.2)
+    $router->post('/design/convert', [DesignController::class, 'convert']);
+    $router->get('/design/preview', [DesignController::class, 'preview']);
 });
 
 // Dynamic routes for custom content type archives and single items

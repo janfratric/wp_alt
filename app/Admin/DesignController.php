@@ -6,6 +6,7 @@ use App\Core\App;
 use App\Core\Request;
 use App\Core\Response;
 use App\Auth\Session;
+use App\PageBuilder\PenConverter;
 
 class DesignController
 {
@@ -167,6 +168,77 @@ class DesignController
         $files = $this->getDesignFileList();
 
         return Response::json(['success' => true, 'files' => $files]);
+    }
+
+    /**
+     * Convert a .pen file to HTML + CSS.
+     * POST /admin/design/convert
+     * Body: { "path": "filename.pen" } or { "json": "..." }
+     */
+    public function convert(Request $request): Response
+    {
+        try {
+            $body = json_decode(file_get_contents('php://input'), true) ?? [];
+
+            if (isset($body['path'])) {
+                $path = $this->sanitizePath($body['path']);
+                if ($path === null) {
+                    return Response::json(['success' => false, 'error' => 'Invalid path'], 400);
+                }
+                $fullPath = $this->designsDir . DIRECTORY_SEPARATOR . $path;
+                $result = PenConverter::convertFile($fullPath);
+            } elseif (isset($body['json'])) {
+                $result = PenConverter::convertJson($body['json']);
+            } else {
+                return Response::json(['success' => false, 'error' => 'Provide path or json'], 400);
+            }
+
+            return Response::json([
+                'success' => true,
+                'html' => $result['html'],
+                'css' => $result['css'],
+            ]);
+        } catch (\Throwable $e) {
+            return Response::json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Preview a .pen file conversion as standalone HTML page.
+     * GET /admin/design/preview?path=filename.pen
+     */
+    public function preview(Request $request): Response
+    {
+        try {
+            $path = $this->sanitizePath($request->query('path', ''));
+            if ($path === null) {
+                return Response::html('<h1>Invalid path</h1>', 400);
+            }
+
+            $fullPath = $this->designsDir . DIRECTORY_SEPARATOR . $path;
+            $result = PenConverter::convertFile($fullPath);
+
+            $html = '<!DOCTYPE html><html lang="en"><head>';
+            $html .= '<meta charset="UTF-8">';
+            $html .= '<meta name="viewport" content="width=device-width, initial-scale=1.0">';
+            $html .= '<title>Preview: ' . htmlspecialchars($path, ENT_QUOTES, 'UTF-8') . '</title>';
+            $html .= '<style>' . $result['css'] . '</style>';
+            $html .= '</head><body>';
+            $html .= $result['html'];
+            $html .= '</body></html>';
+
+            return Response::html($html);
+        } catch (\Throwable $e) {
+            return Response::html(
+                '<h1>Conversion Error</h1><pre>' .
+                htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') .
+                '</pre>',
+                500
+            );
+        }
     }
 
     /**

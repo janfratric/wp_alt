@@ -62,6 +62,17 @@ class FrontController
             $elementCss .= PageRenderer::getPageLayoutCss($contentId);
         }
 
+        // Design file rendering (column added in Chunk 7.4)
+        $designFile = $content['design_file'] ?? null;
+        if ($designFile !== null && trim($designFile) !== '') {
+            $penPath = dirname(__DIR__, 2) . '/designs/' . $designFile;
+            if (file_exists($penPath)) {
+                $penResult = PageRenderer::renderFromPen($penPath);
+                $content['body'] = $penResult['html'];
+                $elementCss = ($elementCss ?? '') . "\n" . $penResult['css'];
+            }
+        }
+
         $headerBlockHtml = '';
         $footerBlockHtml = '';
         if (($layoutTemplate['header_mode'] ?? 'standard') === 'block' && !empty($layoutTemplate['header_element_id'])) {
@@ -218,6 +229,17 @@ class FrontController
             $elementCss .= PageRenderer::getPageLayoutCss($contentId);
         }
 
+        // Design file rendering (column added in Chunk 7.4)
+        $designFile = $content['design_file'] ?? null;
+        if ($designFile !== null && trim($designFile) !== '') {
+            $penPath = dirname(__DIR__, 2) . '/designs/' . $designFile;
+            if (file_exists($penPath)) {
+                $penResult = PageRenderer::renderFromPen($penPath);
+                $content['body'] = $penResult['html'];
+                $elementCss = ($elementCss ?? '') . "\n" . $penResult['css'];
+            }
+        }
+
         // Render block-mode header/footer if needed
         $headerBlockHtml = '';
         $footerBlockHtml = '';
@@ -294,6 +316,17 @@ class FrontController
             }
             $elementCss = PageRenderer::getPageCss($contentId);
             $elementCss .= PageRenderer::getPageLayoutCss($contentId);
+        }
+
+        // Design file rendering (column added in Chunk 7.4)
+        $designFile = $content['design_file'] ?? null;
+        if ($designFile !== null && trim($designFile) !== '') {
+            $penPath = dirname(__DIR__, 2) . '/designs/' . $designFile;
+            if (file_exists($penPath)) {
+                $penResult = PageRenderer::renderFromPen($penPath);
+                $content['body'] = $penResult['html'];
+                $elementCss = ($elementCss ?? '') . "\n" . $penResult['css'];
+            }
         }
 
         // Render block-mode header/footer if needed

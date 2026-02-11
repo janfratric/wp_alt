@@ -3,6 +3,7 @@
 namespace App\PageBuilder;
 
 use App\Database\QueryBuilder;
+use App\PageBuilder\PenConverter;
 
 /**
  * Renders element-based pages by assembling element instances into HTML + CSS.
@@ -388,5 +389,16 @@ class PageRenderer
             ->where('page_elements.content_id', (string) $contentId)
             ->orderBy('page_elements.sort_order')
             ->get();
+    }
+
+    /**
+     * Render a .pen design file to HTML + CSS.
+     *
+     * @param string $penFilePath Absolute path to the .pen file.
+     * @return array{html: string, css: string}
+     */
+    public static function renderFromPen(string $penFilePath): array
+    {
+        return PenConverter::convertFile($penFilePath);
     }
 }

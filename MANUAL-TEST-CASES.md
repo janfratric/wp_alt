@@ -1,6 +1,6 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration) + 5.3 (AI Page Generator) + 6.1 (Element Catalogue & Rendering Engine) + 6.2 (Content Editor Element Mode & Page Builder UI) + 6.3 (Per-Instance Element Styling) + 6.4 (AI Element Integration) + 7.1 (Embed Pencil Editor in LiteCMS Admin)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration) + 5.3 (AI Page Generator) + 6.1 (Element Catalogue & Rendering Engine) + 6.2 (Content Editor Element Mode & Page Builder UI) + 6.3 (Per-Instance Element Styling) + 6.4 (AI Element Integration) + 7.1 (Embed Pencil Editor in LiteCMS Admin) + 7.2 (.pen-to-HTML Converter)
 >
 > **Last updated**: 2026-02-11
 
@@ -2881,3 +2881,135 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | CH2 | Save via Network tab | ☐ |
 | CH3 | Load via Network tab | ☐ |
 | CH4 | Parent-iframe communication | ☐ |
+
+---
+
+## Test Group CI: PenConverter — Unit Conversion (Chunk 7.2)
+
+### CI1. PenStyleBuilder resolves variables and colors
+1. Run `php tests/chunk-7.2-verify.php` — tests 1-2
+2. **Verify**: `resolveValue('$--primary')` → `var(--primary)`
+3. **Verify**: `resolveColor('#AABBCCDD')` → `rgba(170, 187, 204, ...)`
+4. **Verify**: `resolveColor('#ABC')` → `#AABBCC`
+
+### CI2. PenStyleBuilder builds fills (color, gradient, image)
+1. Run `php tests/chunk-7.2-verify.php` — test 3
+2. **Verify**: Color fill → `background-color: #FF0000;`
+3. **Verify**: Gradient fill → `linear-gradient(...)` with correct stops
+4. **Verify**: Image fill → `background-image: url(...)` with `cover`
+5. **Verify**: Disabled fill (enabled: false) → empty string
+
+### CI3. PenStyleBuilder builds stroke, effects, layout, typography, sizing
+1. Run `php tests/chunk-7.2-verify.php` — tests 4-8
+2. **Verify**: Uniform stroke → `border: 2px solid #000;`
+3. **Verify**: Shadow → `box-shadow: ...` with inset for inner shadows
+4. **Verify**: Horizontal layout → `flex-direction: row;`
+5. **Verify**: `fill_container` → `flex: 1 1 0%;`
+6. **Verify**: `fit_content` → `width: fit-content;`
+
+---
+
+## Test Group CJ: PenConverter — Node Rendering (Chunk 7.2)
+
+### CJ1. Frame renders with semantic HTML tags
+1. Run `php tests/chunk-7.2-verify.php` — test 9
+2. **Verify**: Frame named "Header" → `<header>` tag
+3. **Verify**: Frame named "Footer" → `<footer>` tag
+4. **Verify**: Frame named "Main Content" → `<main>` tag
+5. **Verify**: Frame named "Card" → `<div>` tag (default)
+
+### CJ2. Text nodes produce correct heading/paragraph tags
+1. Run `php tests/chunk-7.2-verify.php` — tests 10-11
+2. **Verify**: fontSize 32 → `<h1>`
+3. **Verify**: fontSize 24 → `<h2>`
+4. **Verify**: fontSize 14 → `<p>`
+5. **Verify**: With href → `<a>` tag
+
+### CJ3. Shape nodes render correctly
+1. Run `php tests/chunk-7.2-verify.php` — tests 12-16
+2. **Verify**: Rectangle → `<div>` with fill/stroke CSS
+3. **Verify**: Ellipse → `<div>` with `border-radius: 50%`
+4. **Verify**: Path → `<svg>` with `<path>` geometry
+5. **Verify**: Line → `<hr>` with border-top
+6. **Verify**: Polygon → `<svg>` with `<polygon>` points
+
+### CJ4. Ref nodes resolve components correctly
+1. Run `php tests/chunk-7.2-verify.php` — tests 17-19
+2. **Verify**: Simple ref renders component content
+3. **Verify**: Descendant overrides are applied
+4. **Verify**: Circular refs produce comment instead of infinite loop
+
+### CJ5. Disabled nodes and icon fonts
+1. Run `php tests/chunk-7.2-verify.php` — tests 20-21
+2. **Verify**: Disabled node → empty HTML and CSS
+3. **Verify**: Icon font → appropriate `<i>` or `<span>` with font class
+
+---
+
+## Test Group CK: PenConverter — Full Pipeline (Chunk 7.2)
+
+### CK1. Full document conversion
+1. Run `php tests/chunk-7.2-verify.php` — tests 22-25
+2. **Verify**: Document with children produces non-empty HTML and CSS
+3. **Verify**: Reusable components are in registry but not in output HTML
+4. **Verify**: Variables generate `:root` CSS block with `--name: value;`
+5. **Verify**: Full integration test produces expected semantic HTML structure
+
+### CK2. File I/O and error handling
+1. Run `php tests/chunk-7.2-verify.php` — tests 26-28
+2. **Verify**: `convertFile()` reads and converts a temp `.pen` file
+3. **Verify**: Missing file throws `RuntimeException`
+4. **Verify**: Multiple icon fonts from same family produce only one `@import`
+
+---
+
+## Test Group CL: PenConverter — Integration (Chunk 7.2)
+
+### CL1. PageRenderer integration
+1. Run `php tests/chunk-7.2-verify.php` — test 29
+2. **Verify**: `PageRenderer::renderFromPen()` method exists and returns `{html, css}`
+
+### CL2. Convert endpoint via browser
+1. Login to admin panel
+2. Using browser DevTools or curl, POST to `/admin/design/convert` with body `{"path":"test.pen"}` (after saving a `.pen` file via the Design Editor)
+3. **Verify**: Response is JSON with `success`, `html`, and `css` keys
+4. **Verify**: HTML contains semantic tags and CSS contains `.pen-*` class rules
+
+### CL3. Preview endpoint via browser
+1. Login to admin panel
+2. Save a `.pen` file via the Design Editor (e.g., `test.pen`)
+3. Open [http://localhost:8000/admin/design/preview?path=test.pen](http://localhost:8000/admin/design/preview?path=test.pen)
+4. **Verify**: Standalone HTML page renders with the design
+5. **Verify**: Page has `<style>` tag with generated CSS
+
+### CL4. Routes registered
+1. Run `php tests/chunk-7.2-verify.php` — tests 30-31
+2. **Verify**: `POST /admin/design/convert` route is registered
+3. **Verify**: `GET /admin/design/preview` route is registered
+
+### CL5. FrontController design_file check is safe
+1. Run `php tests/chunk-7.2-verify.php` — test 32
+2. **Verify**: Content without `design_file` key does not cause errors
+3. **Verify**: Existing pages continue to render normally
+
+---
+
+## Quick Checklist — Chunk 7.2
+
+| Test | Description | ☐ |
+|----|------|-------|
+| CI1 | Variable and color resolution | ☐ |
+| CI2 | Fill builds (color, gradient, image) | ☐ |
+| CI3 | Stroke, effects, layout, typography, sizing | ☐ |
+| CJ1 | Frame semantic HTML tags | ☐ |
+| CJ2 | Text heading/paragraph inference | ☐ |
+| CJ3 | Shape nodes (rect, ellipse, path, line, polygon) | ☐ |
+| CJ4 | Ref component resolution | ☐ |
+| CJ5 | Disabled nodes and icon fonts | ☐ |
+| CK1 | Full document conversion pipeline | ☐ |
+| CK2 | File I/O and error handling | ☐ |
+| CL1 | PageRenderer::renderFromPen() | ☐ |
+| CL2 | Convert endpoint | ☐ |
+| CL3 | Preview endpoint | ☐ |
+| CL4 | Routes registered | ☐ |
+| CL5 | FrontController safety | ☐ |

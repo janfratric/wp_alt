@@ -14,7 +14,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2 + 5.3 + 6.1 + 6.2 + 6.3 + 6.4 + 7.1)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2 + 5.3 + 6.1 + 6.2 + 6.3 + 6.4 + 7.1 + 7.2)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
@@ -48,6 +48,8 @@ This starts PHP's built-in development server with `public/` as the document roo
 | 22 | [http://localhost:8000/admin/design/editor](http://localhost:8000/admin/design/editor) | Design Editor — Pencil visual editor embedded in an iframe with file selector toolbar, new file input, loading overlay, and status indicator. Figma-like canvas for creating/editing `.pen` design files |
 | 22a | [http://localhost:8000/admin/design/list](http://localhost:8000/admin/design/list) | JSON endpoint — returns list of `.pen` design files in the designs/ directory |
 | 22b | [http://localhost:8000/admin/design/load?path=my-design.pen](http://localhost:8000/admin/design/load?path=my-design.pen) | JSON endpoint — returns `.pen` file content (used by the editor bridge) |
+| 23 | `POST /admin/design/convert` | JSON endpoint — converts a `.pen` file to HTML+CSS. Body: `{"path":"filename.pen"}` or `{"json":"..."}`. Returns `{"success":true,"html":"...","css":"..."}` |
+| 23a | [http://localhost:8000/admin/design/preview?path=my-design.pen](http://localhost:8000/admin/design/preview?path=my-design.pen) | Preview endpoint — renders `.pen` file conversion as standalone HTML page with CSS in `<style>` tag |
 
 ### Authentication Flow
 
@@ -287,6 +289,21 @@ The admin panel now includes an embedded Pencil visual design editor:
 - **Sidebar navigation** — "Design Editor" link with pencil icon in the Design section
 - **Status indicator** — shows "Ready" (blue) after load, "Saved" (green) after save, auto-resets after 2 seconds
 - **Loading overlay** — spinner shown while editor initializes, hidden when bridge reports `editor-ready`
+
+### .pen-to-HTML Converter (Chunk 7.2)
+
+The PenConverter system converts `.pen` design files (from the Pencil editor) into semantic HTML + CSS:
+- **PenStyleBuilder** — stateless utility converting `.pen` node properties to CSS declarations: fills (color, gradient, image), strokes (border), effects (shadow, blur, backdrop-blur), layout (flexbox), typography, sizing (`fill_container`/`fit_content`), position, corner radius, opacity, clip
+- **PenNodeRenderer** — renders individual `.pen` node types (frame, text, rectangle, ellipse, path, line, polygon, ref, group, icon_font) to HTML+CSS pairs with semantic tag inference (frame names → `<header>`, `<footer>`, `<nav>`, `<main>`, `<section>`, `<article>`, `<aside>`; text fontSize → `<h1>`-`<h6>` or `<p>`)
+- **PenConverter** — main orchestrator: reads `.pen` JSON, builds component registry (reusable nodes), resolves variables to `:root` CSS custom properties, recursively renders the node tree, and collects all CSS
+- **Component resolution** — `ref` nodes reference reusable components; deep-cloned with root-level and descendant overrides via slash-separated ID paths; circular reference guard (max depth 10)
+- **Variable/theme system** — `$--name` references become CSS `var(--name)` with `:root` declarations and `[data-theme-*]` selectors for theming
+- **Text fill** — text node `fill` maps to CSS `color` (not `background-color`); gradient fills use the `-webkit-background-clip: text` trick
+- **Icon fonts** — CDN imports for lucide, feather, Material Symbols, phosphor with deduplication
+- **Convert endpoint** (`POST /admin/design/convert`) — accepts `.pen` path or raw JSON, returns HTML+CSS
+- **Preview endpoint** (`GET /admin/design/preview?path=...`) — renders conversion as standalone HTML page
+- **FrontController integration** — design_file check in page/blogPost/homepage methods (inert until `design_file` column added in Chunk 7.4)
+- **PageRenderer::renderFromPen()** — thin delegation to PenConverter::convertFile()
 
 ---
 

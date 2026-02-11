@@ -46,6 +46,12 @@ $chunks = [
     '6.5' => 'chunk-6.5-verify.php',
     '6.6' => 'chunk-6.6-verify.php',
     '7.1' => 'chunk-7.1-verify.php',
+    '7.2' => 'chunk-7.2-verify.php',
+    '7.3' => 'chunk-7.3-verify.php',
+    '7.4' => 'chunk-7.4-verify.php',
+    '7.5' => 'chunk-7.5-verify.php',
+    '7.6' => 'chunk-7.6-verify.php',
+    '8.1' => 'chunk-8.1-verify.php',
 ];
 
 // Discover which test files actually exist
@@ -184,7 +190,13 @@ function updateStatusFile(
         '6.4' => 'AI Element Integration',
         '6.5' => 'Layout Template Block Management',
         '6.6' => 'Homepage Content & Recent Posts Element',
-        '7.1' => 'Final Polish, Error Handling & Documentation',
+        '7.1' => 'Embed Pencil Editor in LiteCMS Admin',
+        '7.2' => '.pen-to-HTML Converter (PenConverter)',
+        '7.3' => 'LiteCMS Design System as .pen File',
+        '7.4' => 'AI Design Pipeline',
+        '7.5' => 'Admin Integration & Preview',
+        '7.6' => 'Template System & Theme Integration',
+        '8.1' => 'Final Polish, Error Handling & Documentation',
     ];
 
     // Dependency graph: chunk => prerequisites
@@ -210,6 +222,12 @@ function updateStatusFile(
         '6.5' => ['6.4'],
         '6.6' => ['6.5'],
         '7.1' => ['6.6'],
+        '7.2' => ['7.1'],
+        '7.3' => ['7.1', '7.2'],
+        '7.4' => ['7.2', '7.3'],
+        '7.5' => ['7.1', '7.2', '7.4'],
+        '7.6' => ['7.2', '7.3', '7.5'],
+        '8.1' => ['7.6'],
     ];
 
     // Determine which chunks passed
