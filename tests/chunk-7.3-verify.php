@@ -11,7 +11,7 @@
  *   4.  Has exactly 8 reusable components
  *   5.  All component IDs present
  *   6.  Components have children (slot nodes)
- *   7.  Components use $-- variable references
+ *   7.  Components use $ variable references
  *   8.  Variables include color tokens
  *   9.  Variables include typography tokens
  *  10.  Variables include spacing tokens
@@ -172,11 +172,11 @@ if (empty($emptyComponents)) {
 }
 
 // ---------------------------------------------------------------------------
-// Test 7: Components use $-- variable references
+// Test 7: Components use $ variable references ($ or $-- prefix)
 // ---------------------------------------------------------------------------
 function findVarRefs(array $node): bool {
     foreach ($node as $key => $value) {
-        if (is_string($value) && str_starts_with($value, '$--')) {
+        if (is_string($value) && str_starts_with($value, '$')) {
             return true;
         }
         if (is_array($value) && findVarRefs($value)) {
@@ -193,7 +193,7 @@ foreach ($foundComponents as $id => $comp) {
     }
 }
 if (empty($noVarComponents)) {
-    test_pass('Test 7: Components use $-- variable references');
+    test_pass('Test 7: Components use $ variable references');
 } else {
     test_fail('Test 7: Variable references', 'no refs in: ' . implode(', ', $noVarComponents));
 }

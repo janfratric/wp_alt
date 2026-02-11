@@ -14,7 +14,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2 + 5.3 + 6.1 + 6.2 + 6.3 + 6.4 + 7.1 + 7.2)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2 + 5.3 + 6.1 + 6.2 + 6.3 + 6.4 + 7.1 + 7.2 + 7.3)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
@@ -304,6 +304,16 @@ The PenConverter system converts `.pen` design files (from the Pencil editor) in
 - **Preview endpoint** (`GET /admin/design/preview?path=...`) — renders conversion as standalone HTML page
 - **FrontController integration** — design_file check in page/blogPost/homepage methods (inert until `design_file` column added in Chunk 7.4)
 - **PageRenderer::renderFromPen()** — thin delegation to PenConverter::convertFile()
+
+### LiteCMS Design System (Chunk 7.3)
+
+The design system file (`designs/litecms-system.pen`) is a component library — no new browser endpoints are added:
+- **8 reusable components** — hero-section, text-section, feature-grid, cta-banner, image-text, testimonial-section, faq-section, footer-section
+- **17 design token variables** — 10 themed colors (light/dark), 2 typography, 5 spacing/sizing
+- **Component instances** — pages use `ref` nodes to instantiate components with `descendants` overrides for custom content
+- **Variable CSS** — PenConverter generates `:root { --primary: #2563eb; ... }` and `[data-theme-mode="dark"] { ... }` blocks
+- **Preview** — load `litecms-system.pen` in the Design Editor (`/admin/design/editor`) to view components visually; preview via `/admin/design/preview?path=litecms-system.pen` (renders empty since all components are reusable templates)
+- **Documentation** — `designs/README.md` documents component IDs, slot nodes, variables, and usage
 
 ---
 

@@ -1,6 +1,6 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration) + 5.3 (AI Page Generator) + 6.1 (Element Catalogue & Rendering Engine) + 6.2 (Content Editor Element Mode & Page Builder UI) + 6.3 (Per-Instance Element Styling) + 6.4 (AI Element Integration) + 7.1 (Embed Pencil Editor in LiteCMS Admin) + 7.2 (.pen-to-HTML Converter)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration) + 5.3 (AI Page Generator) + 6.1 (Element Catalogue & Rendering Engine) + 6.2 (Content Editor Element Mode & Page Builder UI) + 6.3 (Per-Instance Element Styling) + 6.4 (AI Element Integration) + 7.1 (Embed Pencil Editor in LiteCMS Admin) + 7.2 (.pen-to-HTML Converter) + 7.3 (LiteCMS Design System as .pen File)
 >
 > **Last updated**: 2026-02-11
 
@@ -3013,3 +3013,109 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | CL3 | Preview endpoint | ☐ |
 | CL4 | Routes registered | ☐ |
 | CL5 | FrontController safety | ☐ |
+
+---
+
+## Test Group CM: Design System File Structure (Chunk 7.3)
+
+### CM1. Design system file exists and is valid JSON
+1. Run `php tests/chunk-7.3-verify.php` — tests 1-2
+2. **Verify**: `designs/litecms-system.pen` exists
+3. **Verify**: File parses as valid JSON without errors
+
+### CM2. Document has correct structure
+1. Run `php tests/chunk-7.3-verify.php` — tests 3-5
+2. **Verify**: Document has `children` array and `variables` object
+3. **Verify**: Exactly 8 reusable components found
+4. **Verify**: All 8 component IDs present: hero-section, text-section, feature-grid, cta-banner, image-text, testimonial-section, faq-section, footer-section
+
+### CM3. Components have children and use variable references
+1. Run `php tests/chunk-7.3-verify.php` — tests 6-7
+2. **Verify**: Each component has non-empty `children` array
+3. **Verify**: Each component tree contains at least one `$--` variable reference
+
+---
+
+## Test Group CN: Design Token Variables (Chunk 7.3)
+
+### CN1. Color tokens defined with themed values
+1. Run `php tests/chunk-7.3-verify.php` — tests 8, 11
+2. **Verify**: Variables include `primary`, `background`, `foreground`, `muted-foreground`, `card`, `border`
+3. **Verify**: Color variables use array-of-entries format with default (light) and `mode: dark` entries
+
+### CN2. Typography and spacing tokens defined
+1. Run `php tests/chunk-7.3-verify.php` — tests 9-10
+2. **Verify**: `font-primary` and `font-secondary` variables defined
+3. **Verify**: `radius-m`, `radius-pill`, `spacing-section`, `max-width` variables defined
+
+---
+
+## Test Group CO: PenConverter Integration (Chunk 7.3)
+
+### CO1. Component registry built from design system
+1. Run `php tests/chunk-7.3-verify.php` — test 12
+2. **Verify**: All 8 components can be instantiated via `ref` nodes and produce HTML output
+
+### CO2. Hero instance converts to HTML
+1. Run `php tests/chunk-7.3-verify.php` — test 13
+2. **Verify**: A page with a `ref` to `hero-section` renders HTML containing "Welcome to Our Site" and "Get Started"
+
+### CO3. Multiple component instances on one page
+1. Run `php tests/chunk-7.3-verify.php` — test 14
+2. **Verify**: A page with hero, text, CTA, and footer `ref` instances produces HTML with content from all four components
+
+### CO4. Descendant overrides work
+1. Run `php tests/chunk-7.3-verify.php` — test 15
+2. **Verify**: A hero instance with `descendants` overrides shows custom text and does not show default text
+
+### CO5. CSS output includes variable blocks
+1. Run `php tests/chunk-7.3-verify.php` — tests 16-17
+2. **Verify**: CSS contains `:root` block with `--primary` variable
+3. **Verify**: CSS contains `[data-theme-mode="dark"]` block
+
+### CO6. Semantic HTML tags
+1. Run `php tests/chunk-7.3-verify.php` — test 18
+2. **Verify**: Hero renders with `<section>` or `<div>` tag; footer renders with `<footer>` tag
+
+---
+
+## Test Group CP: Design System Documentation & Pipeline (Chunk 7.3)
+
+### CP1. README exists
+1. Run `php tests/chunk-7.3-verify.php` — test 19
+2. **Verify**: `designs/README.md` exists and is non-empty (>50 bytes)
+
+### CP2. Full pipeline integration
+1. Run `php tests/chunk-7.3-verify.php` — test 20
+2. **Verify**: A page using all 8 components converts to HTML+CSS with content from every component
+3. **Verify**: CSS includes `:root`, `--primary`, and dark theme blocks
+4. **Verify**: HTML includes expected content strings: "Welcome to Our Site", "Section Heading", "Our Features", "Ready to get started", "About This Topic", "What Our Customers Say", "Frequently Asked Questions", "All rights reserved"
+
+### CP3. Visual verification in Design Editor
+1. Login to admin panel
+2. Navigate to [http://localhost:8000/admin/design/editor](http://localhost:8000/admin/design/editor)
+3. Select `litecms-system.pen` from the file dropdown
+4. **Verify**: Editor loads without errors
+5. **Verify**: 8 components visible as reusable components in the editor
+6. **Verify**: No console errors
+
+---
+
+## Quick Checklist — Chunk 7.3
+
+| Test | Description | ☐ |
+|----|------|-------|
+| CM1 | File exists and valid JSON | ☐ |
+| CM2 | Correct structure (8 components, all IDs) | ☐ |
+| CM3 | Components have children and variable refs | ☐ |
+| CN1 | Color tokens with light/dark themes | ☐ |
+| CN2 | Typography and spacing tokens | ☐ |
+| CO1 | Component registry built | ☐ |
+| CO2 | Hero instance converts | ☐ |
+| CO3 | Multiple instances on one page | ☐ |
+| CO4 | Descendant overrides | ☐ |
+| CO5 | CSS variable blocks | ☐ |
+| CO6 | Semantic HTML tags | ☐ |
+| CP1 | README exists | ☐ |
+| CP2 | Full pipeline integration | ☐ |
+| CP3 | Visual verification in editor | ☐ |
