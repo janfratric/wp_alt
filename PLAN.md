@@ -706,13 +706,212 @@ POST   /admin/element-proposals/{id}/reject  → ElementController::rejectPropos
 
 ---
 
-## Phase 7 — Final Polish
+## Phase 7 — Pencil Design Editor Integration
 
-### Chunk 7.1: Final Polish, Error Handling & Documentation
+### Chunk 7.1: Embed Pencil Editor in LiteCMS Admin
+
+**Description**: Port the Pencil visual design editor (a self-contained browser SPA) to run inside LiteCMS's admin panel. The editor is a Figma-like canvas tool using CanvasKit/Skia WASM for rendering and Pixi.js for interaction. It communicates with its host via `window.postMessage()` IPC. This chunk copies the editor bundle, creates an IPC bridge that replaces the VS Code `acquireVsCodeApi()` with `fetch()` calls to a PHP backend, and builds the `DesignController` for `.pen` file I/O.
+
+**Input Prerequisites**: Phase 6 complete (element-based page builder working). The Pencil editor SPA files from `%APPDATA%/Code/User/globalStorage/highagency.pencildev/editor/`.
+
+**Key Files to Create**:
+- `public/assets/pencil-editor/index.html` — Patched SPA entry point (bridge script injected, CSP replaced)
+- `public/assets/pencil-editor/assets/index.js` (7MB) — Editor bundle (copied from extension)
+- `public/assets/pencil-editor/assets/index.css` (122KB) — Editor styles (copied)
+- `public/assets/pencil-editor/assets/pencil.wasm` (7.7MB) — CanvasKit/Skia WASM (copied)
+- `public/assets/pencil-editor/assets/browserAll*.js`, `webworkerAll*.js` — Workers (copied)
+- `public/assets/js/pencil-bridge.js` — IPC bridge: creates `window.vscodeapi` mock, intercepts `postMessage` from editor (source: `application`), routes `save`/`load` to PHP via `fetch()`, provides `window.canvaskitWasm` loader and `window.VSCODE_WEBVIEW_BASE_URI`
+- `templates/admin/design/editor.php` — Admin page hosting the editor in an iframe, passes `.pen` file path
+- `app/Admin/DesignController.php` — PHP backend: `GET /admin/design/load` (read .pen JSON), `POST /admin/design/save` (write .pen JSON), `POST /admin/design/import-file` (asset import), `GET /admin/design/editor` (render editor page)
+- `designs/` — Directory for `.pen` design files
+
+**IPC Protocol**: Messages use `window.postMessage()` with `{ id, type: "request"|"response"|"notification", method, payload, source }`. Editor sends `source: 'application'`, host responds with `source: 'vscode-extension'`. Key methods: `save(path)`, `file-update`, `undo`/`redo`, `add-to-chat`, `color-theme-changed`.
+
+**Output Deliverables**: A working Figma-like visual editor accessible at `/admin/design/editor`. Users can create frames, text, shapes on a canvas, save designs as `.pen` files to the server, and reload them. WASM rendering works, keyboard/mouse interaction (select, move, resize, zoom/pan) works.
+
+**Acceptance Tests**:
+1. Editor SPA files copied to `public/assets/pencil-editor/` and served correctly
+2. Navigating to `/admin/design/editor` loads the editor in an iframe — canvas renders (not blank)
+3. WASM loads successfully (Skia rendering of shapes/text works)
+4. Creating frames, text, shapes in the visual editor works (mouse/keyboard interaction)
+5. Clicking save persists `.pen` JSON to `designs/` folder via `DesignController`
+6. Reloading page restores the saved design from server
+7. The bridge script correctly mocks `acquireVsCodeApi()` — no console errors about missing VS Code API
+8. IPC messages flow: editor → bridge → PHP → bridge → editor
+
+---
+
+### Chunk 7.2: .pen-to-HTML Converter (PenConverter)
+
+**Description**: Build a PHP converter that reads `.pen` JSON and generates semantic HTML + CSS. This is the critical bridge that enables public rendering of designs created in the visual editor. Handles all .pen node types (frame, text, rectangle, ellipse, path, ref, group), CSS flexbox layout, fill/stroke/effects, typography, component resolution (`ref` → deep-clone + overrides), and variable resolution (`$--var` → CSS custom properties).
+
+**Input Prerequisites**: Chunk 7.1 complete (editor works, .pen files exist to convert)
+
+**Key Files to Create**:
+- `app/PageBuilder/PenConverter.php` — Main converter: `convertFile($penPath)` returns `{html, css}`. Methods: `parseDocument()`, `resolveComponents()`, `renderNode()`, `nodeToHtml()`, `collectCss()`, `resolveVariables()`
+- `app/PageBuilder/PenNodeRenderer.php` — Per-node-type rendering: `renderFrame()` → `<section>`/`<div>`/`<header>`/`<nav>`/`<footer>` (inferred from name), `renderText()` → `<p>`/`<h1>`-`<h6>`/`<span>` (inferred from fontSize/fontWeight), `renderRectangle()`, `renderEllipse()`, `renderPath()` → `<svg>`, `renderRef()` (component resolution), `renderIconFont()`. Each returns `{html, css}`
+- `app/PageBuilder/PenStyleBuilder.php` — Property-to-CSS conversion: `buildFill()` (color/gradient/image), `buildStroke()` (border with per-side support), `buildEffect()` (box-shadow/filter/backdrop-filter), `buildLayout()` (flexbox), `buildTypography()` (font/text), `buildSizing()` (fill_container/fit_content/px)
+
+**Key Files to Modify**:
+- `app/PageBuilder/PageRenderer.php` — Add `renderFromPen($penFilePath, $contentId)` method
+- `app/Templates/FrontController.php` — Detect `design_file` on content, call PenConverter
+- `templates/public/layout.php` — Inject PenConverter CSS output alongside existing element CSS
+
+**Output Deliverables**: A `.pen` file created in the editor can be converted to clean semantic HTML + CSS. Component instances are resolved. Variables become CSS custom properties with `:root` definitions. The public site can render .pen-based content.
+
+**Acceptance Tests**:
+1. PenStyleBuilder converts individual properties correctly: fill→background, stroke→border, layout→flexbox, typography→font, effects→shadow/blur
+2. PenNodeRenderer renders each node type: frame→div/section, text→p/h1-h6, rectangle→styled div, ellipse→div with border-radius:50%, path→svg
+3. PenConverter processes a multi-frame .pen file into valid HTML+CSS
+4. Component resolution: `ref` nodes are deep-cloned from their component, `descendants` overrides applied
+5. Variable resolution: `$--primary` becomes `var(--primary)`, `:root` block generated from document variables
+6. Theme support: `[data-theme="dark"]` selector generated for themed variables
+7. Full integration: .pen file from editor → PenConverter → HTML that visually matches the editor design
+
+---
+
+### Chunk 7.3: LiteCMS Design System as .pen File
+
+**Description**: Create a `.pen` design system file containing reusable components that match LiteCMS's existing page builder elements (hero, text section, feature grid, CTA, image+text, testimonials, FAQ, footer). Components use `.pen` variables for colors, fonts, and spacing with light/dark theme support. This file serves as the component library AI will use to generate pages.
+
+**Input Prerequisites**: Chunk 7.1 complete (editor available for visual creation/testing), Chunk 7.2 complete (converter validates components render correctly)
+
+**Key Files to Create**:
+- `designs/litecms-system.pen` — Design system file with 8 reusable components + design token variables. Created using Pencil MCP tools (`batch_design`) or the embedded editor.
+- `designs/README.md` — Documents component names, IDs, slot structure, variable definitions, usage instructions
+
+**Components** (each with `reusable: true` and `slot` markers):
+
+| Component | Structure | Slots |
+|---|---|---|
+| Hero Section | Full-width frame, centered content, bg image support | heading, subheading, cta_text, cta_url, bg_image |
+| Text Section | Vertical frame, heading + body richtext | heading, body |
+| Feature Grid | Heading + horizontal wrap grid of feature cards | heading, features[] (icon, title, desc) |
+| CTA Banner | Horizontal frame, text + button, colored bg | heading, body, cta_text, cta_url |
+| Image + Text | Two-column: image + text content | image, heading, body, layout_direction |
+| Testimonial Section | Heading + grid of quote cards | heading, testimonials[] (quote, author, role) |
+| FAQ Section | Heading + collapsible Q&A items | heading, faqs[] (question, answer) |
+| Footer | Dark bg, logo/copyright + nav links + social | copyright, links[], socials[] |
+
+**Design Tokens** (variables with light/dark theme axis):
+- Colors: `--primary`, `--background`, `--foreground`, `--muted-foreground`, `--card`, `--border`
+- Typography: `--font-primary`, `--font-secondary`
+- Spacing: `--radius-m`, `--radius-pill`, `--spacing-section`, `--spacing-content`, `--max-width`
+
+**Output Deliverables**: A complete design system `.pen` file loadable in the embedded editor. All components are reusable, use variables for styling, and convert to clean HTML via PenConverter. A sample page using these components renders correctly on the public site.
+
+**Acceptance Tests**:
+1. `designs/litecms-system.pen` is valid JSON and loads in the embedded editor
+2. All 8 components are marked `reusable: true` and visible in the editor's component panel
+3. Components use `$--variable` references for colors, fonts, spacing (no hardcoded values)
+4. Variables have light/dark theme values defined
+5. Creating a page from component instances works in the editor
+6. PenConverter successfully converts a page using these components to semantic HTML+CSS
+7. Converted HTML is responsive and visually matches the design
+
+---
+
+### Chunk 7.4: AI Design Pipeline
+
+**Description**: Extend LiteCMS's AI assistant to generate `.pen` design files using the component library. When the user requests a page via the AI page generator, the AI can produce a `.pen` file (instead of raw HTML or element JSON) that uses design system components. The `.pen` file is saved, converted to HTML via PenConverter, and can be opened in the embedded editor for visual refinement.
+
+**Input Prerequisites**: Chunks 7.2 + 7.3 complete (converter + design system components), Chunk 5.3 complete (AI Page Generator)
+
+**Key Files to Create**:
+- `migrations/010_design_file.sqlite.sql` — Add `design_file` VARCHAR column to `content` table
+- `migrations/010_design_file.mysql.sql` — MySQL variant
+- `migrations/010_design_file.pgsql.sql` — PostgreSQL variant
+
+**Key Files to Modify**:
+- `app/AIAssistant/AIController.php` — Add `generateDesign()` action: sends page requirements to AI with .pen schema + component library context, receives .pen JSON, saves to `designs/pages/{slug}.pen`, converts via PenConverter, stores HTML in content body
+- `app/AIAssistant/GeneratorPrompts.php` — Add `penDesignPrompt()`: includes .pen schema reference, component IDs/structure from litecms-system.pen, variable definitions
+- `app/AIAssistant/PageGeneratorController.php` — Handle `editor_mode = 'design'` in chat and create flows
+- `public/assets/js/page-generator.js` — Add "Visual Design" mode alongside "HTML" and "Elements". When selected, AI generates a .pen file. Show preview via PenConverter endpoint. Add "Open in Editor" button.
+- `app/Admin/ContentController.php` — Add `design_file` to content CRUD, add `POST /admin/content/preview-pen` endpoint (accepts .pen JSON, returns rendered HTML)
+
+**Output Deliverables**: The AI page generator has a "Visual Design" mode that produces `.pen` files using the design system components. Generated designs are previewable, saveable, and openable in the embedded editor. Content items can be linked to `.pen` design files.
+
+**Acceptance Tests**:
+1. Migration adds `design_file` column to content table
+2. AI page generator shows "Visual Design" mode option
+3. Generating a page in design mode produces a valid `.pen` file using litecms-system.pen components
+4. Generated `.pen` file saves to `designs/pages/` and `design_file` column stores the path
+5. Preview endpoint converts .pen to HTML and returns it
+6. "Open in Editor" button loads the `.pen` file in the embedded Pencil editor
+7. Generated design uses component instances (not raw frames) where appropriate
+
+---
+
+### Chunk 7.5: Admin Integration & Preview
+
+**Description**: Wire the embedded Pencil editor into the content editing workflow. Add a "Design" tab alongside HTML/Elements in the content editor. When active, it shows the embedded editor with the content's `.pen` file, a preview panel with converted HTML, and a "Re-convert" button. Build a design file browser for managing `.pen` files.
+
+**Input Prerequisites**: Chunks 7.1 + 7.2 + 7.4 complete (editor, converter, AI pipeline with design_file column)
+
+**Key Files to Create**:
+- `templates/admin/design/browser.php` — Design file browser: list `.pen` files in `designs/`, preview thumbnails, create new from template, duplicate existing
+
+**Key Files to Modify**:
+- `templates/admin/content/edit.php` — Add "Design" tab alongside HTML/Elements. When active: iframe with embedded editor, preview panel showing converted HTML, "Re-convert" button, design file path display
+- `app/Admin/ContentController.php` — CRUD for design files: upload .pen, download .pen, delete .pen, re-convert to HTML (stores converted HTML in content body for fast serving)
+- `app/Admin/DesignController.php` — Expand with: design file browser endpoints, file listing, preview thumbnail generation, template duplication
+- `public/assets/js/page-builder-init.js` — Handle "design" editor mode, load preview iframe, re-convert button logic
+- `public/assets/css/admin.css` — Styles for design mode: preview panel, action buttons, file status indicator, design browser grid
+- `app/Templates/FrontController.php` — When serving content with `design_file`: use pre-converted HTML from body (fast path), fall back to on-the-fly PenConverter if body is empty/stale
+
+**Output Deliverables**: Content items can use a "Design" mode with the embedded visual editor. The admin shows a live preview of the converted HTML. Re-converting after edits updates the public-facing HTML. A design file browser lists and manages `.pen` files.
+
+**Acceptance Tests**:
+1. Content editor shows "Design" tab alongside HTML/Elements editor modes
+2. Selecting "Design" mode loads the embedded Pencil editor with the content's .pen file
+3. Preview panel shows converted HTML alongside the editor
+4. "Re-convert" button triggers PenConverter and updates the content body with fresh HTML
+5. Public site serves the pre-converted HTML (fast path, no on-the-fly conversion)
+6. Design file browser at `/admin/design/browser` lists all .pen files
+7. Creating a new design from template works; duplicating an existing design works
+
+---
+
+### Chunk 7.6: Template System & Theme Integration
+
+**Description**: Extend the design system to site-wide theming. Allow `.pen` files to serve as layout templates. Build a variable-to-settings bridge so admins can edit design tokens (colors, fonts, spacing) from the settings page without opening the editor. Add light/dark theme switching on the public site driven by .pen design variables.
+
+**Input Prerequisites**: Chunks 7.2 + 7.3 + 7.5 complete (converter, design system, admin integration)
+
+**Key Files to Modify**:
+- `app/Admin/LayoutController.php` — Add option to assign a `.pen` file as a layout template. PenConverter renders the template with content slots.
+- `app/Admin/SettingsController.php` — Add "Design System" section: choose active `.pen` design system file, display color/font/spacing variables as editable fields, save overrides to settings table
+- `app/PageBuilder/PenConverter.php` — Read variable overrides from settings, inject into CSS `:root`. Generate CSS for each theme axis value.
+- `templates/public/layout.php` — Support `data-theme` attribute for theme switching. Inject theme CSS variables. Add theme toggle button (optional).
+
+**Features**:
+- Layout templates from `.pen` files (header/footer/content slots)
+- Settings page reads variables from active `.pen` design system file, shows as editable form fields
+- Variable overrides saved to `settings` table, PenConverter injects them into `:root`
+- Theme switching via `?theme=dark` query param or cookie
+- PenConverter generates CSS for each theme combination
+- Per-page theme override support
+
+**Output Deliverables**: Admins can edit design tokens from the settings page. Layout templates can use `.pen` files. The public site supports light/dark theme switching driven by .pen variables.
+
+**Acceptance Tests**:
+1. A `.pen` file can be assigned as a layout template in the layout editor
+2. Settings page shows design variables from the active `.pen` design system file
+3. Changing a color variable in settings updates the public site's CSS `:root` value
+4. Theme switching works: `?theme=dark` activates dark theme CSS
+5. PenConverter generates correct CSS for both light and dark themes
+6. Variable overrides persist in the settings table and survive restarts
+7. Per-page theme override applies the correct theme to individual pages
+
+---
+
+## Phase 8 — Final Polish
+
+### Chunk 8.1: Final Polish, Error Handling & Documentation
 
 **Description**: Final pass over the entire codebase — comprehensive error handling and logging, input validation tightening, performance verification, security audit, and production of README.md with installation guide.
 
-**Input Prerequisites**: All previous chunks complete (Phases 1–6, including Chunk 6.4)
+**Input Prerequisites**: All previous chunks complete (Phases 1–7, including Chunk 7.6)
 
 **Key Files to Create/Modify**:
 - `app/Admin/ContactSubmissionsController.php` — List submissions with pagination, view individual submission, delete
@@ -787,10 +986,17 @@ POST   /admin/element-proposals/{id}/reject  → ElementController::rejectPropos
                                                         └── 6.2 Page Builder UI
                                                              └── 6.3 Per-Instance Element Styling
                                                                   └── 6.4 AI Element Integration
-                                                                       └── 7.1 Final Polish & Docs
+                                                                       └── 7.1 Embed Pencil Editor
+                                                                            ├── 7.2 PenConverter ──────┐
+                                                                            │                          │ (parallel group D)
+                                                                            └── 7.3 Design System .pen ┘
+                                                                                 └── 7.4 AI Design Pipeline
+                                                                                 └── 7.5 Admin Integration ─┐
+                                                                                      └── 7.6 Themes ───────┘
+                                                                                           └── 8.1 Final Polish & Docs
 ```
 
-**Total: 19 chunks across 7 phases**
+**Total: 25 chunks across 8 phases**
 
 ## Parallel Execution Strategy
 
@@ -805,7 +1011,10 @@ Step 3 (parallel B):  2.3 + 3.1           ← 2.3 depends on 2.2; 3.1 depends on
 Step 4 (parallel C):  3.2 + 4.1           ← 3.2 is public frontend; 4.1 is admin backend
 Step 5 (sequential):  4.2 → 5.1 → 5.2 → 5.3
 Step 6 (sequential):  6.1 → 6.2 → 6.3 → 6.4  ← element catalogue, page builder UI, styling, AI integration
-Step 7 (sequential):  7.1                      ← final polish after all features complete
+Step 7 (sequential):  7.1                      ← embed Pencil editor (foundation for Phase 7)
+Step 8 (parallel D):  7.2 + 7.3               ← converter + design system (independent after 7.1)
+Step 9 (sequential):  7.4 → 7.5 → 7.6         ← AI pipeline, admin integration, themes
+Step 10 (sequential): 8.1                      ← final polish after all features complete
 ```
 
 ### Why These Groups Are Safe
@@ -815,6 +1024,7 @@ Step 7 (sequential):  7.1                      ← final polish after all featur
 | A | 2.2: ContentController, content templates | 2.4: UserController, user templates | None — different controllers, templates, routes | Low |
 | B | 2.3: MediaController, media templates, editor.js update | 3.1: FrontController, public templates | None — admin vs public | Low |
 | C | 3.2: Public CSS, public templates, cookie-consent | 4.1: ClaudeClient, AIController, ConversationManager | None — public frontend vs admin backend | Low |
+| D | 7.2: PenConverter, PenNodeRenderer, PenStyleBuilder | 7.3: designs/litecms-system.pen, design system components | None — PHP converter vs .pen JSON file | Low |
 
 ### Coordination Mechanism
 

@@ -202,6 +202,25 @@
         </div>
 
         <div class="form-group">
+            <label for="google_api_key">Google API Key (Speech-to-Text)</label>
+            <?php if ($hasGoogleApiKey): ?>
+                <div class="key-status key-configured">
+                    Google API key is configured (stored encrypted)
+                </div>
+            <?php else: ?>
+                <div class="key-status key-missing">
+                    No Google API key configured &mdash; speech-to-text disabled
+                </div>
+            <?php endif; ?>
+            <input type="password"
+                   id="google_api_key"
+                   name="google_api_key"
+                   placeholder="<?= $hasGoogleApiKey ? 'Leave blank to keep current key' : 'AIza...' ?>"
+                   autocomplete="off">
+            <small>Get your API key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>. Used for speech-to-text in the AI chat. Leave blank to keep the current key.</small>
+        </div>
+
+        <div class="form-group">
             <label for="claude_model">Claude Model</label>
             <select id="claude_model" name="claude_model">
                 <?php foreach ($dropdownModels as $model): ?>

@@ -39,6 +39,7 @@ class SettingsController
         $settings = $this->loadSettings();
 
         $hasApiKey = !empty($settings['claude_api_key']);
+        $hasGoogleApiKey = !empty($settings['google_api_key']);
 
         // Decode model management data
         $availableModels = json_decode($settings['available_models'] ?? '[]', true) ?: [];
@@ -58,6 +59,7 @@ class SettingsController
             'activeNav'        => 'settings',
             'settings'         => $settings,
             'hasApiKey'        => $hasApiKey,
+            'hasGoogleApiKey'  => $hasGoogleApiKey,
             'claudeModel'      => $settings['claude_model']
                 ?? Config::getString('claude_model', 'claude-sonnet-4-20250514'),
             'dropdownModels'   => $dropdownModels,
@@ -85,6 +87,12 @@ class SettingsController
         if ($newApiKey !== '') {
             $encrypted = AIController::encrypt($newApiKey);
             $this->saveSetting('claude_api_key', $encrypted);
+        }
+
+        $newGoogleKey = trim((string) $request->input('google_api_key', ''));
+        if ($newGoogleKey !== '') {
+            $encrypted = AIController::encrypt($newGoogleKey);
+            $this->saveSetting('google_api_key', $encrypted);
         }
 
         $model = trim((string) $request->input('claude_model', ''));

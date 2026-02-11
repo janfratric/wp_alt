@@ -1883,6 +1883,61 @@ table.data-table td:first-child {
 .pb-custom-css textarea:focus { outline: 2px solid var(--color-primary); outline-offset: -1px; }
 .pb-custom-css .pb-css-hint { font-size: 0.7rem; color: var(--color-text-muted); margin-top: 0.25rem; }
 
+/* --- Page Builder Block Containers --- */
+.pb-template-block {
+    border: 2px solid var(--color-primary, #2563eb);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    background: var(--color-bg, #fff);
+}
+.pb-template-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 8%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 20%, transparent);
+    border-radius: 6px 6px 0 0;
+}
+.pb-block-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--color-primary, #2563eb);
+}
+.pb-block-info {
+    font-size: 0.75rem;
+    color: var(--color-text-muted, #6c757d);
+    background: var(--color-bg-alt, #f1f3f5);
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+}
+.pb-template-block-body {
+    padding: 0.5rem;
+    min-height: 40px;
+}
+.pb-block-empty {
+    text-align: center;
+    color: var(--color-text-muted, #6c757d);
+    font-size: 0.85rem;
+    padding: 0.75rem;
+    font-style: italic;
+}
+.pb-block-add-element {
+    margin: 0 0.5rem 0.5rem;
+}
+.pb-unassigned-section {
+    border: 2px dashed var(--color-border, #dee2e6);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+.pb-unassigned-section .pb-template-block-header {
+    background: var(--color-bg-alt, #f8f9fa);
+    border-bottom: 1px solid var(--color-border, #dee2e6);
+}
+.pb-unassigned-section .pb-block-name {
+    color: var(--color-text-muted, #6c757d);
+}
+
 /* --- Element Editor AI Panel --- */
 .element-editor-grid.ai-panel-open { grid-template-columns: 380px 1fr 380px; }
 .element-ai-panel { display: none; flex-direction: column; max-height: calc(100vh - 120px); border-left: 1px solid var(--color-border, #e5e7eb); background: var(--color-bg, #fff); position: sticky; top: 70px; overflow: hidden; }

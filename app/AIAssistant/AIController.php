@@ -639,4 +639,77 @@ class AIController
 
         return $decrypted !== false ? $decrypted : '';
     }
+
+    /**
+     * POST /admin/ai/transcribe
+     * Receives an audio file upload and returns transcribed text via Google Gemini API.
+     */
+    public function transcribe(Request $request): Response
+    {
+        $googleKey = $this->getGoogleApiKey();
+        if ($googleKey === '') {
+            return Response::json([
+                'success' => false,
+                'error'   => 'Google API key is not configured. Please add your API key in Settings.',
+            ], 400);
+        }
+
+        if (!isset($_FILES['audio']) || $_FILES['audio']['error'] !== UPLOAD_ERR_OK) {
+            return Response::json([
+                'success' => false,
+                'error'   => 'No audio file received.',
+            ], 400);
+        }
+
+        $tmpFile  = $_FILES['audio']['tmp_name'];
+        $mimeType = $_FILES['audio']['type'] ?: 'audio/webm';
+        $fileSize = $_FILES['audio']['size'];
+
+        if ($fileSize > 10 * 1024 * 1024) {
+            return Response::json([
+                'success' => false,
+                'error'   => 'Audio file too large (max 10 MB).',
+            ], 400);
+        }
+
+        $audioData = file_get_contents($tmpFile);
+        if ($audioData === false) {
+            return Response::json([
+                'success' => false,
+                'error'   => 'Failed to read audio file.',
+            ], 500);
+        }
+
+        try {
+            $client = new GeminiClient($googleKey);
+            $text = $client->transcribeAudio($audioData, $mimeType);
+        } catch (\RuntimeException $e) {
+            return Response::json([
+                'success' => false,
+                'error'   => $e->getMessage(),
+            ], 502);
+        }
+
+        return Response::json([
+            'success' => true,
+            'text'    => $text,
+        ]);
+    }
+
+    /**
+     * Get the decrypted Google API key.
+     */
+    private function getGoogleApiKey(): string
+    {
+        $encryptedKey = $this->getSetting('google_api_key', '');
+
+        if ($encryptedKey !== '') {
+            $decrypted = self::decrypt($encryptedKey);
+            if ($decrypted !== '') {
+                return $decrypted;
+            }
+        }
+
+        return '';
+    }
 }

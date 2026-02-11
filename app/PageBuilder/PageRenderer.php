@@ -94,6 +94,11 @@ class PageRenderer
             $slotData = json_decode($slotData, true) ?: [];
         }
 
+        // Enrich dynamic elements with database data
+        if (DynamicElements::isDynamic($slug)) {
+            $slotData = DynamicElements::enrich($slug, $slotData);
+        }
+
         // Read and apply style data
         $instanceId = (int) ($instance['id'] ?? 0);
         $styleData = $instance['style_data_json'] ?? '{}';
@@ -169,9 +174,9 @@ class PageRenderer
      * Elements assigned to blocks are grouped inside block wrappers;
      * unassigned elements (block_id=NULL) render flat for backward compat.
      */
-    public static function renderPageWithBlocks(int $contentId): string
+    public static function renderPageWithBlocks(int $contentId, ?int $layoutTemplateId = null): string
     {
-        $blocks = self::loadBlocks($contentId);
+        $blocks = self::loadBlocks($contentId, $layoutTemplateId);
         $instances = self::loadInstancesWithBlocks($contentId);
 
         if (empty($instances) && empty($blocks)) {
@@ -317,9 +322,19 @@ class PageRenderer
 
     /**
      * Load page blocks ordered by sort_order.
+     * If $layoutTemplateId is provided, loads template-level blocks.
+     * Otherwise falls back to legacy content-level blocks.
      */
-    public static function loadBlocks(int $contentId): array
+    public static function loadBlocks(int $contentId, ?int $layoutTemplateId = null): array
     {
+        if ($layoutTemplateId !== null && $layoutTemplateId > 0) {
+            return QueryBuilder::query('page_blocks')
+                ->select()
+                ->where('layout_template_id', (string) $layoutTemplateId)
+                ->orderBy('sort_order')
+                ->get();
+        }
+
         return QueryBuilder::query('page_blocks')
             ->select()
             ->where('content_id', (string) $contentId)

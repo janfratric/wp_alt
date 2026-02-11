@@ -8,19 +8,22 @@
     // -----------------------------------------------------------------------
     // State
     // -----------------------------------------------------------------------
-    var instances = [];       // Array of {elementId, elementSlug, elementName, elementCategory, slots, slotData, styleData}
+    var instances = [];       // Array of {elementId, elementSlug, elementName, elementCategory, slots, slotData, styleData, blockId}
     var catalogue = [];       // Cached element catalogue from API
     var pickerModal = null;   // DOM ref: picker modal
     var instanceList = null;  // DOM ref: instance list container
     var jsonInput = null;     // DOM ref: hidden elements_json input
     var csrfToken = '';       // CSRF token for API calls
     var dragSrcIndex = null;  // Index of element being dragged
+    var templateBlocks = [];  // Template-defined blocks (read-only layout containers)
+    var pickerTargetBlockId = null; // Which block the next added element goes into
 
     // -----------------------------------------------------------------------
     // Init
     // -----------------------------------------------------------------------
-    function initPageBuilder(existingInstances, csrf) {
+    function initPageBuilder(existingInstances, csrf, tplBlocks) {
         csrfToken = csrf || '';
+        templateBlocks = Array.isArray(tplBlocks) ? tplBlocks : [];
 
         instanceList = document.getElementById('pb-instance-list');
         jsonInput = document.getElementById('elements-json-input');
@@ -36,18 +39,20 @@
                     elementCategory: inst.elementCategory || 'general',
                     slots: Array.isArray(inst.slots) ? inst.slots : [],
                     slotData: (inst.slotData && typeof inst.slotData === 'object') ? inst.slotData : {},
-                    styleData: (inst.styleData && typeof inst.styleData === 'object') ? inst.styleData : {}
+                    styleData: (inst.styleData && typeof inst.styleData === 'object') ? inst.styleData : {},
+                    blockId: inst.blockId || null
                 };
             });
         }
 
         renderAllInstances();
 
-        // "Add Element" button
+        // "Add Element" button (top-level, adds to unassigned)
         var addBtn = document.getElementById('pb-add-element');
         if (addBtn) {
             addBtn.addEventListener('click', function(e) {
                 e.preventDefault();
+                pickerTargetBlockId = null;
                 openPicker();
             });
         }
@@ -238,7 +243,8 @@
             elementCategory: elementDef.category || 'general',
             slots: slots,
             slotData: buildDefaultSlotData(slots),
-            styleData: {}
+            styleData: {},
+            blockId: pickerTargetBlockId
         };
 
         // Read current DOM state before adding (preserve any edits)
@@ -316,19 +322,25 @@
 
         instanceList.innerHTML = '';
 
-        if (instances.length === 0) {
-            var empty = document.createElement('div');
-            empty.className = 'pb-empty-state';
-            empty.id = 'pb-empty-state';
-            empty.innerHTML = '<div class="pb-empty-icon">&#9647;</div>'
-                + '<p>No elements added yet.</p>'
-                + '<p style="font-size:0.85rem;color:var(--color-text-muted);">'
-                + 'Click "Add Element" to start building your page.</p>';
-            instanceList.appendChild(empty);
+        // If template has blocks, render block containers
+        if (templateBlocks.length > 0) {
+            renderBlockAwareLayout();
         } else {
-            instances.forEach(function(instance, index) {
-                instanceList.appendChild(createInstanceCard(instance, index));
-            });
+            // Flat mode (no template blocks, full backward compat)
+            if (instances.length === 0) {
+                var empty = document.createElement('div');
+                empty.className = 'pb-empty-state';
+                empty.id = 'pb-empty-state';
+                empty.innerHTML = '<div class="pb-empty-icon">&#9647;</div>'
+                    + '<p>No elements added yet.</p>'
+                    + '<p style="font-size:0.85rem;color:var(--color-text-muted);">'
+                    + 'Click "Add Element" to start building your page.</p>';
+                instanceList.appendChild(empty);
+            } else {
+                instances.forEach(function(instance, index) {
+                    instanceList.appendChild(createInstanceCard(instance, index));
+                });
+            }
         }
 
         // Update count badge
@@ -336,6 +348,97 @@
         if (badge) {
             var count = instances.length;
             badge.textContent = count + ' element' + (count !== 1 ? 's' : '');
+        }
+    }
+
+    /**
+     * Render instances grouped into template block containers.
+     */
+    function renderBlockAwareLayout() {
+        // Group instances by blockId
+        var blockMap = {}; // blockId => [indices]
+        var unassigned = []; // indices with no blockId
+        instances.forEach(function(inst, index) {
+            if (inst.blockId) {
+                var bid = String(inst.blockId);
+                if (!blockMap[bid]) blockMap[bid] = [];
+                blockMap[bid].push(index);
+            } else {
+                unassigned.push(index);
+            }
+        });
+
+        // Render each template block
+        templateBlocks.forEach(function(block) {
+            var blockId = String(block.id);
+            var section = document.createElement('div');
+            section.className = 'pb-template-block';
+            section.setAttribute('data-block-id', blockId);
+
+            // Block header (read-only)
+            var header = document.createElement('div');
+            header.className = 'pb-template-block-header';
+            header.innerHTML = '<span class="pb-block-name">' + escHtml(block.name || 'Block') + '</span>'
+                + '<span class="pb-block-info">'
+                + escHtml(block.columns + ' col' + (parseInt(block.columns,10) !== 1 ? 's' : '')
+                    + ', ' + block.width_percent + '%'
+                    + ', ' + (block.display_mode || 'flex'))
+                + '</span>';
+            section.appendChild(header);
+
+            // Block body — element drop zone
+            var body = document.createElement('div');
+            body.className = 'pb-template-block-body';
+
+            var blockIndices = blockMap[blockId] || [];
+            if (blockIndices.length === 0) {
+                var emptyNote = document.createElement('div');
+                emptyNote.className = 'pb-block-empty';
+                emptyNote.textContent = 'No elements in this block.';
+                body.appendChild(emptyNote);
+            } else {
+                blockIndices.forEach(function(idx) {
+                    body.appendChild(createInstanceCard(instances[idx], idx));
+                });
+            }
+
+            section.appendChild(body);
+
+            // Per-block add button
+            var addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'btn btn-sm pb-block-add-element';
+            addBtn.textContent = '+ Add Element';
+            addBtn.setAttribute('data-block-id', blockId);
+            addBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                pickerTargetBlockId = parseInt(blockId, 10);
+                openPicker();
+            });
+            section.appendChild(addBtn);
+
+            instanceList.appendChild(section);
+        });
+
+        // Unassigned elements section
+        if (unassigned.length > 0) {
+            var unSection = document.createElement('div');
+            unSection.className = 'pb-unassigned-section';
+
+            var unHeader = document.createElement('div');
+            unHeader.className = 'pb-template-block-header';
+            unHeader.innerHTML = '<span class="pb-block-name">Unassigned Elements</span>'
+                + '<span class="pb-block-info">Not in any block</span>';
+            unSection.appendChild(unHeader);
+
+            var unBody = document.createElement('div');
+            unBody.className = 'pb-template-block-body';
+            unassigned.forEach(function(idx) {
+                unBody.appendChild(createInstanceCard(instances[idx], idx));
+            });
+            unSection.appendChild(unBody);
+
+            instanceList.appendChild(unSection);
         }
     }
 
@@ -1261,7 +1364,8 @@
             return {
                 element_id: inst.elementId,
                 slot_data: inst.slotData || {},
-                style_data: inst.styleData || {}
+                style_data: inst.styleData || {},
+                block_id: inst.blockId || null
             };
         });
 

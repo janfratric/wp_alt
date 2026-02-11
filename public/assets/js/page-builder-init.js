@@ -34,6 +34,15 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) {
             existingInstances = [];
         }
-        initPageBuilder(existingInstances, csrf);
+
+        var templateBlocks = [];
+        var blocksRaw = builderPanel.getAttribute('data-template-blocks') || '[]';
+        try {
+            templateBlocks = JSON.parse(blocksRaw);
+        } catch (e) {
+            templateBlocks = [];
+        }
+
+        initPageBuilder(existingInstances, csrf, templateBlocks);
     }
 });

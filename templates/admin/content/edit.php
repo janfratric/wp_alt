@@ -71,7 +71,8 @@
             <div id="page-builder-panel"
                  class="<?= ($content['editor_mode'] ?? 'html') !== 'elements' ? 'hidden' : '' ?>"
                  data-instances="<?= $this->e(json_encode($pageElements ?? [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>"
-                 data-csrf="<?= $this->e($csrfToken ?? '') ?>">
+                 data-csrf="<?= $this->e($csrfToken ?? '') ?>"
+                 data-template-blocks="<?= $this->e(json_encode($templateBlocks ?? [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>">
                 <div class="pb-toolbar">
                     <button type="button" id="pb-add-element" class="btn btn-primary btn-sm">
                         + Add Element

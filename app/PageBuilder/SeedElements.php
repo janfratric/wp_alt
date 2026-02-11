@@ -38,6 +38,7 @@ class SeedElements
             self::imageText(),
             self::testimonialSection(),
             self::faqSection(),
+            self::recentPosts(),
         ];
     }
 
@@ -445,6 +446,70 @@ HTML,
     padding: 1rem 1.25rem;
     line-height: 1.7;
 }
+CSS,
+        ];
+    }
+
+    private static function recentPosts(): array
+    {
+        return [
+            'slug'        => 'recent-posts',
+            'name'        => 'Recent Posts',
+            'description' => 'Dynamic grid of recent blog posts. Configurable count, columns, and display options.',
+            'category'    => 'content',
+            'status'      => 'active',
+            'slots_json'  => json_encode([
+                ['key' => 'heading', 'label' => 'Section Heading', 'type' => 'text', 'required' => false, 'default' => 'Recent Posts'],
+                ['key' => 'count', 'label' => 'Number of Posts', 'type' => 'select', 'options' => ['3', '6', '9', '12'], 'default' => '6'],
+                ['key' => 'columns', 'label' => 'Grid Columns', 'type' => 'select', 'options' => ['1', '2', '3', '4'], 'default' => '3'],
+                ['key' => 'show_image', 'label' => 'Show Featured Image', 'type' => 'boolean', 'default' => true],
+                ['key' => 'show_excerpt', 'label' => 'Show Excerpt', 'type' => 'boolean', 'default' => true],
+                ['key' => 'show_date', 'label' => 'Show Date', 'type' => 'boolean', 'default' => true],
+                ['key' => 'show_author', 'label' => 'Show Author', 'type' => 'boolean', 'default' => true],
+            ]),
+            'html_template' => <<<'HTML'
+<section class="recent-posts-inner">
+    {{#heading}}<h2>{{heading}}</h2>{{/heading}}
+    {{^posts}}<p class="no-posts">No posts published yet.</p>{{/posts}}
+    <div class="recent-posts-grid recent-posts-cols-{{columns}}">
+        {{#posts}}
+        <article class="recent-post-card">
+            {{#show_image}}{{#featured_image}}
+            <div class="recent-post-image">
+                <a href="/blog/{{slug}}"><img src="{{featured_image}}" alt="{{title}}"></a>
+            </div>
+            {{/featured_image}}{{/show_image}}
+            <div class="recent-post-body">
+                <h3><a href="/blog/{{slug}}">{{title}}</a></h3>
+                {{#show_date}}<time class="recent-post-date">{{formatted_date}}</time>{{/show_date}}
+                {{#show_author}}<span class="recent-post-author">by {{author_name}}</span>{{/show_author}}
+                {{#show_excerpt}}{{#excerpt}}<p class="recent-post-excerpt">{{excerpt}}</p>{{/excerpt}}{{/show_excerpt}}
+            </div>
+        </article>
+        {{/posts}}
+    </div>
+</section>
+HTML,
+            'css' => <<<'CSS'
+.lcms-el-recent-posts .recent-posts-inner { padding: 2rem 0; }
+.lcms-el-recent-posts h2 { text-align: center; margin-bottom: 2rem; font-size: 1.75rem; }
+.lcms-el-recent-posts .recent-posts-grid { display: grid; gap: 1.5rem; }
+.lcms-el-recent-posts .recent-posts-cols-1 { grid-template-columns: 1fr; }
+.lcms-el-recent-posts .recent-posts-cols-2 { grid-template-columns: repeat(2, 1fr); }
+.lcms-el-recent-posts .recent-posts-cols-3 { grid-template-columns: repeat(3, 1fr); }
+.lcms-el-recent-posts .recent-posts-cols-4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 768px) { .lcms-el-recent-posts .recent-posts-grid { grid-template-columns: 1fr; } }
+.lcms-el-recent-posts .recent-post-card { border: 1px solid var(--color-border, #e2e8f0); border-radius: 8px; overflow: hidden; }
+.lcms-el-recent-posts .recent-post-image img { width: 100%; height: 200px; object-fit: cover; display: block; }
+.lcms-el-recent-posts .recent-post-body { padding: 1rem 1.25rem; }
+.lcms-el-recent-posts .recent-post-body h3 { margin-bottom: 0.5rem; font-size: 1.1rem; }
+.lcms-el-recent-posts .recent-post-body h3 a { color: var(--color-text, #1e293b); text-decoration: none; }
+.lcms-el-recent-posts .recent-post-body h3 a:hover { color: var(--color-primary, #2563eb); }
+.lcms-el-recent-posts .recent-post-date,
+.lcms-el-recent-posts .recent-post-author { font-size: 0.85rem; color: var(--color-text-muted, #64748b); }
+.lcms-el-recent-posts .recent-post-author { margin-left: 0.5rem; }
+.lcms-el-recent-posts .recent-post-excerpt { margin-top: 0.75rem; color: var(--color-text, #1e293b); line-height: 1.6; }
+.lcms-el-recent-posts .no-posts { text-align: center; color: var(--color-text-muted, #64748b); }
 CSS,
         ];
     }

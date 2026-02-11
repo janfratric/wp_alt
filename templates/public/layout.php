@@ -41,7 +41,7 @@
             </button>
             <nav class="site-nav" aria-label="Main navigation">
                 <ul class="nav-list">
-                    <li<?= (($currentSlug ?? '') === '' && ($title ?? '') !== 'Blog' && ($title ?? '') !== 'Page Not Found' && ($title ?? '') !== 'Contact') ? ' class="active"' : '' ?>><a href="/">Home</a></li>
+                    <li<?= ((($currentSlug ?? '') === '' || ($currentSlug ?? '') === 'home') && ($title ?? '') !== 'Blog' && ($title ?? '') !== 'Page Not Found' && ($title ?? '') !== 'Contact') ? ' class="active"' : '' ?>><a href="/">Home</a></li>
 <?php if (!empty($navPages)): ?>
 <?php foreach ($navPages as $navPage): ?>
                     <li<?= (($currentSlug ?? '') === $navPage['slug']) ? ' class="active"' : '' ?>><a href="/<?= $this->e($navPage['slug']) ?>"><?= $this->e($navPage['title']) ?></a></li>

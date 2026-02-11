@@ -73,6 +73,8 @@
             enableCompact: true,
             enableConversationHistory: false,
             enableMarkdown: true,
+            enableSpeechToText: true,
+            transcribeEndpoint: '/admin/ai/transcribe',
             enableResizable: false,
             messageActions: null,
             extraPayload: function() {

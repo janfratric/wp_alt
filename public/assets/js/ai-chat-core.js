@@ -34,6 +34,8 @@
      * @param {boolean}     [config.enableConversationHistory]
      * @param {boolean}     [config.enableMarkdown]
      * @param {boolean}     [config.enableResizable]
+     * @param {boolean}     [config.enableSpeechToText] - Enable mic button for speech-to-text
+     * @param {string}      [config.transcribeEndpoint]  - POST endpoint for audio transcription
      * @param {HTMLElement} [config.resizableEl]
      * @param {Function}    [config.messageActions]   - Returns array of {label, action} for assistant msgs
      * @param {Function}    [config.extraPayload]     - Returns extra fields for API calls
@@ -161,6 +163,11 @@
         // Resizable
         if (c.enableResizable && c.resizableEl) {
             this._initResize();
+        }
+
+        // Speech-to-text microphone button
+        if (c.enableSpeechToText !== false && c.transcribeEndpoint) {
+            this._initMicrophone();
         }
     };
 
@@ -396,6 +403,12 @@
     AIChatCore.prototype.destroy = function() {
         if (this._fileInput && this._fileInput.parentNode) {
             this._fileInput.parentNode.removeChild(this._fileInput);
+        }
+        if (this._mediaRecorder && this._mediaRecorder.state !== 'inactive') {
+            this._mediaRecorder.stop();
+        }
+        if (this._audioStream) {
+            this._audioStream.getTracks().forEach(function(track) { track.stop(); });
         }
     };
 
@@ -761,6 +774,165 @@
             this.dropOverlay.parentNode.removeChild(this.dropOverlay);
         }
         this.dropOverlay = null;
+    };
+
+    // ===================== Private: Speech-to-Text =====================
+
+    AIChatCore.prototype._initMicrophone = function() {
+        var self = this;
+        var c = this.config;
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+            return;
+        }
+
+        var inputArea = c.inputEl ? c.inputEl.parentElement : null;
+        if (!inputArea) return;
+
+        this._micBtn = document.createElement('button');
+        this._micBtn.type = 'button';
+        this._micBtn.className = 'ai-mic-btn';
+        this._micBtn.title = 'Record audio (speech-to-text)';
+        this._micBtn.innerHTML = '&#127908;';
+
+        var sendBtn = c.sendBtnEl;
+        if (sendBtn && sendBtn.parentElement === inputArea) {
+            inputArea.insertBefore(this._micBtn, sendBtn);
+        } else {
+            inputArea.appendChild(this._micBtn);
+        }
+
+        this._isRecording = false;
+        this._mediaRecorder = null;
+        this._audioChunks = [];
+        this._audioStream = null;
+
+        this._micBtn.addEventListener('click', function() {
+            if (self._isRecording) {
+                self._stopRecording();
+            } else {
+                self._startRecording();
+            }
+        });
+    };
+
+    AIChatCore.prototype._startRecording = function() {
+        var self = this;
+
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function(stream) {
+                self._audioStream = stream;
+                self._audioChunks = [];
+
+                var mimeType = 'audio/webm;codecs=opus';
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    mimeType = 'audio/webm';
+                }
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    mimeType = 'audio/ogg;codecs=opus';
+                }
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    mimeType = '';
+                }
+
+                var options = mimeType ? { mimeType: mimeType } : {};
+                self._mediaRecorder = new MediaRecorder(stream, options);
+                self._recordedMimeType = self._mediaRecorder.mimeType || 'audio/webm';
+
+                self._mediaRecorder.addEventListener('dataavailable', function(e) {
+                    if (e.data && e.data.size > 0) {
+                        self._audioChunks.push(e.data);
+                    }
+                });
+
+                self._mediaRecorder.addEventListener('stop', function() {
+                    self._onRecordingComplete();
+                });
+
+                self._mediaRecorder.start();
+                self._isRecording = true;
+                self._micBtn.classList.add('ai-mic-recording');
+                self._micBtn.title = 'Stop recording';
+            })
+            .catch(function(err) {
+                var msg = 'Microphone access denied';
+                if (err.name === 'NotFoundError') {
+                    msg = 'No microphone found';
+                } else if (err.name === 'NotAllowedError') {
+                    msg = 'Microphone permission denied. Please allow microphone access in your browser settings.';
+                }
+                self._appendError(msg);
+            });
+    };
+
+    AIChatCore.prototype._stopRecording = function() {
+        if (this._mediaRecorder && this._mediaRecorder.state !== 'inactive') {
+            this._mediaRecorder.stop();
+        }
+        if (this._audioStream) {
+            this._audioStream.getTracks().forEach(function(track) { track.stop(); });
+            this._audioStream = null;
+        }
+        this._isRecording = false;
+        this._micBtn.classList.remove('ai-mic-recording');
+        this._micBtn.classList.add('ai-mic-processing');
+        this._micBtn.title = 'Processing audio...';
+    };
+
+    AIChatCore.prototype._onRecordingComplete = function() {
+        var self = this;
+        var c = this.config;
+
+        if (this._audioChunks.length === 0) {
+            this._micBtn.classList.remove('ai-mic-processing');
+            this._micBtn.title = 'Record audio (speech-to-text)';
+            return;
+        }
+
+        var blob = new Blob(this._audioChunks, { type: this._recordedMimeType });
+        this._audioChunks = [];
+
+        var formData = new FormData();
+        formData.append('audio', blob, 'recording.webm');
+        formData.append('_csrf_token', c.csrfToken);
+
+        fetch(c.transcribeEndpoint, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(function(res) {
+            if (!res.ok) {
+                return res.json().then(function(data) {
+                    throw new Error(data.error || 'Transcription failed (HTTP ' + res.status + ')');
+                });
+            }
+            return res.json();
+        })
+        .then(function(data) {
+            self._micBtn.classList.remove('ai-mic-processing');
+            self._micBtn.title = 'Record audio (speech-to-text)';
+
+            if (data.success && data.text) {
+                if (c.inputEl) {
+                    var existing = c.inputEl.value;
+                    if (existing && !existing.endsWith(' ') && !existing.endsWith('\n')) {
+                        c.inputEl.value = existing + ' ' + data.text;
+                    } else {
+                        c.inputEl.value = existing + data.text;
+                    }
+                    c.inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    c.inputEl.focus();
+                }
+            } else {
+                self._appendError(data.error || 'No text was transcribed.');
+            }
+        })
+        .catch(function(err) {
+            self._micBtn.classList.remove('ai-mic-processing');
+            self._micBtn.title = 'Record audio (speech-to-text)';
+            self._appendError('Transcription error: ' + (err.message || 'Network error'));
+        });
     };
 
     // ===================== Private: Model Selector =====================

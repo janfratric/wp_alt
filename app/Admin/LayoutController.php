@@ -79,6 +79,7 @@ class LayoutController
                 'footer_mode' => 'standard', 'footer_element_id' => '',
             ],
             'elements'  => $elements,
+            'blocks'    => [],
         ]);
 
         return $this->withSecurityHeaders(Response::html($html));
@@ -120,7 +121,7 @@ class LayoutController
                 ->update(['is_default' => '0']);
         }
 
-        QueryBuilder::query('layout_templates')->insert([
+        $newId = QueryBuilder::query('layout_templates')->insert([
             'name'              => $data['name'],
             'slug'              => $slug,
             'is_default'        => $data['is_default'],
@@ -133,6 +134,8 @@ class LayoutController
             'footer_mode'       => $data['footer_mode'],
             'footer_element_id' => $data['footer_mode'] === 'block' ? ($data['footer_element_id'] ?: null) : null,
         ]);
+
+        $this->saveTemplateBlocks((int) $newId, $request);
 
         Session::flash('success', 'Layout template created.');
         return Response::redirect('/admin/layouts');
@@ -159,6 +162,7 @@ class LayoutController
         }
 
         $elements = $this->getActiveElements();
+        $blocks = $this->loadTemplateBlocks((int) $id);
 
         $html = $this->app->template()->render('admin/layouts/edit', [
             'title'     => 'Edit: ' . $layout['name'],
@@ -166,6 +170,7 @@ class LayoutController
             'isNew'     => false,
             'layout'    => $layout,
             'elements'  => $elements,
+            'blocks'    => $blocks,
         ]);
 
         return $this->withSecurityHeaders(Response::html($html));
@@ -233,6 +238,8 @@ class LayoutController
                 'footer_element_id' => $data['footer_mode'] === 'block' ? ($data['footer_element_id'] ?: null) : null,
             ]);
 
+        $this->saveTemplateBlocks((int) $id, $request);
+
         Session::flash('success', 'Layout template updated.');
         return Response::redirect('/admin/layouts');
     }
@@ -278,6 +285,61 @@ class LayoutController
 
         Session::flash('success', 'Layout template deleted.');
         return Response::redirect('/admin/layouts');
+    }
+
+    /**
+     * Save template blocks from form input (blocks_json).
+     */
+    private function saveTemplateBlocks(int $templateId, Request $request): void
+    {
+        $json = trim((string) $request->input('blocks_json', '[]'));
+        $blocks = json_decode($json, true);
+        if (!is_array($blocks)) {
+            $blocks = [];
+        }
+
+        // Delete existing blocks for this template
+        QueryBuilder::query('page_blocks')
+            ->where('layout_template_id', (string) $templateId)
+            ->delete();
+
+        foreach ($blocks as $i => $block) {
+            $name = trim((string) ($block['name'] ?? ''));
+            if ($name === '') {
+                $name = 'Block ' . ($i + 1);
+            }
+
+            $columns = max(1, min(12, (int) ($block['columns'] ?? 1)));
+            $widthPercent = max(10, min(100, (int) ($block['width_percent'] ?? 100)));
+            $alignment = in_array($block['alignment'] ?? 'center', self::VALID_ALIGNMENTS, true)
+                ? $block['alignment'] : 'center';
+            $displayMode = in_array($block['display_mode'] ?? 'flex', self::VALID_DISPLAY_MODES, true)
+                ? $block['display_mode'] : 'flex';
+
+            QueryBuilder::query('page_blocks')->insert([
+                'layout_template_id' => (string) $templateId,
+                'content_id'         => null,
+                'name'               => $name,
+                'sort_order'         => (string) $i,
+                'columns'            => (string) $columns,
+                'width_percent'      => (string) $widthPercent,
+                'alignment'          => $alignment,
+                'display_mode'       => $displayMode,
+                'style_data_json'    => '{}',
+            ]);
+        }
+    }
+
+    /**
+     * Load blocks belonging to a layout template.
+     */
+    public function loadTemplateBlocks(int $templateId): array
+    {
+        return QueryBuilder::query('page_blocks')
+            ->select()
+            ->where('layout_template_id', (string) $templateId)
+            ->orderBy('sort_order')
+            ->get();
     }
 
     /**

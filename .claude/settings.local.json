@@ -17,7 +17,18 @@
       "Bash(if not exist \"c:\\\\!Agents\\\\wp_alt\\\\templates\\\\admin\\\\media\" mkdir \"c:\\\\!Agents\\\\wp_alt\\\\templates\\\\admin\\\\media\")",
       "Bash(cmd /c \"if not exist c:\\\\!Agents\\\\wp_alt\\\\templates\\\\admin\\\\media mkdir c:\\\\!Agents\\\\wp_alt\\\\templates\\\\admin\\\\media\")",
       "Bash(LITECMS_TEST_SMOKE=1 php:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Read(//c/Users/janfr_k0u7h71/.vscode/extensions/highagency.pencildev-0.6.23/node_modules/@ha/shared/src/**)",
+      "Read(//c/Users/janfr_k0u7h71/.vscode/extensions/highagency.pencildev-0.6.23/node_modules/@highagency/pencil-skia/**)",
+      "Read(//c/Users/janfr_k0u7h71/.vscode/extensions/highagency.pencildev-0.6.23/node_modules/@highagency/pencil-skia/bin/**)",
+      "Read(//c/Users/janfr_k0u7h71/.vscode/extensions/highagency.pencildev-0.6.23/out/**)",
+      "Read(//c/Users/janfr_k0u7h71/.vscode/extensions/highagency.pencildev-0.6.23/node_modules/@ha/pencil-editor/src/managers/**)",
+      "Read(//c/Users/janfr_k0u7h71/.vscode/extensions/highagency.pencildev-0.6.23/node_modules/@ha/pencil-editor/src/**)",
+      "Read(//c/Users/janfr_k0u7h71/.vscode/extensions/highagency.pencildev-0.6.23/node_modules/@ha/ipc/src/**)",
+      "Read(//c/Users/janfr_k0u7h71/.vscode/extensions/highagency.pencildev-0.6.23/node_modules/@ha/ws-server/**)",
+      "Read(//c/Users/janfr_k0u7h71/.vscode/extensions/highagency.pencildev-0.6.23/**)",
+      "Read(//c/Users/janfr_k0u7h71/AppData/Roaming/Code/User/globalStorage/highagency.pencildev/editor/**)",
+      "Read(//c/Users/janfr_k0u7h71/AppData/Roaming/Code/User/globalStorage/highagency.pencildev/**)"
     ]
   }
 }

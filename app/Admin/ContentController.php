@@ -138,6 +138,7 @@ class ContentController
             'pageStyles'             => [],
             'csrfToken'              => Session::get('csrf_token', ''),
             'layoutTemplates'        => $layoutTemplates,
+            'templateBlocks'         => [],
         ]);
 
         return $this->withSecurityHeaders(Response::html($html));
@@ -257,6 +258,9 @@ class ContentController
             ->orderBy('name', 'ASC')
             ->get();
 
+        // Load template blocks for the page builder
+        $templateBlocks = $this->loadTemplateBlocks($content);
+
         $html = $this->app->template()->render('admin/content/edit', [
             'title'                  => 'Edit: ' . $content['title'],
             'activeNav'              => 'content',
@@ -269,6 +273,7 @@ class ContentController
             'pageStyles'             => $this->loadPageStyles((int) $id),
             'csrfToken'              => Session::get('csrf_token', ''),
             'layoutTemplates'        => $layoutTemplates,
+            'templateBlocks'         => $templateBlocks,
         ]);
 
         return $this->withSecurityHeaders(Response::html($html));
@@ -549,12 +554,16 @@ class ContentController
             }
             $styleData = StyleRenderer::sanitizeStyleData($styleData);
 
+            $blockId = isset($element['block_id']) && $element['block_id'] !== null && $element['block_id'] !== ''
+                ? (int) $element['block_id'] : null;
+
             QueryBuilder::query('page_elements')->insert([
                 'content_id'      => $contentId,
                 'element_id'      => $elementId,
                 'sort_order'      => $sortOrder,
                 'slot_data_json'  => json_encode($slotData, JSON_UNESCAPED_UNICODE),
                 'style_data_json' => json_encode($styleData, JSON_UNESCAPED_UNICODE),
+                'block_id'        => $blockId,
             ]);
         }
     }
@@ -572,6 +581,7 @@ class ContentController
                 'page_elements.sort_order',
                 'page_elements.slot_data_json',
                 'page_elements.style_data_json',
+                'page_elements.block_id',
                 'elements.slug',
                 'elements.name',
                 'elements.category',
@@ -592,6 +602,7 @@ class ContentController
                 'slots'           => json_decode($row['slots_json'] ?? '[]', true) ?: [],
                 'slotData'        => json_decode($row['slot_data_json'] ?? '{}', true) ?: [],
                 'styleData'       => json_decode($row['style_data_json'] ?? '{}', true) ?: [],
+                'blockId'         => $row['block_id'] ? (int) $row['block_id'] : null,
             ];
         }
 
@@ -655,6 +666,36 @@ class ContentController
         }
 
         return json_decode($row['style_data_json'] ?? '{}', true) ?: [];
+    }
+
+    /**
+     * Load template blocks for a content item based on its layout_template_id.
+     */
+    private function loadTemplateBlocks(array $content): array
+    {
+        $templateId = $content['layout_template_id'] ?? null;
+        if ($templateId === null || $templateId === '' || $templateId === '0') {
+            // Try the default template
+            $default = QueryBuilder::query('layout_templates')
+                ->select('id')
+                ->where('is_default', '1')
+                ->first();
+            if ($default !== null) {
+                $templateId = (int) $default['id'];
+            }
+        } else {
+            $templateId = (int) $templateId;
+        }
+
+        if (!$templateId) {
+            return [];
+        }
+
+        return QueryBuilder::query('page_blocks')
+            ->select('id', 'name', 'sort_order', 'columns', 'width_percent', 'alignment', 'display_mode')
+            ->where('layout_template_id', (string) $templateId)
+            ->orderBy('sort_order')
+            ->get();
     }
 
     private function withSecurityHeaders(Response $response): Response

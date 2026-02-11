@@ -22,9 +22,82 @@ class FrontController
     }
 
     /**
-     * Homepage — shows recent posts and welcome content.
+     * Homepage — renders content-based homepage if available, otherwise fallback.
      */
     public function homepage(Request $request): Response
+    {
+        $home = QueryBuilder::query('content')
+            ->select('content.*', 'users.username as author_name')
+            ->leftJoin('users', 'users.id', '=', 'content.author_id')
+            ->where('content.slug', 'home')
+            ->where('content.type', 'page')
+            ->first();
+
+        if ($home !== null && $this->isPublished($home)) {
+            return $this->renderContentHomepage($home);
+        }
+
+        return $this->renderFallbackHomepage();
+    }
+
+    /**
+     * Render the homepage from a content item (element-based page builder).
+     */
+    private function renderContentHomepage(array $content): Response
+    {
+        $layoutTemplateId = isset($content['layout_template_id']) ? (int) $content['layout_template_id'] : null;
+        $layoutTemplate = LayoutController::resolveTemplate($layoutTemplateId ?: null);
+        $resolvedTemplateId = (int) ($layoutTemplate['id'] ?? 0);
+
+        $elementCss = '';
+        if (($content['editor_mode'] ?? 'html') === 'elements') {
+            $contentId = (int) $content['id'];
+            $blocks = PageRenderer::loadBlocks($contentId, $resolvedTemplateId ?: null);
+            if (!empty($blocks)) {
+                $content['body'] = PageRenderer::renderPageWithBlocks($contentId, $resolvedTemplateId ?: null);
+            } else {
+                $content['body'] = PageRenderer::renderPage($contentId);
+            }
+            $elementCss = PageRenderer::getPageCss($contentId);
+            $elementCss .= PageRenderer::getPageLayoutCss($contentId);
+        }
+
+        $headerBlockHtml = '';
+        $footerBlockHtml = '';
+        if (($layoutTemplate['header_mode'] ?? 'standard') === 'block' && !empty($layoutTemplate['header_element_id'])) {
+            $headerBlockHtml = PageRenderer::renderSingleElement((int) $layoutTemplate['header_element_id']);
+            $elementCss .= PageRenderer::getSingleElementCss((int) $layoutTemplate['header_element_id']);
+        }
+        if (($layoutTemplate['footer_mode'] ?? 'standard') === 'block' && !empty($layoutTemplate['footer_element_id'])) {
+            $footerBlockHtml = PageRenderer::renderSingleElement((int) $layoutTemplate['footer_element_id']);
+            $elementCss .= PageRenderer::getSingleElementCss((int) $layoutTemplate['footer_element_id']);
+        }
+
+        $siteUrl = Config::getString('site_url', '');
+        $meta = [
+            'title'       => $content['meta_title'] ?: Config::getString('site_name', 'LiteCMS'),
+            'description' => $content['meta_description'] ?? '',
+            'canonical'   => $siteUrl,
+            'og_type'     => 'website',
+            'og_url'      => $siteUrl,
+        ];
+
+        return $this->renderPublic('public/page', [
+            'title'           => $content['title'],
+            'content'         => $content,
+            'meta'            => $meta,
+            'elementCss'      => $elementCss,
+            'layoutTemplate'  => $layoutTemplate,
+            'headerBlockHtml' => $headerBlockHtml,
+            'footerBlockHtml' => $footerBlockHtml,
+            'currentSlug'     => 'home',
+        ]);
+    }
+
+    /**
+     * Fallback homepage — procedural recent posts listing.
+     */
+    private function renderFallbackHomepage(): Response
     {
         $perPage = Config::getInt('items_per_page', 10);
 
@@ -126,23 +199,24 @@ class FrontController
             return $this->notFound($request);
         }
 
+        // Resolve layout template
+        $layoutTemplateId = isset($content['layout_template_id']) ? (int) $content['layout_template_id'] : null;
+        $layoutTemplate = LayoutController::resolveTemplate($layoutTemplateId ?: null);
+        $resolvedTemplateId = (int) ($layoutTemplate['id'] ?? 0);
+
         // Element-based rendering for blog posts
         $elementCss = '';
         if (($content['editor_mode'] ?? 'html') === 'elements') {
             $contentId = (int) $content['id'];
-            $blocks = PageRenderer::loadBlocks($contentId);
+            $blocks = PageRenderer::loadBlocks($contentId, $resolvedTemplateId ?: null);
             if (!empty($blocks)) {
-                $content['body'] = PageRenderer::renderPageWithBlocks($contentId);
+                $content['body'] = PageRenderer::renderPageWithBlocks($contentId, $resolvedTemplateId ?: null);
             } else {
                 $content['body'] = PageRenderer::renderPage($contentId);
             }
             $elementCss = PageRenderer::getPageCss($contentId);
             $elementCss .= PageRenderer::getPageLayoutCss($contentId);
         }
-
-        // Resolve layout template
-        $layoutTemplateId = isset($content['layout_template_id']) ? (int) $content['layout_template_id'] : null;
-        $layoutTemplate = LayoutController::resolveTemplate($layoutTemplateId ?: null);
 
         // Render block-mode header/footer if needed
         $headerBlockHtml = '';
@@ -174,6 +248,11 @@ class FrontController
      */
     public function page(Request $request, string $slug): Response
     {
+        // Redirect /home to / for canonical URL
+        if ($slug === 'home') {
+            return Response::redirect('/', 301);
+        }
+
         $content = QueryBuilder::query('content')
             ->select('content.*', 'users.username as author_name')
             ->leftJoin('users', 'users.id', '=', 'content.author_id')
@@ -198,23 +277,24 @@ class FrontController
             }
         }
 
+        // Resolve layout template
+        $layoutTemplateId = isset($content['layout_template_id']) ? (int) $content['layout_template_id'] : null;
+        $layoutTemplate = LayoutController::resolveTemplate($layoutTemplateId ?: null);
+        $resolvedTemplateId = (int) ($layoutTemplate['id'] ?? 0);
+
         // Element-based rendering: assemble body from page_elements
         $elementCss = '';
         if (($content['editor_mode'] ?? 'html') === 'elements') {
             $contentId = (int) $content['id'];
-            $blocks = PageRenderer::loadBlocks($contentId);
+            $blocks = PageRenderer::loadBlocks($contentId, $resolvedTemplateId ?: null);
             if (!empty($blocks)) {
-                $content['body'] = PageRenderer::renderPageWithBlocks($contentId);
+                $content['body'] = PageRenderer::renderPageWithBlocks($contentId, $resolvedTemplateId ?: null);
             } else {
                 $content['body'] = PageRenderer::renderPage($contentId);
             }
             $elementCss = PageRenderer::getPageCss($contentId);
             $elementCss .= PageRenderer::getPageLayoutCss($contentId);
         }
-
-        // Resolve layout template
-        $layoutTemplateId = isset($content['layout_template_id']) ? (int) $content['layout_template_id'] : null;
-        $layoutTemplate = LayoutController::resolveTemplate($layoutTemplateId ?: null);
 
         // Render block-mode header/footer if needed
         $headerBlockHtml = '';
@@ -426,7 +506,7 @@ class FrontController
             ->where('type', 'page')
             ->where('status', 'published')
             ->whereRaw(
-                '(published_at IS NULL OR published_at <= :now)',
+                "(published_at IS NULL OR published_at <= :now) AND slug != 'home'",
                 [':now' => $now]
             )
             ->orderBy('sort_order', 'ASC')

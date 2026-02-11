@@ -164,6 +164,19 @@
                 </div>
             </div>
         </div>
+
+        <!-- Main Content Blocks Section -->
+        <div class="layout-section layout-section-blocks">
+            <h2>Main Content Blocks</h2>
+            <p class="section-desc">Define the block structure for the main content area. Elements will be placed into these blocks per-page via the page builder.</p>
+
+            <div id="blocks-container"
+                 data-blocks="<?= $this->e(json_encode($blocks ?? [], JSON_UNESCAPED_UNICODE)) ?>">
+            </div>
+
+            <button type="button" id="add-block-btn" class="btn btn-sm" style="margin-top:0.75rem;">+ Add Block</button>
+            <input type="hidden" name="blocks_json" id="blocks_json" value="[]">
+        </div>
     </div>
 
     <div class="form-actions" style="margin-top:1rem;">
@@ -247,12 +260,77 @@
     background: var(--color-bg-alt, #f8fafc);
     border-radius: 6px;
 }
+.layout-section-blocks {
+    grid-column: 1 / -1;
+}
+.block-item {
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    background: var(--color-bg-alt, #f8fafc);
+}
+.block-item-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    user-select: none;
+}
+.block-drag-handle {
+    cursor: grab;
+    color: var(--text-muted, #999);
+    font-size: 1.1rem;
+    padding: 0 0.25rem;
+}
+.block-drag-handle:active { cursor: grabbing; }
+.block-item-header input[type="text"] {
+    flex: 1;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.9rem;
+}
+.block-collapse-btn,
+.block-delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    color: var(--text-muted, #6c757d);
+}
+.block-collapse-btn:hover { background: var(--border-color, #dee2e6); }
+.block-delete-btn:hover { background: #fee2e2; color: #dc2626; }
+.block-item-body {
+    padding: 0.5rem 0.75rem 0.75rem;
+    border-top: 1px solid var(--border-color, #dee2e6);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+}
+.block-item-body.collapsed { display: none; }
+.block-item-body label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-bottom: 0.15rem;
+    display: block;
+}
+.block-item-body select,
+.block-item-body input {
+    width: 100%;
+    padding: 0.3rem 0.4rem;
+    font-size: 0.85rem;
+}
 @media (max-width: 768px) {
     .layout-form-grid {
         grid-template-columns: 1fr;
     }
     .mode-options {
         flex-direction: column;
+    }
+    .block-item-body {
+        grid-template-columns: 1fr 1fr;
     }
 }
 </style>

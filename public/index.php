@@ -27,6 +27,7 @@ use App\Admin\ElementController;
 use App\Admin\StyleController;
 use App\Admin\LayoutController;
 use App\AIAssistant\ElementAIController;
+use App\PageBuilder\SeedElements;
 
 // Bootstrap
 $app = new App();
@@ -52,6 +53,42 @@ if ($userCount === 0) {
         'password_hash' => password_hash('admin', PASSWORD_BCRYPT),
         'role'          => 'admin',
     ]);
+}
+
+// --- Seed native elements (idempotent — skips existing slugs) ---
+try {
+    SeedElements::seed();
+} catch (\Throwable $e) {
+    // Table may not exist yet on first run — ignore
+}
+
+// --- Seed homepage content if it doesn't exist ---
+try {
+    $homeExists = QueryBuilder::query('content')
+        ->select('id')
+        ->where('slug', 'home')
+        ->where('type', 'page')
+        ->first();
+    if ($homeExists === null) {
+        $adminUser = QueryBuilder::query('users')
+            ->select('id')
+            ->where('role', 'admin')
+            ->first();
+        $authorId = $adminUser ? (string) $adminUser['id'] : '1';
+        QueryBuilder::query('content')->insert([
+            'type'        => 'page',
+            'title'       => 'Home',
+            'slug'        => 'home',
+            'body'        => '',
+            'excerpt'     => '',
+            'status'      => 'published',
+            'author_id'   => $authorId,
+            'sort_order'  => '-1',
+            'editor_mode' => 'elements',
+        ]);
+    }
+} catch (\Throwable $e) {
+    // Table may not exist yet — ignore
 }
 
 // --- Register global middleware ---
@@ -147,6 +184,7 @@ $router->group('/admin', function($router) use ($app) {
     $router->get('/ai/models/enabled', [AIController::class, 'enabledModels']);
     $router->post('/ai/models/fetch', [AIController::class, 'fetchModels']);
     $router->post('/ai/models/enable', [AIController::class, 'saveEnabledModels']);
+    $router->post('/ai/transcribe', [AIController::class, 'transcribe']);
 
     // Element AI Assistant
     $router->post('/ai/element/chat', [ElementAIController::class, 'chat']);

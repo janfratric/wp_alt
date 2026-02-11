@@ -48,6 +48,8 @@
             enableCompact: true,
             enableConversationHistory: true,
             enableMarkdown: true,
+            enableSpeechToText: true,
+            transcribeEndpoint: '/admin/ai/transcribe',
             enableResizable: true,
             resizableEl:    panel,
             messageActions: function(content) {
