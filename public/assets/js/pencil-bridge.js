@@ -8,19 +8,66 @@
     var filePath = params.get('filePath') || '';
     var csrfToken = params.get('csrf') || '';
 
-    // ---- Intercept activation verification ----
-    // The editor verifies license tokens against api.pencil.dev.
-    // Intercept these calls and return a mock success response so the
-    // embedded editor works without an external license server.
+    // ---- Block all outbound telemetry & external API calls ----
+    // The editor bundles PostHog analytics, Sentry error tracking, and
+    // calls api.pencil.dev for license/API features.  Intercept fetch,
+    // sendBeacon, and XHR to silently block these without breaking the
+    // editor (which expects successful responses from api.pencil.dev).
+
+    var _blockedHosts = [
+        'api.pencil.dev',
+        'posthog.com',
+        'sentry.io',
+        'ingest.us.sentry.io'
+    ];
+
+    function _isBlocked(url) {
+        if (typeof url !== 'string') return false;
+        for (var i = 0; i < _blockedHosts.length; i++) {
+            if (url.indexOf(_blockedHosts[i]) !== -1) return true;
+        }
+        return false;
+    }
+
+    // -- fetch --
     var _origFetch = window.fetch;
     window.fetch = function(url, opts) {
-        if (typeof url === 'string' && url.indexOf('api.pencil.dev/public/activation') !== -1) {
-            return Promise.resolve(new Response('{"ok":true}', {
-                status: 200,
-                headers: { 'Content-Type': 'application/json' }
-            }));
+        var urlStr = typeof url === 'string' ? url : (url && url.url ? url.url : '');
+        if (_isBlocked(urlStr)) {
+            // api.pencil.dev expects JSON responses
+            if (urlStr.indexOf('api.pencil.dev') !== -1) {
+                return Promise.resolve(new Response('{"ok":true}', {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' }
+                }));
+            }
+            // Sentry & PostHog just need a 200
+            return Promise.resolve(new Response('', { status: 200 }));
         }
         return _origFetch.apply(this, arguments);
+    };
+
+    // -- sendBeacon (PostHog uses this for event batches) --
+    if (navigator.sendBeacon) {
+        var _origBeacon = navigator.sendBeacon.bind(navigator);
+        navigator.sendBeacon = function(url, data) {
+            if (_isBlocked(url)) return true;
+            return _origBeacon(url, data);
+        };
+    }
+
+    // -- XMLHttpRequest (Sentry fallback) --
+    var _origXHROpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(method, url) {
+        this._blockedByBridge = _isBlocked(url);
+        if (!this._blockedByBridge) {
+            return _origXHROpen.apply(this, arguments);
+        }
+    };
+    var _origXHRSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send = function() {
+        if (this._blockedByBridge) return;
+        return _origXHRSend.apply(this, arguments);
     };
 
     // ---- Request/Response infrastructure ----
