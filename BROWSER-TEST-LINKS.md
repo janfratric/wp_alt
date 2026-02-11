@@ -14,7 +14,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2 + 5.3 + 6.1 + 6.2 + 6.3 + 6.4)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2 + 5.3 + 6.1 + 6.2 + 6.3 + 6.4 + 7.1)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
@@ -45,6 +45,9 @@ This starts PHP's built-in development server with `public/` as the document roo
 | 19 | [http://localhost:8000/admin/generator](http://localhost:8000/admin/generator) | AI Page Generator — 4-step wizard (Setup → Describe → Preview → Done) with content type selector, editor mode toggle (HTML/Elements), chat interface, preview pane, and create buttons |
 | 20 | [http://localhost:8000/admin/elements/1/edit](http://localhost:8000/admin/elements/1/edit) | Element editor with AI Assistant — "AI Assistant" toggle button in header opens chat panel as third column; chat supports Apply HTML, Apply CSS, Apply Both, and Copy actions |
 | 21 | [http://localhost:8000/admin/element-proposals](http://localhost:8000/admin/element-proposals) | Element proposals list — filter tabs (Pending/Approved/Rejected), proposal cards with name, category, description, collapsible HTML/CSS preview, approve/reject buttons |
+| 22 | [http://localhost:8000/admin/design/editor](http://localhost:8000/admin/design/editor) | Design Editor — Pencil visual editor embedded in an iframe with file selector toolbar, new file input, loading overlay, and status indicator. Figma-like canvas for creating/editing `.pen` design files |
+| 22a | [http://localhost:8000/admin/design/list](http://localhost:8000/admin/design/list) | JSON endpoint — returns list of `.pen` design files in the designs/ directory |
+| 22b | [http://localhost:8000/admin/design/load?path=my-design.pen](http://localhost:8000/admin/design/load?path=my-design.pen) | JSON endpoint — returns `.pen` file content (used by the editor bridge) |
 
 ### Authentication Flow
 
@@ -267,6 +270,23 @@ Each element instance in the page builder now has a **Style tab** with GUI contr
 - **CSS sanitization** — `@import`, `@charset`, `javascript:`, `expression()`, `behavior:`, `-moz-binding:`, `</style>`, `<script>`, and HTML comments are stripped from custom CSS
 - **Native `<details>/<summary>`** — style panel sections use native HTML accordion (no JS for expand/collapse)
 - **HTML-mode unaffected** — HTML-mode content creates no style_data or page_styles data
+
+### Pencil Design Editor (Chunk 7.1)
+
+The admin panel now includes an embedded Pencil visual design editor:
+- **Design Editor page** (`/admin/design/editor`) — Figma-like canvas editor embedded in an iframe with toolbar, file selector, and loading overlay
+- **IPC bridge** — `pencil-bridge.js` mocks the VS Code API (`window.vscodeapi`) and routes editor messages to PHP via `fetch()` calls
+- **File I/O** — `.pen` files saved to `designs/` directory; load/save via JSON API endpoints (`/admin/design/load`, `/admin/design/save`)
+- **File selector** — dropdown to pick existing `.pen` files or create new ones by typing a filename
+- **Asset import** — data URI images saved to `public/assets/uploads/design/` with randomized filenames; external URLs passed through
+- **WASM rendering** — CanvasKit/Skia WASM binary for smooth canvas rendering (WebAssembly + WebGL2)
+- **Relaxed CSP** — editor page uses relaxed Content-Security-Policy (`unsafe-eval` for WASM, `unsafe-inline`, `worker-src blob:`, external font/image origins)
+- **iframe sandbox** — `allow-scripts allow-same-origin allow-popups allow-forms allow-modals` for full editor functionality
+- **CSRF token flow** — admin template → iframe query param → bridge reads via URLSearchParams → sent as `X-CSRF-Token` header on mutation requests
+- **Path traversal prevention** — `sanitizePath()` rejects `..`, null bytes, non-`.pen` extensions, and non-safe characters
+- **Sidebar navigation** — "Design Editor" link with pencil icon in the Design section
+- **Status indicator** — shows "Ready" (blue) after load, "Saved" (green) after save, auto-resets after 2 seconds
+- **Loading overlay** — spinner shown while editor initializes, hidden when bridge reports `editor-ready`
 
 ---
 

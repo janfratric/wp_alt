@@ -1996,3 +1996,133 @@ table.data-table td:first-child {
 .content-list-item { background: var(--color-white); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.5rem; margin-bottom: 0.4rem; position: relative; }
 .content-list-item-remove { position: absolute; top: 0.25rem; right: 0.25rem; background: none; border: none; color: var(--color-error); cursor: pointer; font-size: 0.8rem; }
 .content-list-add { margin-top: 0.4rem; }
+
+/* ============================================
+   Design Editor (Chunk 7.1)
+   ============================================ */
+
+.design-editor-page {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 60px);
+    margin: -24px;
+}
+
+.design-editor-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: var(--color-card, var(--color-white));
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.design-editor-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.design-editor-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.design-file-select {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.design-file-select label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+
+.design-file-select select {
+    min-width: 200px;
+    max-width: 350px;
+}
+
+.design-new-file input {
+    width: 200px;
+}
+
+.design-status {
+    font-size: 0.8rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.design-status.status-ready {
+    background: var(--color-info-bg, #e3f2fd);
+    color: var(--color-info, #1976d2);
+}
+
+.design-status.status-saved {
+    background: var(--color-success-bg, #e8f5e9);
+    color: var(--color-success, #2e7d32);
+}
+
+.design-status.status-error {
+    background: var(--color-error-bg, #ffebee);
+    color: var(--color-error, #c62828);
+}
+
+.design-editor-frame-wrapper {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #1a1a2e;
+}
+
+.design-editor-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+}
+
+.design-editor-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #1a1a2e;
+    color: #a0a0b0;
+    z-index: 10;
+}
+
+.design-editor-loading .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: design-spin 0.8s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes design-spin {
+    to { transform: rotate(360deg); }
+}
+
+.design-editor-loading p {
+    font-size: 0.95rem;
+    margin: 0;
+}

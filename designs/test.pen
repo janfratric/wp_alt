@@ -1,0 +1,47 @@
+{
+  "version": "2.7",
+  "children": [
+    {
+      "type": "group",
+      "id": "p4xlb",
+      "x": 294,
+      "y": -35,
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "V6JJe",
+          "x": 0,
+          "y": 156,
+          "fill": "#CCCCCC",
+          "width": 724,
+          "height": 84
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": 20,
+          "id": "F7FEM",
+          "x": 112,
+          "y": 0,
+          "fill": "#CCCCCC",
+          "width": 65,
+          "height": 439,
+          "stroke": {
+            "align": "inside",
+            "thickness": 1,
+            "fill": "#000000ff"
+          },
+          "effect": {
+            "type": "shadow",
+            "shadowType": "outer",
+            "color": "#00000040",
+            "offset": {
+              "x": 0,
+              "y": 4
+            },
+            "blur": 4
+          }
+        }
+      ]
+    }
+  ]
+}

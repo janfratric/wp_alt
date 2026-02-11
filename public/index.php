@@ -27,6 +27,7 @@ use App\Admin\ElementController;
 use App\Admin\StyleController;
 use App\Admin\LayoutController;
 use App\AIAssistant\ElementAIController;
+use App\Admin\DesignController;
 use App\PageBuilder\SeedElements;
 
 // Bootstrap
@@ -199,6 +200,13 @@ $router->group('/admin', function($router) use ($app) {
     $router->get('/generator', [PageGeneratorController::class, 'index']);
     $router->post('/generator/chat', [PageGeneratorController::class, 'chat']);
     $router->post('/generator/create', [PageGeneratorController::class, 'create']);
+
+    // Design Editor (Chunk 7.1)
+    $router->get('/design/editor', [DesignController::class, 'editor']);
+    $router->get('/design/load', [DesignController::class, 'load']);
+    $router->post('/design/save', [DesignController::class, 'save']);
+    $router->post('/design/import-file', [DesignController::class, 'importFile']);
+    $router->get('/design/list', [DesignController::class, 'list']);
 });
 
 // Dynamic routes for custom content type archives and single items

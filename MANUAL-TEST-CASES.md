@@ -1,8 +1,8 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration) + 5.3 (AI Page Generator) + 6.1 (Element Catalogue & Rendering Engine) + 6.2 (Content Editor Element Mode & Page Builder UI) + 6.3 (Per-Instance Element Styling) + 6.4 (AI Element Integration)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration) + 5.3 (AI Page Generator) + 6.1 (Element Catalogue & Rendering Engine) + 6.2 (Content Editor Element Mode & Page Builder UI) + 6.3 (Per-Instance Element Styling) + 6.4 (AI Element Integration) + 7.1 (Embed Pencil Editor in LiteCMS Admin)
 >
-> **Last updated**: 2026-02-09
+> **Last updated**: 2026-02-11
 
 ---
 
@@ -2737,3 +2737,147 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | CC5 | Filter tabs work | ☐ |
 | CD1 | AI includes element catalogue context | ☐ |
 | CD2 | HTML-mode AI unaffected | ☐ |
+
+---
+
+## Test Group CE: Design Editor — Page & Navigation (Chunk 7.1)
+
+### CE1. Design editor page loads
+1. Log in as admin
+2. Open [http://localhost:8000/admin/design/editor](http://localhost:8000/admin/design/editor)
+3. **Verify**: Page loads with "Design Editor" heading in the toolbar
+4. **Verify**: File selector dropdown with "— New Design —" option is visible
+5. **Verify**: Loading overlay with spinner shows, then disappears when editor initializes
+6. **Verify**: Pencil canvas editor renders in the iframe (dark background, not blank/white)
+
+### CE2. Sidebar shows "Design Editor" link
+1. Log in and visit any admin page
+2. **Verify**: Sidebar Design section shows "Design Editor" link with pencil icon
+3. Click the link
+4. **Verify**: Navigates to /admin/design/editor with active nav highlight
+
+### CE3. Editor canvas interaction works
+1. On the design editor page, wait for loading to complete
+2. Create a frame element (click and drag on canvas)
+3. **Verify**: Frame appears on the canvas
+4. Create a text element
+5. **Verify**: Mouse/keyboard interactions work (select, move, resize, zoom)
+
+### CE4. Bridge initializes correctly
+1. Open browser DevTools → Console
+2. Navigate to /admin/design/editor
+3. **Verify**: Console shows "[pencil-bridge] Editor initialized"
+4. **Verify**: No errors about "acquireVsCodeApi" or missing VS Code API
+5. **Verify**: No WASM-related errors
+
+---
+
+## Test Group CF: Design Editor — File Operations (Chunk 7.1)
+
+### CF1. Save a new design
+1. On the design editor, ensure "— New Design —" is selected
+2. Enter "test-design.pen" in the new file name input
+3. Create some elements on the canvas
+4. Trigger save (Ctrl+S or editor save action)
+5. **Verify**: Status indicator changes to "Saved" (green badge)
+6. **Verify**: Status resets to "Ready" after ~2 seconds
+7. **Verify**: File `designs/test-design.pen` exists on disk with valid JSON content
+
+### CF2. Load an existing design
+1. After saving (CF1), reload the page
+2. **Verify**: "test-design" appears in the file selector dropdown
+3. Select it from the dropdown
+4. **Verify**: Loading overlay shows briefly, then the design loads
+5. **Verify**: All elements from the previous save are restored
+
+### CF3. Create a new design via file selector
+1. Select "— New Design —" from the dropdown
+2. **Verify**: New file name input appears
+3. Enter "another-design.pen"
+4. **Verify**: Editor loads with a blank canvas
+5. Create elements and save
+6. **Verify**: New file appears in designs/ directory
+
+### CF4. File list API endpoint
+1. Open [http://localhost:8000/admin/design/list](http://localhost:8000/admin/design/list)
+2. **Verify**: JSON response with `{"success": true, "files": [...]}`
+3. **Verify**: Each file has `name`, `path`, `modified`, `size` fields
+
+---
+
+## Test Group CG: Design Editor — Security (Chunk 7.1)
+
+### CG1. Path traversal blocked
+1. Using browser DevTools or curl, request: `GET /admin/design/load?path=../../config/app.php`
+2. **Expected**: JSON error response `{"success": false, "error": "Invalid path"}`
+3. Try: `path=../../../etc/passwd.pen` — also blocked (contains `..`)
+4. Try: `path=malicious.php` — blocked (not `.pen` extension)
+
+### CG2. CSRF on save endpoint
+1. Using curl without CSRF token: `POST /admin/design/save`
+2. **Expected**: HTTP 403 (CSRF validation fails)
+3. Save via the editor (which includes CSRF token)
+4. **Expected**: Save succeeds (200 response)
+
+### CG3. Security headers on editor page
+1. Open DevTools → Network tab
+2. Navigate to /admin/design/editor
+3. **Verify**: `X-Frame-Options: SAMEORIGIN` header (not DENY — editor runs in iframe)
+4. **Verify**: `Content-Security-Policy` includes `unsafe-eval` (required for WASM)
+5. **Verify**: `X-Content-Type-Options: nosniff` header present
+
+### CG4. Upload directory security
+1. **Verify**: `public/assets/uploads/design/.htaccess` exists
+2. **Verify**: Contains deny rules for PHP/script execution
+3. **Verify**: Image files stored with randomized hex filenames (not original names)
+
+---
+
+## Test Group CH: Design Editor — IPC Bridge (Chunk 7.1)
+
+### CH1. Bridge mock prevents VS Code errors
+1. Open the editor page
+2. **Verify**: No console errors about missing `window.vscodeapi` or `acquireVsCodeApi`
+3. **Verify**: `window.canvaskitWasm` is set (check in iframe console)
+
+### CH2. Save via Network tab
+1. Create elements and trigger save
+2. Open DevTools → Network tab
+3. **Verify**: POST request to `/admin/design/save`
+4. **Verify**: Request includes `X-CSRF-Token` header
+5. **Verify**: Request body is JSON with `path`, `content`, `_csrf_token`
+6. **Verify**: Response is `{"success": true}`
+
+### CH3. Load via Network tab
+1. Select an existing file from the dropdown
+2. **Verify**: GET request to `/admin/design/load?path=filename.pen`
+3. **Verify**: Response is `{"success": true, "content": "...pen JSON..."}`
+
+### CH4. Parent-iframe communication
+1. Open the editor page
+2. **Verify**: Loading overlay hides after bridge reports `editor-ready`
+3. Save a file
+4. **Verify**: Status indicator updates to "Saved" (bridge notifies parent)
+
+---
+
+## Quick Checklist — Chunk 7.1
+
+| Test | Description | ☐ |
+|----|------|-------|
+| CE1 | Design editor page loads | ☐ |
+| CE2 | Sidebar shows Design Editor link | ☐ |
+| CE3 | Canvas interaction works | ☐ |
+| CE4 | Bridge initializes correctly | ☐ |
+| CF1 | Save a new design | ☐ |
+| CF2 | Load an existing design | ☐ |
+| CF3 | Create new design via file selector | ☐ |
+| CF4 | File list API endpoint | ☐ |
+| CG1 | Path traversal blocked | ☐ |
+| CG2 | CSRF on save endpoint | ☐ |
+| CG3 | Security headers on editor page | ☐ |
+| CG4 | Upload directory security | ☐ |
+| CH1 | Bridge mock prevents VS Code errors | ☐ |
+| CH2 | Save via Network tab | ☐ |
+| CH3 | Load via Network tab | ☐ |
+| CH4 | Parent-iframe communication | ☐ |
