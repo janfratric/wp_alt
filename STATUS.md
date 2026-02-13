@@ -35,43 +35,41 @@
 - [ ] 7.6 Template System & Theme Integration — blocked
 - [ ] 8.1 Final Polish, Error Handling & Documentation — blocked
 
+## Step Status
+
+| Chunk | Name | Status | 1·Plan | 2·Prompt | 3·Test | 4·Execute |
+|-------|------|--------|:------:|:--------:|:------:|:---------:|
+| 1.1 | Scaffolding & Core Framework | done | done | done | done | done |
+| 1.2 | Database Layer & Migrations | done | done | done | done | done |
+| 1.3 | Authentication System | done | done | done | done | done |
+| 2.1 | Admin Layout & Dashboard | done | done | done | done | done |
+| 2.2 | Content CRUD (Pages & Posts) | done | done | done | done | done |
+| 2.3 | Media Management | done | done | done | done | done |
+| 2.4 | User Management | done | done | done | done | done |
+| 3.1 | Template Engine & Front Controller | done | done | done | done | done |
+| 3.2 | Public Templates & Styling | done | done | done | done | done |
+| 4.1 | Claude API Client & Backend | done | done | done | done | done |
+| 4.2 | AI Chat Panel Frontend | done | done | done | done | done |
+| 5.1 | Custom Content Types | done | done | done | done | done |
+| 5.2 | Settings Panel & Site Configuration | done | done | done | done | done |
+| 5.3 | AI Page Generator | done | done | done | done | done |
+| 6.1 | Element Catalogue & Rendering Engine | done | done | done | done | done |
+| 6.2 | Content Editor Element Mode & Page Builder UI | done | done | done | done | done |
+| 6.3 | Per-Instance Element Styling | done | done | done | done | done |
+| 6.4 | AI Element Integration | done | done | done | done | done |
+| 6.5 | Layout Template Block Management | done | done | — | done | done |
+| 6.6 | Homepage Content & Recent Posts Element | done | done | — | done | done |
+| 7.1 | Embed Pencil Editor in LiteCMS Admin | done | done | done | done | done |
+| 7.2 | .pen-to-HTML Converter (PenConverter) | done | done | done | done | done |
+| 7.3 | LiteCMS Design System as .pen File | done | done | done | done | done |
+| 7.4 | AI Design Pipeline | ready | **NEXT** | — | — | — |
+| 7.5 | Admin Integration & Preview | blocked | — | — | — | — |
+| 7.6 | Template System & Theme Integration | blocked | — | — | — | — |
+| 8.1 | Final Polish, Error Handling & Documentation | blocked | — | — | — | — |
+
 ## Next Steps
 
-- **Chunk 7.4 — AI Design Pipeline**: plan: **no — create first**, prompt: **no — create first**, tests: **no — create first**
-
-If any show **no — create first**, prepare that file before implementing (see BUILD-GUIDE.md Step 2).
-
-## Preparation Inventory
-
-| Chunk | Detailed Plan | Condensed Prompt | Test Script |
-|-------|:---:|:---:|:---:|
-| 1.1 | yes | yes | yes |
-| 1.2 | yes | yes | yes |
-| 1.3 | yes | yes | yes |
-| 2.1 | yes | yes | yes |
-| 2.2 | yes | yes | yes |
-| 2.3 | yes | yes | yes |
-| 2.4 | yes | yes | yes |
-| 3.1 | yes | yes | yes |
-| 3.2 | yes | yes | yes |
-| 4.1 | yes | yes | yes |
-| 4.2 | yes | yes | yes |
-| 5.1 | yes | yes | yes |
-| 5.2 | yes | yes | yes |
-| 5.3 | yes | yes | yes |
-| 6.1 | yes | yes | yes |
-| 6.2 | yes | yes | yes |
-| 6.3 | yes | yes | yes |
-| 6.4 | yes | yes | yes |
-| 6.5 | — | — | yes |
-| 6.6 | — | — | yes |
-| 7.1 | yes | yes | yes |
-| 7.2 | yes | yes | yes |
-| 7.3 | yes | yes | yes |
-| 7.4 | — | — | — |
-| 7.5 | — | — | — |
-| 7.6 | — | — | — |
-| 8.1 | — | — | — |
+- **Chunk 7.4 — AI Design Pipeline**: Step 1 (Create Plan) → follow `1_plan.md`
 
 ## Known Issues
 

@@ -289,38 +289,83 @@ function updateStatusFile(
     }
     $lines[] = '';
 
+    // Step Status — per-step tracking for each chunk
+    $lines[] = '## Step Status';
+    $lines[] = '';
+    $lines[] = '| Chunk | Name | Status | 1·Plan | 2·Prompt | 3·Test | 4·Execute |';
+    $lines[] = '|-------|------|--------|:------:|:--------:|:------:|:---------:|';
+    foreach ($allChunks as $chunkId => $file) {
+        $name = $chunkNames[$chunkId] ?? $chunkId;
+        $hasPlan = file_exists($rootDir . '/CHUNK-' . $chunkId . '-PLAN.md');
+        $hasPrompt = file_exists($chunksDir . '/' . $chunkId . '-prompt.md');
+        $hasTest = file_exists($testsDir . '/chunk-' . $chunkId . '-verify.php');
+        $isComplete = isset($completedChunks[$chunkId]);
+        $isFailing = isset($failedSet[$chunkId]);
+        $isReady = in_array($chunkId, $readyChunks, true);
+
+        if ($isComplete) {
+            $status = 'done';
+            $s1 = $s2 = $s3 = $s4 = 'done';
+        } elseif ($isFailing) {
+            $status = '**FAIL**';
+            $s1 = $hasPlan ? 'done' : '—';
+            $s2 = $hasPrompt ? 'done' : '—';
+            $s3 = $hasTest ? 'done' : '—';
+            $s4 = '**FIX**';
+        } elseif ($isReady) {
+            $status = 'ready';
+            if (!$hasPlan) {
+                $s1 = '**NEXT**'; $s2 = '—'; $s3 = '—'; $s4 = '—';
+            } elseif (!$hasPrompt) {
+                $s1 = 'done'; $s2 = '**NEXT**'; $s3 = '—'; $s4 = '—';
+            } elseif (!$hasTest) {
+                $s1 = 'done'; $s2 = 'done'; $s3 = '**NEXT**'; $s4 = '—';
+            } else {
+                $s1 = 'done'; $s2 = 'done'; $s3 = 'done'; $s4 = '**NEXT**';
+            }
+        } else {
+            $status = 'blocked';
+            $s1 = $hasPlan ? 'done' : '—';
+            $s2 = $hasPrompt ? 'done' : '—';
+            $s3 = $hasTest ? 'done' : '—';
+            $s4 = '—';
+        }
+
+        $lines[] = "| {$chunkId} | {$name} | {$status} | {$s1} | {$s2} | {$s3} | {$s4} |";
+    }
+    $lines[] = '';
+
     // Next steps — what should the next agent do?
     $lines[] = '## Next Steps';
     $lines[] = '';
     if ($completedCount === $totalCount) {
         $lines[] = 'All chunks complete. Run specialist review agents (see `review/` directory).';
     } elseif (!empty($failedChunks)) {
-        $lines[] = 'Fix failing chunks: ' . implode(', ', $failedChunks);
+        foreach ($failedChunks as $fc) {
+            $name = $chunkNames[$fc] ?? $fc;
+            $lines[] = "- **Chunk {$fc} — {$name}**: Step 4 failing → follow `4_execute.md` to fix";
+        }
     } elseif (!empty($readyChunks)) {
         foreach ($readyChunks as $rc) {
             $name = $chunkNames[$rc] ?? $rc;
-            $hasPrompt = file_exists($chunksDir . '/' . $rc . '-prompt.md') ? 'yes' : '**no — create first**';
-            $hasTest = file_exists($testsDir . '/chunk-' . $rc . '-verify.php') ? 'yes' : '**no — create first**';
-            $hasPlan = file_exists($rootDir . '/CHUNK-' . $rc . '-PLAN.md') ? 'yes' : '**no — create first**';
-            $lines[] = "- **Chunk {$rc} — {$name}**: plan: {$hasPlan}, prompt: {$hasPrompt}, tests: {$hasTest}";
+            $hasPlan = file_exists($rootDir . '/CHUNK-' . $rc . '-PLAN.md');
+            $hasPrompt = file_exists($chunksDir . '/' . $rc . '-prompt.md');
+            $hasTest = file_exists($testsDir . '/chunk-' . $rc . '-verify.php');
+
+            if (!$hasPlan) {
+                $step = 1; $desc = 'Create Plan'; $runFile = '1_plan.md';
+            } elseif (!$hasPrompt) {
+                $step = 2; $desc = 'Create Prompt'; $runFile = '2_prompt.md';
+            } elseif (!$hasTest) {
+                $step = 3; $desc = 'Create Test'; $runFile = '3_test.md';
+            } else {
+                $step = 4; $desc = 'Execute'; $runFile = '4_execute.md';
+            }
+
+            $lines[] = "- **Chunk {$rc} — {$name}**: Step {$step} ({$desc}) → follow `{$runFile}`";
         }
-        $lines[] = '';
-        $lines[] = 'If any show **no — create first**, prepare that file before implementing (see BUILD-GUIDE.md Step 2).';
     } else {
         $lines[] = 'No chunks are ready. Check dependency graph in PLAN.md.';
-    }
-    $lines[] = '';
-
-    // Preparation inventory — what exists for each chunk?
-    $lines[] = '## Preparation Inventory';
-    $lines[] = '';
-    $lines[] = '| Chunk | Detailed Plan | Condensed Prompt | Test Script |';
-    $lines[] = '|-------|:---:|:---:|:---:|';
-    foreach ($allChunks as $chunkId => $file) {
-        $plan = file_exists($rootDir . '/CHUNK-' . $chunkId . '-PLAN.md') ? 'yes' : '—';
-        $prompt = file_exists($chunksDir . '/' . $chunkId . '-prompt.md') ? 'yes' : '—';
-        $test = file_exists($testsDir . '/chunk-' . $chunkId . '-verify.php') ? 'yes' : '—';
-        $lines[] = "| {$chunkId} | {$plan} | {$prompt} | {$test} |";
     }
     $lines[] = '';
 
