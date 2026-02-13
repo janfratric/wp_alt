@@ -1,0 +1,48 @@
+{
+  "version": "2.7",
+  "children": [
+    {
+      "type": "frame",
+      "id": "2GTNR",
+      "x": 241,
+      "y": 50,
+      "name": "Frame 1",
+      "clip": true,
+      "width": 1182,
+      "height": 786,
+      "fill": "#FFFFFF",
+      "layout": "none"
+    },
+    {
+      "type": "group",
+      "id": "Cw3dm",
+      "x": 295,
+      "y": 81,
+      "name": "Group",
+      "children": [
+        {
+          "type": "rectangle",
+          "cornerRadius": 45,
+          "id": "dFAq1",
+          "x": 0,
+          "y": 0,
+          "name": "Rectangle",
+          "fill": "#CCCCCC",
+          "width": 798,
+          "height": 490
+        },
+        {
+          "type": "text",
+          "id": "vcmDX",
+          "x": 340,
+          "y": 86,
+          "fill": "#000000",
+          "content": "This is Heading",
+          "fontFamily": "Inter",
+          "fontSize": 16,
+          "fontWeight": "normal"
+        }
+      ]
+    }
+  ]
+}
