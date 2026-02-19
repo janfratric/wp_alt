@@ -33,6 +33,7 @@
             <div class="mode-options" style="display:flex;gap:0.5rem;margin-top:0.5rem;">
                 <button type="button" class="mode-option active" data-mode="html">HTML</button>
                 <button type="button" class="mode-option" data-mode="elements">Elements</button>
+                <button type="button" class="mode-option" data-mode="design">Visual Design</button>
             </div>
         </div>
     </div>
@@ -77,6 +78,13 @@
             </div>
         </div>
         <div id="preview-body" class="preview-content"></div>
+        <div id="preview-design" class="preview-content hidden">
+            <div id="preview-design-frame" style="border:1px solid var(--border-color,#ddd);border-radius:8px;padding:0;overflow:hidden;background:#fff;"></div>
+            <div style="margin-top:1rem;display:flex;gap:0.5rem;">
+                <a id="btn-open-editor" href="#" class="btn btn-secondary" target="_blank"
+                   style="display:none;">Open in Design Editor</a>
+            </div>
+        </div>
         <div id="preview-custom-fields"></div>
         <div class="preview-actions">
             <button id="btn-back-to-chat" type="button" class="btn btn-secondary">Back to Chat</button>

@@ -10,6 +10,7 @@ use App\Database\QueryBuilder;
 use App\Auth\Session;
 use App\AIAssistant\AIController;
 use App\AIAssistant\ClaudeClient;
+use App\PageBuilder\PenConverter;
 
 class SettingsController
 {
@@ -54,6 +55,33 @@ class SettingsController
             $dropdownModels = self::DEFAULT_MODELS;
         }
 
+        // Load design system file variables for theme editing
+        $designSystemFile = $settings['design_system_file'] ?? 'litecms-system.pen';
+        $designsDir = dirname(__DIR__, 2) . '/designs';
+        $designSystemPath = $designsDir . '/' . $designSystemFile;
+        $designVars = [];
+        if (file_exists($designSystemPath)) {
+            $designVars = PenConverter::extractVariables($designSystemPath);
+        }
+
+        // Load list of .pen files for file selector
+        $designFiles = [];
+        if (is_dir($designsDir)) {
+            $iter = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($designsDir, \FilesystemIterator::SKIP_DOTS)
+            );
+            foreach ($iter as $fi) {
+                if ($fi->getExtension() !== 'pen') continue;
+                $rel = str_replace($designsDir . DIRECTORY_SEPARATOR, '', $fi->getPathname());
+                $rel = str_replace('\\', '/', $rel);
+                $designFiles[] = $rel;
+            }
+            sort($designFiles);
+        }
+
+        // Load current variable overrides from settings
+        $varOverrides = json_decode($settings['design_variable_overrides'] ?? '{}', true) ?: [];
+
         $html = $this->app->template()->render('admin/settings', [
             'title'            => 'Settings',
             'activeNav'        => 'settings',
@@ -67,6 +95,12 @@ class SettingsController
             'enabledModels'    => $enabledModels,
             'timezones'        => self::getTimezoneList(),
             'currentTimezone'  => $settings['timezone'] ?? Config::getString('timezone', 'UTC'),
+            'designSystemFile' => $designSystemFile,
+            'designVars'       => $designVars,
+            'designFiles'      => $designFiles,
+            'varOverrides'     => $varOverrides,
+            'defaultTheme'     => $settings['default_theme_mode'] ?? 'light',
+            'themeToggleEnabled' => ($settings['theme_toggle_enabled'] ?? '1') === '1',
         ]);
 
         return $this->withSecurityHeaders(Response::html($html));
@@ -188,6 +222,37 @@ class SettingsController
         if ($jpegQuality !== null && $jpegQuality !== '') {
             $this->saveSetting('image_jpeg_quality', (string) max(10, min(100, (int) $jpegQuality)));
         }
+
+        // --- Design System ---
+        $dsFile = trim((string) $request->input('design_system_file', ''));
+        if ($dsFile !== '') {
+            $dsPath = dirname(__DIR__, 2) . '/designs/' . $dsFile;
+            if (file_exists($dsPath)) {
+                $this->saveSetting('design_system_file', $dsFile);
+            }
+        }
+
+        $defaultTheme = trim((string) $request->input('default_theme_mode', 'light'));
+        if (in_array($defaultTheme, ['light', 'dark'], true)) {
+            $this->saveSetting('default_theme_mode', $defaultTheme);
+        }
+
+        $this->saveCheckbox($request, 'theme_toggle_enabled');
+
+        // Variable overrides — collect from form fields named var_override[varname]
+        $varOverrideRaw = $request->input('var_override');
+        $varOverrides = [];
+        if (is_array($varOverrideRaw)) {
+            foreach ($varOverrideRaw as $name => $val) {
+                $name = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $name);
+                $val = trim((string) $val);
+                if ($name !== '' && $val !== '') {
+                    $val = str_replace([';', '{', '}', '<', '>', 'javascript:', '@import'], '', $val);
+                    $varOverrides[$name] = $val;
+                }
+            }
+        }
+        $this->saveSetting('design_variable_overrides', json_encode($varOverrides));
 
         // --- Advanced ---
         $this->saveCheckbox($request, 'registration_enabled');

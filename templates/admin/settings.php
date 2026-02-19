@@ -177,6 +177,80 @@
         </div>
     </div>
 
+    <!-- Design System -->
+    <div class="settings-section">
+        <h2>Design System</h2>
+        <p class="section-desc">Theme settings and design token overrides from your .pen design files.</p>
+
+        <div class="form-group">
+            <label for="design_system_file">Active Design System</label>
+            <select name="design_system_file" id="design_system_file">
+                <?php foreach ($designFiles ?? [] as $df): ?>
+                <option value="<?= $this->e($df) ?>"
+                    <?= ($designSystemFile ?? '') === $df ? 'selected' : '' ?>>
+                    <?= $this->e($df) ?>
+                </option>
+                <?php endforeach; ?>
+            </select>
+            <small>Select the .pen design system file that defines your site's visual tokens.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="default_theme_mode">Default Theme</label>
+            <select name="default_theme_mode" id="default_theme_mode">
+                <option value="light" <?= ($defaultTheme ?? 'light') === 'light' ? 'selected' : '' ?>>Light</option>
+                <option value="dark" <?= ($defaultTheme ?? 'light') === 'dark' ? 'selected' : '' ?>>Dark</option>
+            </select>
+            <small>The default theme shown to visitors before they choose.</small>
+        </div>
+
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="hidden" name="theme_toggle_enabled" value="0">
+                <input type="checkbox" name="theme_toggle_enabled" value="1"
+                    <?= ($themeToggleEnabled ?? true) ? 'checked' : '' ?>>
+                Show theme toggle button on public site
+            </label>
+        </div>
+
+        <?php if (!empty($designVars)): ?>
+        <h3 style="margin-top:1rem;font-size:1rem;">Design Tokens</h3>
+        <p class="section-desc">Override design variables below. Leave blank to use the default from the .pen file.</p>
+
+        <div class="design-vars-grid">
+        <?php foreach ($designVars as $varName => $varDef): ?>
+            <?php
+                $overrideVal = $varOverrides[$varName] ?? '';
+                $defaultVal = $varDef['values']['default'] ?? '';
+                $type = $varDef['type'] ?? 'string';
+            ?>
+            <div class="design-var-row">
+                <label for="var_<?= $this->e($varName) ?>"
+                       class="design-var-label">
+                    --<?= $this->e($varName) ?>
+                    <span class="design-var-type"><?= $this->e($type) ?></span>
+                </label>
+                <div class="design-var-inputs">
+                    <?php if ($type === 'color'): ?>
+                    <input type="color"
+                           value="<?= $this->e($overrideVal ?: $defaultVal) ?>"
+                           onchange="document.getElementById('var_<?= $this->e($varName) ?>').value = this.value"
+                           class="design-var-color-picker">
+                    <?php endif; ?>
+                    <input type="text"
+                           name="var_override[<?= $this->e($varName) ?>]"
+                           id="var_<?= $this->e($varName) ?>"
+                           value="<?= $this->e($overrideVal) ?>"
+                           placeholder="<?= $this->e($defaultVal) ?>">
+                </div>
+            </div>
+        <?php endforeach; ?>
+        </div>
+        <?php else: ?>
+        <p class="section-desc">No design variables found. Select a .pen design system file above.</p>
+        <?php endif; ?>
+    </div>
+
     <!-- AI Assistant Section -->
     <div class="settings-section full-width">
         <h2>AI Assistant</h2>

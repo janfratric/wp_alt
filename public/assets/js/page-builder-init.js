@@ -1,28 +1,10 @@
 /**
  * LiteCMS Page Builder Initialization
- * Reads config from data attributes and wires up mode toggle + initPageBuilder.
+ * Reads config from data attributes and calls initPageBuilder.
+ * Mode toggle is handled by design-mode-init.js (supports html/elements/design).
  */
 document.addEventListener('DOMContentLoaded', function() {
-    var htmlPanel = document.getElementById('html-editor-panel');
     var builderPanel = document.getElementById('page-builder-panel');
-    var modeRadios = document.querySelectorAll('input[name="editor_mode"]');
-
-    var pageStylesCard = document.getElementById('page-styles-card');
-
-    // Editor mode toggle
-    modeRadios.forEach(function(radio) {
-        radio.addEventListener('change', function() {
-            if (this.value === 'html') {
-                htmlPanel.classList.remove('hidden');
-                builderPanel.classList.add('hidden');
-                if (pageStylesCard) pageStylesCard.style.display = 'none';
-            } else {
-                htmlPanel.classList.add('hidden');
-                builderPanel.classList.remove('hidden');
-                if (pageStylesCard) pageStylesCard.style.display = '';
-            }
-        });
-    });
 
     // Read config from data attributes on the builder panel
     if (builderPanel && typeof initPageBuilder === 'function') {

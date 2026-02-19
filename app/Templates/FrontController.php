@@ -4,6 +4,7 @@ namespace App\Templates;
 
 use App\Core\App;
 use App\Core\Config;
+use App\Core\Logger;
 use App\Core\Request;
 use App\Core\Response;
 use App\Database\QueryBuilder;
@@ -34,16 +35,16 @@ class FrontController
             ->first();
 
         if ($home !== null && $this->isPublished($home)) {
-            return $this->renderContentHomepage($home);
+            return $this->renderContentHomepage($home, $request);
         }
 
-        return $this->renderFallbackHomepage();
+        return $this->renderFallbackHomepage($request);
     }
 
     /**
      * Render the homepage from a content item (element-based page builder).
      */
-    private function renderContentHomepage(array $content): Response
+    private function renderContentHomepage(array $content, Request $request): Response
     {
         $layoutTemplateId = isset($content['layout_template_id']) ? (int) $content['layout_template_id'] : null;
         $layoutTemplate = LayoutController::resolveTemplate($layoutTemplateId ?: null);
@@ -67,7 +68,8 @@ class FrontController
         if ($designFile !== null && trim($designFile) !== '') {
             $penPath = dirname(__DIR__, 2) . '/designs/' . $designFile;
             if (file_exists($penPath)) {
-                $penResult = PageRenderer::renderFromPen($penPath);
+                $overrides = $this->getVariableOverrides();
+                $penResult = PageRenderer::renderFromPen($penPath, $overrides);
                 $content['body'] = $penResult['html'];
                 $elementCss = ($elementCss ?? '') . "\n" . $penResult['css'];
             }
@@ -102,13 +104,13 @@ class FrontController
             'headerBlockHtml' => $headerBlockHtml,
             'footerBlockHtml' => $footerBlockHtml,
             'currentSlug'     => 'home',
-        ]);
+        ], $request);
     }
 
     /**
      * Fallback homepage — procedural recent posts listing.
      */
-    private function renderFallbackHomepage(): Response
+    private function renderFallbackHomepage(Request $request): Response
     {
         $perPage = Config::getInt('items_per_page', 10);
 
@@ -137,7 +139,7 @@ class FrontController
             'title' => Config::getString('site_name', 'LiteCMS'),
             'posts' => $posts,
             'meta'  => $meta,
-        ]);
+        ], $request);
     }
 
     /**
@@ -191,7 +193,7 @@ class FrontController
             'totalPages'  => $totalPages,
             'total'       => $total,
             'meta'        => $meta,
-        ]);
+        ], $request);
     }
 
     /**
@@ -234,7 +236,8 @@ class FrontController
         if ($designFile !== null && trim($designFile) !== '') {
             $penPath = dirname(__DIR__, 2) . '/designs/' . $designFile;
             if (file_exists($penPath)) {
-                $penResult = PageRenderer::renderFromPen($penPath);
+                $overrides = $this->getVariableOverrides();
+                $penResult = PageRenderer::renderFromPen($penPath, $overrides);
                 $content['body'] = $penResult['html'];
                 $elementCss = ($elementCss ?? '') . "\n" . $penResult['css'];
             }
@@ -262,7 +265,7 @@ class FrontController
             'layoutTemplate'  => $layoutTemplate,
             'headerBlockHtml' => $headerBlockHtml,
             'footerBlockHtml' => $footerBlockHtml,
-        ]);
+        ], $request);
     }
 
     /**
@@ -323,7 +326,8 @@ class FrontController
         if ($designFile !== null && trim($designFile) !== '') {
             $penPath = dirname(__DIR__, 2) . '/designs/' . $designFile;
             if (file_exists($penPath)) {
-                $penResult = PageRenderer::renderFromPen($penPath);
+                $overrides = $this->getVariableOverrides();
+                $penResult = PageRenderer::renderFromPen($penPath, $overrides);
                 $content['body'] = $penResult['html'];
                 $elementCss = ($elementCss ?? '') . "\n" . $penResult['css'];
             }
@@ -351,7 +355,7 @@ class FrontController
             'layoutTemplate'  => $layoutTemplate,
             'headerBlockHtml' => $headerBlockHtml,
             'footerBlockHtml' => $footerBlockHtml,
-        ]);
+        ], $request);
     }
 
     /**
@@ -376,7 +380,7 @@ class FrontController
             'old'     => [],
             'success' => $success,
             'error'   => '',
-        ]);
+        ], $request);
     }
 
     /**
@@ -416,7 +420,7 @@ class FrontController
                 'old'     => ['name' => $name, 'email' => $email, 'subject' => $subject, 'message' => $message],
                 'error'   => implode(' ', $errors),
                 'success' => '',
-            ]);
+            ], $request);
         }
 
         // Store submission
@@ -427,6 +431,28 @@ class FrontController
             'message'    => $message,
             'ip_address' => $request->server('REMOTE_ADDR', ''),
         ]);
+
+        // Send email notification if configured
+        $notifyEmail = Config::getString('contact_notification_email', '');
+        if ($notifyEmail !== '' && filter_var($notifyEmail, FILTER_VALIDATE_EMAIL)) {
+            $emailSubject = 'New contact form submission: ' . ($subject ?: '(no subject)');
+            $emailBody = "Name: {$name}\n"
+                . "Email: {$email}\n"
+                . "Subject: {$subject}\n"
+                . "Date: " . date('Y-m-d H:i:s') . "\n\n"
+                . "Message:\n{$message}\n";
+            $headers = "From: noreply@" . (parse_url(Config::getString('site_url', 'localhost'), PHP_URL_HOST) ?: 'localhost') . "\r\n"
+                . "Reply-To: {$email}\r\n"
+                . "Content-Type: text/plain; charset=UTF-8\r\n";
+
+            $sent = @mail($notifyEmail, $emailSubject, $emailBody, $headers);
+            if (!$sent) {
+                Logger::warning('Contact form email notification failed', [
+                    'to' => $notifyEmail,
+                    'from' => $email,
+                ]);
+            }
+        }
 
         // Redirect with flash message (PRG pattern)
         $_SESSION['flash_success'] = 'Thank you for your message! We will get back to you soon.';
@@ -491,7 +517,7 @@ class FrontController
             'totalPages'   => $totalPages,
             'total'        => $total,
             'meta'         => $meta,
-        ]);
+        ], $request);
     }
 
     /**
@@ -519,6 +545,10 @@ class FrontController
             'layoutTemplate'  => $layoutTemplate,
             'headerBlockHtml' => '',
             'footerBlockHtml' => '',
+            'activeTheme'      => $this->resolveTheme($request),
+            'defaultTheme'     => $settings['default_theme_mode'] ?? 'light',
+            'themeOverride'    => '',
+            'themeToggleEnabled' => ($settings['theme_toggle_enabled'] ?? '1') === '1',
             'meta'            => [
                 'title' => 'Page Not Found — ' . Config::getString('site_name', 'LiteCMS'),
             ],
@@ -616,7 +646,7 @@ class FrontController
     /**
      * Common render helper — merges in navigation, global data, and settings.
      */
-    private function renderPublic(string $template, array $data): Response
+    private function renderPublic(string $template, array $data, ?Request $request = null): Response
     {
         $settings = $this->getPublicSettings();
         $consentEnabled = ($settings['cookie_consent_enabled'] ?? '1') === '1';
@@ -632,6 +662,10 @@ class FrontController
             $data['footerBlockHtml'] = '';
         }
 
+        // Resolve theme
+        $contentData = $data['content'] ?? [];
+        $activeTheme = $request !== null ? $this->resolveTheme($request, $contentData) : ($settings['default_theme_mode'] ?? 'light');
+
         $data = array_merge([
             'navPages'       => $this->getNavPages(),
             'siteName'       => Config::getString('site_name', 'LiteCMS'),
@@ -644,6 +678,10 @@ class FrontController
             'gaId'           => ($settings['ga_enabled'] ?? '') === '1' ? ($settings['ga_measurement_id'] ?? '') : '',
             'styleOverrides' => StyleController::buildStyleOverrides($settings),
             'googleFontLinks'=> StyleController::buildGoogleFontLinks($settings),
+            'activeTheme'      => $activeTheme,
+            'defaultTheme'     => $settings['default_theme_mode'] ?? 'light',
+            'themeOverride'    => $contentData['theme_override'] ?? '',
+            'themeToggleEnabled' => ($settings['theme_toggle_enabled'] ?? '1') === '1',
         ], $data);
 
         if (isset($data['content']['slug'])) {
@@ -661,6 +699,45 @@ class FrontController
     }
 
     /**
+     * Determine the active theme mode.
+     * Priority: per-page override > query param > cookie > site default.
+     */
+    private function resolveTheme(Request $request, array $content = []): string
+    {
+        // 1. Per-page override
+        $pageOverride = $content['theme_override'] ?? null;
+        if ($pageOverride !== null && $pageOverride !== '') {
+            return $pageOverride;
+        }
+
+        // 2. Query param (?theme=dark)
+        $queryTheme = $request->query('theme');
+        if ($queryTheme !== null && in_array($queryTheme, ['light', 'dark'], true)) {
+            return $queryTheme;
+        }
+
+        // 3. Cookie
+        $cookieTheme = $_COOKIE['litecms_theme_mode'] ?? null;
+        if ($cookieTheme !== null && in_array($cookieTheme, ['light', 'dark'], true)) {
+            return $cookieTheme;
+        }
+
+        // 4. Site default from settings
+        $settings = $this->getPublicSettings();
+        return $settings['default_theme_mode'] ?? 'light';
+    }
+
+    /**
+     * Get design variable overrides from settings.
+     */
+    private function getVariableOverrides(): array
+    {
+        $settings = $this->getPublicSettings();
+        $json = $settings['design_variable_overrides'] ?? '{}';
+        return json_decode($json, true) ?: [];
+    }
+
+    /**
      * Fetch public-relevant settings from the settings table.
      * Returns an associative array of key => value.
      * Gracefully returns empty array if settings table is empty.
@@ -674,13 +751,17 @@ class FrontController
         try {
             $rows = QueryBuilder::query('settings')
                 ->select('key', 'value')
-                ->whereRaw("key IN (:k1, :k2, :k3, :k4, :k5, :k6) OR key LIKE :prefix", [
+                ->whereRaw("key IN (:k1, :k2, :k3, :k4, :k5, :k6, :k7, :k8, :k9, :k10) OR key LIKE :prefix", [
                     ':k1' => 'site_tagline',
                     ':k2' => 'cookie_consent_text',
                     ':k3' => 'cookie_consent_link',
                     ':k4' => 'ga_enabled',
                     ':k5' => 'ga_measurement_id',
                     ':k6' => 'cookie_consent_enabled',
+                    ':k7' => 'design_system_file',
+                    ':k8' => 'design_variable_overrides',
+                    ':k9' => 'default_theme_mode',
+                    ':k10' => 'theme_toggle_enabled',
                     ':prefix' => 'style_%',
                 ])
                 ->get();

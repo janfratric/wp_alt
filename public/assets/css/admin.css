@@ -2126,3 +2126,191 @@ table.data-table td:first-child {
     font-size: 0.95rem;
     margin: 0;
 }
+
+/* --- Design Editor Mode (content edit page, Chunk 7.5) --- */
+.design-mode-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--card-radius) var(--card-radius) 0 0;
+    flex-wrap: wrap;
+}
+
+.design-file-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.design-file-selector label {
+    font-weight: 600;
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+
+.design-mode-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.design-editor-split {
+    display: flex;
+    border: 1px solid var(--color-border);
+    border-top: none;
+    border-radius: 0 0 var(--card-radius) var(--card-radius);
+    overflow: hidden;
+    min-height: 600px;
+}
+
+.design-editor-pane {
+    flex: 3;
+    min-width: 0;
+    position: relative;
+}
+
+.design-preview-pane {
+    flex: 2;
+    border-left: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    min-width: 280px;
+}
+
+.design-preview-header {
+    padding: 0.5rem 0.75rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+}
+
+#design-editor-panel .design-editor-iframe,
+#design-editor-panel .design-preview-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    flex: 1;
+}
+
+/* --- Design File Browser (Chunk 7.5) --- */
+.design-browser-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
+.design-browser-card {
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--card-radius);
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+    transition: box-shadow 0.2s;
+}
+
+.design-browser-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.design-browser-thumb {
+    height: 180px;
+    overflow: hidden;
+    background: #f8f9fa;
+    position: relative;
+}
+
+.design-browser-thumb iframe {
+    width: 200%;
+    height: 200%;
+    border: none;
+    transform: scale(0.5);
+    transform-origin: 0 0;
+    pointer-events: none;
+}
+
+.design-browser-info {
+    padding: 0.75rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.design-browser-name {
+    display: block;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+}
+
+.design-browser-meta {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.design-browser-actions {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid var(--color-border-light);
+    background: var(--color-bg);
+}
+
+.design-browser-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--color-text-muted);
+}
+
+/* --- Design System Settings --- */
+.design-vars-grid {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+.design-var-row {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--color-border-light);
+}
+.design-var-label {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.8rem;
+    font-weight: 500;
+    word-break: break-all;
+}
+.design-var-type {
+    display: inline-block;
+    font-size: 0.65rem;
+    padding: 0.1rem 0.3rem;
+    background: var(--color-bg);
+    border-radius: 3px;
+    color: var(--color-text-muted);
+    margin-left: 0.25rem;
+    font-family: inherit;
+    text-transform: uppercase;
+}
+.design-var-inputs {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.design-var-color-picker {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+}

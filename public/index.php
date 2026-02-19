@@ -28,6 +28,7 @@ use App\Admin\StyleController;
 use App\Admin\LayoutController;
 use App\AIAssistant\ElementAIController;
 use App\Admin\DesignController;
+use App\Admin\ContactSubmissionsController;
 use App\PageBuilder\SeedElements;
 
 // Bootstrap
@@ -128,6 +129,7 @@ $router->group('/admin', function($router) use ($app) {
     $router->put('/content/{id}', [ContentController::class, 'update']);
     $router->delete('/content/{id}', [ContentController::class, 'delete']);
     $router->post('/content/bulk', [ContentController::class, 'bulk']);
+    $router->post('/content/preview-pen', [ContentController::class, 'previewPen']);
 
     // Media management routes
     $router->get('/media', [MediaController::class, 'index']);
@@ -146,6 +148,11 @@ $router->group('/admin', function($router) use ($app) {
     // Settings routes
     $router->get('/settings', [SettingsController::class, 'index']);
     $router->put('/settings', [SettingsController::class, 'update']);
+
+    // Contact submissions management
+    $router->get('/contact-submissions', [ContactSubmissionsController::class, 'index']);
+    $router->get('/contact-submissions/{id}', [ContactSubmissionsController::class, 'view']);
+    $router->delete('/contact-submissions/{id}', [ContactSubmissionsController::class, 'delete']);
 
     // Master Style routes
     $router->get('/style', [StyleController::class, 'index']);
@@ -211,6 +218,14 @@ $router->group('/admin', function($router) use ($app) {
     // Design Converter (Chunk 7.2)
     $router->post('/design/convert', [DesignController::class, 'convert']);
     $router->get('/design/preview', [DesignController::class, 'preview']);
+
+    // Design Browser (Chunk 7.5): /admin/design/browser, /admin/design/duplicate, /admin/design/delete
+    $router->get('/design/browser', [DesignController::class, 'browser']);
+    $router->post('/design/duplicate', [DesignController::class, 'duplicate']);
+    $router->post('/design/delete', [DesignController::class, 'deleteFile']);
+
+    // Content reconvert (Chunk 7.5): /admin/content/{id}/reconvert
+    $router->post('/content/{id}/reconvert', [ContentController::class, 'reconvert']);
 });
 
 // Dynamic routes for custom content type archives and single items

@@ -1,8 +1,8 @@
 # LiteCMS — Manual Test Cases
 
-> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration) + 5.3 (AI Page Generator) + 6.1 (Element Catalogue & Rendering Engine) + 6.2 (Content Editor Element Mode & Page Builder UI) + 6.3 (Per-Instance Element Styling) + 6.4 (AI Element Integration) + 7.1 (Embed Pencil Editor in LiteCMS Admin) + 7.2 (.pen-to-HTML Converter) + 7.3 (LiteCMS Design System as .pen File)
+> **Scope**: Chunks 1.1 (Scaffolding & Core Framework) + 1.2 (Database Layer & Migrations) + 1.3 (Authentication System) + 2.1 (Admin Layout & Dashboard) + 2.2 (Content CRUD) + 2.3 (Media Management) + 2.4 (User Management) + 3.1 (Template Engine & Front Controller) + 3.2 (Public Templates & Styling) + 4.1 (Claude API Client & Backend) + 4.2 (AI Chat Panel Frontend) + 5.1 (Custom Content Types) + 5.2 (Settings Panel & Site Configuration) + 5.3 (AI Page Generator) + 6.1 (Element Catalogue & Rendering Engine) + 6.2 (Content Editor Element Mode & Page Builder UI) + 6.3 (Per-Instance Element Styling) + 6.4 (AI Element Integration) + 7.1 (Embed Pencil Editor in LiteCMS Admin) + 7.2 (.pen-to-HTML Converter) + 7.3 (LiteCMS Design System as .pen File) + 7.4 (AI Design Pipeline) + 7.5 (Admin Integration & Preview) + 8.1 (Final Polish, Error Handling & Documentation)
 >
-> **Last updated**: 2026-02-11
+> **Last updated**: 2026-02-13
 
 ---
 
@@ -3119,3 +3119,328 @@ Open each and verify they contain `CREATE TABLE` statements for all 7 tables.
 | CP1 | README exists | ☐ |
 | CP2 | Full pipeline integration | ☐ |
 | CP3 | Visual verification in editor | ☐ |
+
+---
+
+## Test Group CQ: AI Design Pipeline — Migration & Prompts (Chunk 7.4)
+
+### CQ1: Migration adds design_file column
+1. Run `php tests/chunk-7.4-verify.php` — tests 1-3
+2. Verify migration files exist for all 3 drivers (sqlite, mysql, pgsql)
+3. Verify `content` table has `design_file` column after migration
+
+### CQ2: GeneratorPrompts design methods
+1. Run `php tests/chunk-7.4-verify.php` — tests 4-7
+2. Verify `formatDesignSystemComponents()` lists all reusable components with slot paths
+3. Verify `penDesignGatheringPrompt()` includes component names and READY_TO_GENERATE marker
+4. Verify `penDesignGenerationPrompt()` specifies pen_page JSON format with ref/descendants instructions
+
+### CQ3: collectSlotNodes path-based output
+1. Verify slot paths use `/` separator for nested nodes (e.g., `hero-cta/hero-cta-text`, not just `hero-cta-text`)
+2. Verify direct children have no prefix (e.g., `hero-heading`, not `hero-section/hero-heading`)
+
+## Test Group CR: AI Design Pipeline — Controller & Frontend (Chunk 7.4)
+
+### CR1: PageGeneratorController design mode
+1. Run `php tests/chunk-7.4-verify.php` — tests 8-9
+2. Verify `parseGeneratedContent()` accepts `$isDesign=true` and returns `editor_mode: 'design'` with `pen_page`
+
+### CR2: ContentController design support
+1. Run `php tests/chunk-7.4-verify.php` — tests 10-11
+2. Verify `store()`/`update()` accept `editor_mode: 'design'` and persist `design_file`
+3. Verify `previewPen()` method exists and converts pen_page JSON to HTML+CSS
+
+### CR3: Preview endpoint and route
+1. Run `php tests/chunk-7.4-verify.php` — tests 12-13
+2. Verify `POST /admin/content/preview-pen` accepts `pen_page` JSON, merges with design system, returns `{success, html, css}`
+
+### CR4: Generator template and JS
+1. Run `php tests/chunk-7.4-verify.php` — tests 14-15
+2. Visit `/admin/generator` — verify "Visual Design" mode button appears alongside HTML Editor and Page Builder
+3. Select "Visual Design" mode — verify chat and preview behave correctly
+
+## Test Group CS: AI Design Pipeline — Rendering & Integration (Chunk 7.4)
+
+### CS1: Design file save and reload
+1. Run `php tests/chunk-7.4-verify.php` — test 16
+2. Verify `.pen` file saved to `designs/pages/` directory is valid JSON and re-convertible
+
+### CS2: PenConverter renders assembled design document
+1. Run `php tests/chunk-7.4-verify.php` — test 17
+2. Verify assembled document (design system + page refs) converts to HTML containing overridden text
+
+### CS3: Content CRUD persists design_file
+1. Run `php tests/chunk-7.4-verify.php` — test 18
+2. Verify inserting content with `editor_mode: 'design'` and `design_file: 'pages/test.pen'` persists correctly
+
+### CS4: Descendants overrides with path-based keys
+1. Run `php tests/chunk-7.4-verify.php` — test 19
+2. Verify `hero-heading` (direct child) override works
+3. Verify `hero-cta/hero-cta-text` (nested child) override works
+4. Verify default text is replaced in all cases
+
+### CS5: Full pipeline integration
+1. Run `php tests/chunk-7.4-verify.php` — test 20
+2. Verify complete flow: format components → generate prompts → parse AI output → assemble document → convert to HTML → save to disk → reload and re-convert
+
+## Quick Checklist — Chunk 7.4
+
+| Test | Description | ☐ |
+|----|------|-------|
+| CQ1 | Migration files and design_file column | ☐ |
+| CQ2 | Design prompts include components | ☐ |
+| CQ3 | Slot paths use `/` for nesting | ☐ |
+| CR1 | parseGeneratedContent design mode | ☐ |
+| CR2 | ContentController design_file support | ☐ |
+| CR3 | preview-pen endpoint works | ☐ |
+| CR4 | Visual Design mode in generator UI | ☐ |
+| CS1 | Design file save/reload cycle | ☐ |
+| CS2 | Assembled doc renders correctly | ☐ |
+| CS3 | design_file persists in DB | ☐ |
+| CS4 | Path-based descendants overrides | ☐ |
+| CS5 | Full pipeline integration | ☐ |
+
+## Test Group CT: Admin Integration — Design Editor Tab (Chunk 7.5)
+
+### CT1: Content editor shows "Design Editor" radio option
+1. Navigate to `/admin/content/create?type=page`
+2. Verify three radio buttons: "HTML Editor", "Page Builder", "Design Editor"
+3. Default should be "HTML Editor" (checked)
+4. Clicking each radio shows the correct panel and hides others
+
+### CT2: Design editor panel loads with all controls
+1. Navigate to `/admin/content/create?type=page`
+2. Select "Design Editor" radio
+3. Verify the design editor panel appears with: file selector dropdown, new file name input, Re-convert button, "Open Full Editor" link, Pencil editor iframe, preview iframe
+4. Verify status shows "Loading..." then "Ready" after editor initializes
+
+### CT3: Design file selector works
+1. On the content editor, switch to Design Editor mode
+2. Select an existing `.pen` file from the dropdown
+3. Verify the editor iframe loads with the selected file
+4. Select "-- New Design --" and type a filename
+5. Verify the hidden `design_file` input updates
+
+### CT4: Re-convert button converts design to HTML
+1. Open an existing content item with `editor_mode=design` and a valid `design_file`
+2. Click "Re-convert to HTML"
+3. Verify button shows "Converting..." during operation
+4. Verify preview iframe refreshes
+5. Verify body textarea is updated with converted HTML
+6. Verify status shows "Converted!"
+
+## Test Group CU: Design File Browser (Chunk 7.5)
+
+### CU1: Design file browser page
+1. Navigate to `/admin/design/browser`
+2. Verify page shows "Design Files" heading
+3. Verify grid of design file cards (if any `.pen` files exist)
+4. Each card shows: thumbnail preview iframe, file name, modification date, size
+
+### CU2: Design file actions
+1. On the browser page, click "Edit" on a design card
+2. Verify it opens `/admin/design/editor?file={path}`
+3. Click "Duplicate" on a design card
+4. Enter a new name in the prompt dialog
+5. Verify new file appears after page reload
+6. Click "Delete" on a design card (one not used by content)
+7. Confirm deletion, verify file removed after reload
+
+### CU3: Delete protection for referenced files
+1. Create content with `editor_mode=design` pointing to a `.pen` file
+2. Try to delete that `.pen` file via the browser
+3. Verify error message about content references
+
+## Test Group CV: Admin Integration — Routes & Navigation (Chunk 7.5)
+
+### CV1: Sidebar navigation
+1. Verify "Design Files" link appears in the sidebar under the Design section
+2. Click the link, verify it navigates to `/admin/design/browser`
+3. Verify the link shows active state when on the browser page
+
+### CV2: Reconvert endpoint
+1. Create content with design mode and a `.pen` file
+2. POST to `/admin/content/{id}/reconvert` with `{"design_file":"filename.pen","csrf_token":"..."}`
+3. Verify response contains `success:true`, `html`, and `css`
+4. Verify content body in DB is updated with converted HTML
+
+### CV3: Form submit saves design file first
+1. Edit content in design mode with a loaded editor
+2. Click "Update" button
+3. Verify the form submission is intercepted, design file is saved via bridge first, then form submits normally
+
+## Quick Checklist — Chunk 7.5
+
+| Test | Description | ☐ |
+|----|------|-------|
+| CT1 | Design Editor radio in content editor | ☐ |
+| CT2 | Design editor panel controls | ☐ |
+| CT3 | Design file selector | ☐ |
+| CT4 | Re-convert button | ☐ |
+| CU1 | Design file browser page | ☐ |
+| CU2 | Design file CRUD actions | ☐ |
+| CU3 | Delete protection | ☐ |
+| CV1 | Sidebar navigation | ☐ |
+| CV2 | Reconvert endpoint | ☐ |
+| CV3 | Form submit intercept | ☐ |
+
+## Test Group CW: Design System Settings (Chunk 7.6)
+
+### CW1: Design System section in Settings
+1. Navigate to `/admin/settings`
+2. Verify "Design System" section appears between "Contact Form" and "AI Assistant"
+3. Verify "Active Design System" dropdown lists available `.pen` files from `designs/`
+4. Verify "Default Theme" dropdown with Light/Dark options
+5. Verify "Show theme toggle button on public site" checkbox
+
+### CW2: Design token overrides
+1. With a valid `.pen` design system file selected, verify design token fields appear
+2. Verify color-type variables show a color picker + text input
+3. Verify placeholder text shows the default value from the `.pen` file
+4. Enter an override value (e.g., change `--primary` to `#ff0000`)
+5. Save settings
+6. Reload page — verify override is preserved in the form field
+
+### CW3: Variable override CSS injection
+1. Set a variable override in settings (e.g., `--primary: #ff0000`)
+2. Visit a public page that uses a `.pen`-based design file
+3. Inspect the page source — verify a second `:root` block with the override
+4. Verify elements using `var(--primary)` reflect the new color
+
+## Test Group CX: Theme Switching (Chunk 7.6)
+
+### CX1: Theme toggle button
+1. Visit the public site — verify theme toggle button appears in the header (moon icon)
+2. Click the toggle — verify page switches to dark theme (background darkens, icon changes to sun)
+3. Click again — verify page switches back to light theme
+4. Reload the page — verify the theme persists (stored in localStorage)
+
+### CX2: Theme query parameter
+1. Visit `http://localhost:8000/?theme=dark`
+2. Verify `data-theme-mode="dark"` on `<html>` and `<body>`
+3. Verify dark theme CSS applied (dark background, light text)
+
+### CX3: Per-page theme override
+1. Edit a content item in `/admin/content/{id}/edit`
+2. In the sidebar, find "Theme Override" dropdown
+3. Select "Dark" and save
+4. Visit the page on the public site
+5. Verify `data-theme-mode="dark"` is set regardless of user preference
+6. Verify `data-theme-override="dark"` attribute on `<body>`
+7. Verify theme toggle button click does not change theme (page override takes priority)
+8. Visit a different page — verify it uses user preference or site default
+
+### CX4: Disable theme toggle
+1. In `/admin/settings`, uncheck "Show theme toggle button on public site"
+2. Save settings
+3. Visit the public site — verify toggle button is NOT present in the header
+
+## Test Group CY: Layout .pen File Assignment (Chunk 7.6)
+
+### CY1: Layout editor pen file selector
+1. Navigate to `/admin/layouts/create` or `/admin/layouts/{id}/edit`
+2. Verify ".pen Design File (optional)" dropdown appears with "None" and available `.pen` files
+3. Select a `.pen` file, save the layout
+4. Re-edit the layout — verify the selection is preserved
+
+### CY2: Dark theme CSS on public site
+1. Visit the public site with dark theme active
+2. Verify site header has dark background
+3. Verify site footer has dark background
+4. Verify navigation links are visible (light colored)
+5. Verify post cards have dark background and visible borders
+6. Verify form inputs have dark background and light text
+
+## Quick Checklist — Chunk 7.6
+
+| Test | Description | ☐ |
+|----|------|-------|
+| CW1 | Design System section in Settings | ☐ |
+| CW2 | Design token overrides | ☐ |
+| CW3 | Variable override CSS injection | ☐ |
+| CX1 | Theme toggle button | ☐ |
+| CX2 | Theme query parameter | ☐ |
+| CX3 | Per-page theme override | ☐ |
+| CX4 | Disable theme toggle | ☐ |
+| CY1 | Layout editor pen file selector | ☐ |
+| CY2 | Dark theme CSS on public site | ☐ |
+
+---
+
+## Test Group CZ: Contact Submissions Admin UI (Chunk 8.1)
+
+### CZ1: Messages link in admin sidebar
+1. Log in to the admin panel
+2. **Verify**: "Messages" link with envelope icon appears in the System section of the sidebar, between Users and Settings
+3. Click "Messages" — navigates to `/admin/contact-submissions`
+
+### CZ2: Empty contact submissions list
+1. Navigate to `/admin/contact-submissions`
+2. **Verify**: Page shows "Messages" heading
+3. **Verify**: Empty state message "No contact form submissions yet." is displayed (if no submissions exist)
+
+### CZ3: Contact submissions list with data
+1. Submit the contact form on the public site at `/contact` (name, email, subject, message)
+2. Navigate to `/admin/contact-submissions`
+3. **Verify**: Submission appears in the table with name, email, subject, message preview (truncated to 80 chars), and date
+4. **Verify**: "View" and "Delete" action buttons are present
+
+### CZ4: View single submission
+1. Click "View" on a submission in the list
+2. **Verify**: Detail page shows full name, email (mailto link), subject, IP address, date, and full message body
+3. **Verify**: "Back to Messages" button returns to the list
+4. **Verify**: "Delete Message" button is present with confirmation dialog
+
+### CZ5: Delete submission
+1. Click "Delete" on a submission (either from list or detail page)
+2. **Verify**: Browser confirmation dialog appears
+3. Confirm deletion
+4. **Verify**: Redirected to submission list with "Message deleted." success flash
+5. **Verify**: The deleted submission no longer appears in the list
+
+## Test Group DA: Error Handling & Logging (Chunk 8.1)
+
+### DA1: Error page renders on server error
+1. Trigger a server error (e.g., corrupt a database query temporarily)
+2. **Verify**: Public pages show a friendly "500 — Server Error" page with "Return to homepage" link
+3. **Verify**: No stack trace or technical details are shown (debug=false)
+4. **Verify**: `storage/logs/litecms.log` contains an [ERROR] log entry with the exception details
+
+### DA2: Debug mode shows error details
+1. Set `debug=true` in `config/app.php`
+2. Trigger a server error
+3. **Verify**: Error page shows the exception message
+4. Set `debug=false` after testing
+
+### DA3: Logger writes to file
+1. Check `storage/logs/litecms.log` after normal operation
+2. **Verify**: Log file exists in `storage/logs/`
+3. **Verify**: Log entries have format `[YYYY-MM-DD HH:MM:SS] [LEVEL] message {context}`
+
+## Test Group DB: Documentation & Final Polish (Chunk 8.1)
+
+### DB1: README.md exists and is complete
+1. Open `README.md` at the project root
+2. **Verify**: Contains Features, Requirements, Installation, First-Time Setup, Usage, Database, and File Structure sections
+3. **Verify**: Installation steps are clear and correct
+
+### DB2: Email notification on contact form
+1. In `/admin/settings`, set a notification email in the Contact Form section
+2. Submit the contact form on the public site
+3. **Verify**: If mail server is configured, an email is sent to the notification address
+4. **Verify**: If mail() fails, the submission is still saved and no error is shown to the user
+
+## Quick Checklist — Chunk 8.1
+
+| Test | Description | ☐ |
+|----|------|-------|
+| CZ1 | Messages link in admin sidebar | ☐ |
+| CZ2 | Empty contact submissions list | ☐ |
+| CZ3 | Contact submissions list with data | ☐ |
+| CZ4 | View single submission | ☐ |
+| CZ5 | Delete submission | ☐ |
+| DA1 | Error page renders on server error | ☐ |
+| DA2 | Debug mode shows error details | ☐ |
+| DA3 | Logger writes to file | ☐ |
+| DB1 | README.md exists and is complete | ☐ |
+| DB2 | Email notification on contact form | ☐ |

@@ -59,31 +59,78 @@ class App
 
     public function run(Request $request): void
     {
-        $match = $this->router->dispatch($request->method(), $request->uri());
+        try {
+            $match = $this->router->dispatch($request->method(), $request->uri());
 
-        if ($match === null) {
-            $controller = new \App\Templates\FrontController($this);
-            $response = $controller->notFound($request);
-            $response->send();
-            return;
-        }
-
-        $handler = $match['handler'];
-        $params = $match['params'];
-
-        // Build the final handler callable
-        $finalHandler = function (Request $req) use ($handler, $params): Response {
-            if (is_array($handler)) {
-                // [ControllerClass, 'method'] — instantiate with App instance
-                $controller = new $handler[0]($this);
-                return $controller->{$handler[1]}($req, ...$params);
+            if ($match === null) {
+                $controller = new \App\Templates\FrontController($this);
+                $response = $controller->notFound($request);
+                $response->send();
+                return;
             }
 
-            // Closure handler
-            return $handler($req, ...$params);
-        };
+            $handler = $match['handler'];
+            $params = $match['params'];
 
-        $response = Middleware::run($request, $this->middlewares, $finalHandler);
+            // Build the final handler callable
+            $finalHandler = function (Request $req) use ($handler, $params): Response {
+                if (is_array($handler)) {
+                    // [ControllerClass, 'method'] — instantiate with App instance
+                    $controller = new $handler[0]($this);
+                    return $controller->{$handler[1]}($req, ...$params);
+                }
+
+                // Closure handler
+                return $handler($req, ...$params);
+            };
+
+            $response = Middleware::run($request, $this->middlewares, $finalHandler);
+            $response->send();
+        } catch (\Throwable $e) {
+            Logger::error('Uncaught exception: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            $this->renderErrorPage($request, $e);
+        }
+    }
+
+    private function renderErrorPage(Request $request, \Throwable $e): void
+    {
+        $isAdmin = str_starts_with($request->uri(), '/admin');
+        $debug = Config::getBool('debug', false);
+
+        try {
+            if ($isAdmin) {
+                $body = '<h1>Error</h1>';
+                $body .= '<p>An unexpected error occurred. The error has been logged.</p>';
+                if ($debug) {
+                    $body .= '<pre>' . htmlspecialchars($e->getMessage() . "\n" . $e->getTraceAsString(), ENT_QUOTES, 'UTF-8') . '</pre>';
+                }
+                $response = Response::html($body, 500);
+            } else {
+                $data = [
+                    'title' => 'Error',
+                    'errorCode' => '500',
+                    'errorTitle' => 'Server Error',
+                    'errorMessage' => 'Something went wrong. Please try again later.',
+                ];
+                if ($debug) {
+                    $data['errorMessage'] = $e->getMessage();
+                }
+                $html = $this->template->render('public/error', $data);
+                $response = Response::html($html, 500);
+            }
+        } catch (\Throwable $renderError) {
+            Logger::error('Error page render failed: ' . $renderError->getMessage());
+            $response = Response::html(
+                '<h1>500 Internal Server Error</h1><p>An unexpected error occurred.</p>',
+                500
+            );
+        }
+
         $response->send();
     }
 }

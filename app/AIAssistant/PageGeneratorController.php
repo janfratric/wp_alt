@@ -8,10 +8,12 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Auth\Session;
 use App\Database\QueryBuilder;
+use App\PageBuilder\PenConverter;
 
 class PageGeneratorController
 {
     private App $app;
+    private ?array $designSystemCache = null;
 
     public function __construct(App $app)
     {
@@ -115,7 +117,22 @@ class PageGeneratorController
         $typeFields = $this->getContentTypeFields($contentType);
         $siteName = Config::getString('site_name', 'LiteCMS');
 
-        if ($editorMode === 'elements') {
+        if ($editorMode === 'design') {
+            $designSystemDoc = $this->getDesignSystemDocument();
+            $componentSummary = GeneratorPrompts::formatDesignSystemComponents($designSystemDoc);
+
+            if ($step === 'generating') {
+                $imageUrls = $this->collectImageUrls($existingMessages, $attachments);
+                $systemPrompt = GeneratorPrompts::penDesignGenerationPrompt(
+                    $siteName, $contentType, $typeFields, $componentSummary,
+                    $designSystemDoc['variables'] ?? [], $imageUrls
+                );
+            } else {
+                $systemPrompt = GeneratorPrompts::penDesignGatheringPrompt(
+                    $siteName, $existingPages, $typeFields, $componentSummary
+                );
+            }
+        } elseif ($editorMode === 'elements') {
             $catalogueElements = QueryBuilder::query('elements')
                 ->select()
                 ->where('status', 'active')
@@ -159,7 +176,9 @@ class PageGeneratorController
         $generated = null;
 
         if ($step === 'generating') {
-            if ($editorMode === 'elements') {
+            if ($editorMode === 'design') {
+                $generated = $this->parseGeneratedContent($aiContent, false, true);
+            } elseif ($editorMode === 'elements') {
                 $generated = $this->parseGeneratedContent($aiContent, true);
             } else {
                 $generated = $this->parseGeneratedContent($aiContent);
@@ -201,8 +220,8 @@ class PageGeneratorController
 
         $editorMode = $data['editor_mode'] ?? 'html';
 
-        // Element mode doesn't require body
-        if ($editorMode === 'elements') {
+        // Element and design modes don't require body
+        if ($editorMode === 'elements' || $editorMode === 'design') {
             if (!is_array($data) || empty(trim($data['title'] ?? ''))) {
                 return Response::json(['success' => false, 'error' => 'Title is required.'], 400);
             }
@@ -238,6 +257,45 @@ class PageGeneratorController
 
         if ($editorMode === 'elements') {
             $contentData['editor_mode'] = 'elements';
+        } elseif ($editorMode === 'design' && !empty($data['pen_page']) && is_array($data['pen_page'])) {
+            $contentData['editor_mode'] = 'design';
+
+            // Load design system
+            $designSystemDoc = $this->getDesignSystemDocument();
+
+            // Assemble full .pen document
+            $fullDoc = [
+                'version'   => '2.7',
+                'variables' => $designSystemDoc['variables'] ?? [],
+                'children'  => array_merge(
+                    $designSystemDoc['children'] ?? [],
+                    [$data['pen_page']]
+                ),
+            ];
+
+            // Save .pen file to disk
+            $designFilePath = 'pages/' . $slug . '.pen';
+            $rootDir = dirname(__DIR__, 2);
+            $fullPath = $rootDir . '/designs/' . $designFilePath;
+            $dir = dirname($fullPath);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            file_put_contents(
+                $fullPath,
+                json_encode($fullDoc, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
+                LOCK_EX
+            );
+
+            $contentData['design_file'] = $designFilePath;
+
+            // Convert to HTML for fast public rendering
+            try {
+                $result = PenConverter::convertDocument($fullDoc);
+                $contentData['body'] = $result['html'];
+            } catch (\Throwable $e) {
+                $contentData['body'] = '<!-- Design conversion pending -->';
+            }
         }
 
         $id = QueryBuilder::query('content')->insert($contentData);
@@ -521,7 +579,7 @@ class PageGeneratorController
         return $slug;
     }
 
-    private function parseGeneratedContent(string $aiResponse, bool $elementMode = false): ?array
+    private function parseGeneratedContent(string $aiResponse, bool $elementMode = false, bool $isDesign = false): ?array
     {
         $text = trim($aiResponse);
 
@@ -534,6 +592,19 @@ class PageGeneratorController
         $parsed = json_decode($text, true);
         if (!is_array($parsed) || empty($parsed['title'])) {
             return null;
+        }
+
+        if ($isDesign) {
+            return [
+                'title'            => $parsed['title'],
+                'slug'             => $parsed['slug'] ?? '',
+                'excerpt'          => $parsed['excerpt'] ?? '',
+                'meta_title'       => $parsed['meta_title'] ?? $parsed['title'],
+                'meta_description' => $parsed['meta_description'] ?? '',
+                'editor_mode'      => 'design',
+                'pen_page'         => $parsed['pen_page'] ?? null,
+                'custom_fields'    => $parsed['custom_fields'] ?? [],
+            ];
         }
 
         if ($elementMode) {
@@ -571,6 +642,29 @@ class PageGeneratorController
             'meta_description' => $parsed['meta_description'] ?? '',
             'custom_fields'    => $parsed['custom_fields'] ?? [],
         ];
+    }
+
+    /**
+     * Load the design system document from disk (cached per request).
+     */
+    private function getDesignSystemDocument(): array
+    {
+        if ($this->designSystemCache !== null) {
+            return $this->designSystemCache;
+        }
+
+        $rootDir = dirname(__DIR__, 2);
+        $path = $rootDir . '/designs/litecms-system.pen';
+
+        if (!file_exists($path)) {
+            throw new \RuntimeException('Design system not found: designs/litecms-system.pen');
+        }
+
+        $json = file_get_contents($path);
+        $doc = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        $this->designSystemCache = $doc;
+
+        return $doc;
     }
 
     private function withSecurityHeaders(Response $response): Response

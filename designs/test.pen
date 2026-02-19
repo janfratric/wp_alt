@@ -4,12 +4,12 @@
     {
       "type": "frame",
       "id": "045W3",
-      "x": -3,
-      "y": -199,
+      "x": -94,
+      "y": -279,
       "name": "Frame 1",
       "clip": true,
-      "width": 1227,
-      "height": 711,
+      "width": 1055,
+      "height": 611,
       "fill": "#FFFFFF",
       "layout": "none",
       "children": [

@@ -55,12 +55,17 @@
                                <?= ($content['editor_mode'] ?? 'html') === 'elements' ? 'checked' : '' ?>>
                         <span>Page Builder</span>
                     </label>
+                    <label class="pb-mode-option">
+                        <input type="radio" name="editor_mode" value="design"
+                               <?= ($content['editor_mode'] ?? 'html') === 'design' ? 'checked' : '' ?>>
+                        <span>Design Editor</span>
+                    </label>
                 </div>
             </div>
 
             <!-- HTML Editor Panel (visible when editor_mode = html) -->
             <div id="html-editor-panel"
-                 class="<?= ($content['editor_mode'] ?? 'html') === 'elements' ? 'hidden' : '' ?>">
+                 class="<?= ($content['editor_mode'] ?? 'html') !== 'html' ? 'hidden' : '' ?>">
                 <div class="form-group">
                     <label for="body">Body</label>
                     <textarea id="body" name="body" rows="20"><?= $content['body'] ?></textarea>
@@ -91,6 +96,64 @@
                 </div>
 
                 <input type="hidden" id="elements-json-input" name="elements_json" value="">
+            </div>
+
+            <!-- Design Editor Panel (visible when editor_mode = design) -->
+            <div id="design-editor-panel"
+                 class="<?= ($content['editor_mode'] ?? 'html') !== 'design' ? 'hidden' : '' ?>">
+
+                <div class="design-mode-toolbar">
+                    <div class="design-file-selector">
+                        <label for="design-file-select">Design File:</label>
+                        <select id="design-file-select" class="form-control form-control-sm">
+                            <option value="__new__">-- New Design --</option>
+                            <?php foreach ($designFiles ?? [] as $df): ?>
+                            <option value="<?= $this->e($df['path']) ?>"
+                                <?= ($designFile ?? '') === $df['path'] ? 'selected' : '' ?>>
+                                <?= $this->e($df['name']) ?> (<?= $this->e($df['path']) ?>)
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="text" id="design-new-name"
+                               class="form-control form-control-sm"
+                               placeholder="my-design.pen"
+                               style="<?= ($designFile ?? '') ? 'display:none;' : '' ?>">
+                    </div>
+
+                    <div class="design-mode-actions">
+                        <button type="button" id="design-reconvert-btn" class="btn btn-sm btn-primary">
+                            Re-convert to HTML
+                        </button>
+                        <a href="/admin/design/editor?file=<?= $this->e($designFile ?? '') ?>"
+                           target="_blank" class="btn btn-sm" id="design-open-full">
+                            Open Full Editor
+                        </a>
+                        <span class="design-status" id="design-status">Ready</span>
+                    </div>
+                </div>
+
+                <!-- Split view: Editor + Preview -->
+                <div class="design-editor-split">
+                    <div class="design-editor-pane">
+                        <iframe id="design-editor-iframe"
+                                class="design-editor-iframe"
+                                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-downloads"
+                                allowfullscreen></iframe>
+                    </div>
+                    <div class="design-preview-pane">
+                        <div class="design-preview-header">Preview</div>
+                        <iframe id="design-preview-frame"
+                                class="design-preview-iframe"
+                                <?php if ($designFile ?? ''): ?>
+                                src="/admin/design/preview?path=<?= $this->e($designFile) ?>"
+                                <?php endif; ?>
+                                sandbox="allow-scripts allow-same-origin"
+                        ></iframe>
+                    </div>
+                </div>
+
+                <input type="hidden" name="design_file" id="design-file-input"
+                       value="<?= $this->e($designFile ?? '') ?>">
             </div>
 
             <!-- Element Picker Modal -->
@@ -240,6 +303,22 @@
                                value="<?= (int)($content['sort_order'] ?? 0) ?>" min="0">
                     </div>
 
+                    <div class="form-group">
+                        <label for="theme_override">Theme Override</label>
+                        <select name="theme_override" id="theme_override">
+                            <option value="" <?= empty($content['theme_override'] ?? '') ? 'selected' : '' ?>>
+                                Site Default
+                            </option>
+                            <option value="light" <?= ($content['theme_override'] ?? '') === 'light' ? 'selected' : '' ?>>
+                                Light
+                            </option>
+                            <option value="dark" <?= ($content['theme_override'] ?? '') === 'dark' ? 'selected' : '' ?>>
+                                Dark
+                            </option>
+                        </select>
+                        <small>Force a specific theme for this page.</small>
+                    </div>
+
                     <?php if (!empty($layoutTemplates)): ?>
                     <div class="form-group">
                         <label for="layout_template_id">Layout</label>
@@ -377,6 +456,7 @@
 <script src="/assets/js/page-builder.js"></script>
 <script src="/assets/js/page-builder-init.js"></script>
 <script src="/assets/js/page-styles-init.js"></script>
+<script src="/assets/js/design-mode-init.js"></script>
 <script src="/assets/js/editor.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>

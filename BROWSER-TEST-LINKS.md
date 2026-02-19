@@ -14,7 +14,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 
 ---
 
-## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2 + 5.3 + 6.1 + 6.2 + 6.3 + 6.4 + 7.1 + 7.2 + 7.3)
+## Available Pages (Chunks 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 2.4 + 3.1 + 3.2 + 4.1 + 4.2 + 5.1 + 5.2 + 5.3 + 6.1 + 6.2 + 6.3 + 6.4 + 7.1 + 7.2 + 7.3 + 7.4 + 7.5 + 7.6 + 8.1)
 
 | # | URL | Expected Result |
 |---|-----|-----------------|
@@ -30,7 +30,7 @@ This starts PHP's built-in development server with `public/` as the document roo
 | 9 | [http://localhost:8000/admin/users](http://localhost:8000/admin/users) | User list — searchable table with username, email, role badge, created date, edit/delete actions, pagination, and "+ New User" button. Admin-only (editors get 403) |
 | 9a | [http://localhost:8000/admin/users/create](http://localhost:8000/admin/users/create) | Create user form — username, email, role select, password fields. Admin-only |
 | 9b | [http://localhost:8000/admin/users/1/edit](http://localhost:8000/admin/users/1/edit) | Edit user form — pre-filled fields, `_method=PUT`, current password required for own password change, role field disabled when editing self |
-| 10 | [http://localhost:8000/admin/settings](http://localhost:8000/admin/settings) | Settings page — six sections: General (site name, URL, tagline, timezone, items per page), SEO (meta description, OG image), Cookie Consent & Analytics (enable banner, consent text, privacy link, enable GA, measurement ID), Contact Form (notification email), AI Assistant (API key, model, parameters), Advanced (registration, maintenance mode). Admin-only; DB settings override file config; API key stored encrypted |
+| 10 | [http://localhost:8000/admin/settings](http://localhost:8000/admin/settings) | Settings page — seven sections: General (site name, URL, tagline, timezone, items per page), SEO (meta description, OG image), Cookie Consent & Analytics (enable banner, consent text, privacy link, enable GA, measurement ID), Contact Form (notification email), Design System (active .pen file selector, default theme, toggle visibility, design token overrides with color pickers), AI Assistant (API key, model, parameters), Advanced (registration, maintenance mode). Admin-only; DB settings override file config; API key stored encrypted |
 | 11 | [http://localhost:8000/blog](http://localhost:8000/blog) | Blog index — paginated listing of published posts with author, date, excerpts. Pagination via `?page=N` |
 | 11a | [http://localhost:8000/blog/hello-world](http://localhost:8000/blog/hello-world) | Single blog post — full post content with author name, date, featured image, and article-type OG tags |
 | 12 | [http://localhost:8000/about](http://localhost:8000/about) | Single page — renders published page by slug with SEO meta tags (create an "about" page first via admin) |
@@ -42,7 +42,8 @@ This starts PHP's built-in development server with `public/` as the document roo
 | 17 | [http://localhost:8000/admin/content/create?type=products](http://localhost:8000/admin/content/create?type=products) | Content editor with custom type — type dropdown shows "Products" selected, custom fields section below excerpt (after creating a "Products" content type) |
 | 18 | [http://localhost:8000/products](http://localhost:8000/products) | Custom type archive — paginated listing of published "Products" content items (requires has_archive enabled and published items) |
 | 18a | [http://localhost:8000/products/widget-pro](http://localhost:8000/products/widget-pro) | Single custom type item — renders published content by slug under the custom type URL pattern |
-| 19 | [http://localhost:8000/admin/generator](http://localhost:8000/admin/generator) | AI Page Generator — 4-step wizard (Setup → Describe → Preview → Done) with content type selector, editor mode toggle (HTML/Elements), chat interface, preview pane, and create buttons |
+| 19 | [http://localhost:8000/admin/generator](http://localhost:8000/admin/generator) | AI Page Generator — 4-step wizard (Setup → Describe → Preview → Done) with content type selector, editor mode toggle (HTML/Elements/Visual Design), chat interface, preview pane, and create buttons |
+| 19a | `POST /admin/content/preview-pen` | JSON endpoint — accepts `pen_page` or `pen_document` JSON, merges with design system, converts via PenConverter, returns `{"success":true,"html":"...","css":"..."}` |
 | 20 | [http://localhost:8000/admin/elements/1/edit](http://localhost:8000/admin/elements/1/edit) | Element editor with AI Assistant — "AI Assistant" toggle button in header opens chat panel as third column; chat supports Apply HTML, Apply CSS, Apply Both, and Copy actions |
 | 21 | [http://localhost:8000/admin/element-proposals](http://localhost:8000/admin/element-proposals) | Element proposals list — filter tabs (Pending/Approved/Rejected), proposal cards with name, category, description, collapsible HTML/CSS preview, approve/reject buttons |
 | 22 | [http://localhost:8000/admin/design/editor](http://localhost:8000/admin/design/editor) | Design Editor — Pencil visual editor embedded in an iframe with file selector toolbar, new file input, loading overlay, and status indicator. Figma-like canvas for creating/editing `.pen` design files |
@@ -50,6 +51,13 @@ This starts PHP's built-in development server with `public/` as the document roo
 | 22b | [http://localhost:8000/admin/design/load?path=my-design.pen](http://localhost:8000/admin/design/load?path=my-design.pen) | JSON endpoint — returns `.pen` file content (used by the editor bridge) |
 | 23 | `POST /admin/design/convert` | JSON endpoint — converts a `.pen` file to HTML+CSS. Body: `{"path":"filename.pen"}` or `{"json":"..."}`. Returns `{"success":true,"html":"...","css":"..."}` |
 | 23a | [http://localhost:8000/admin/design/preview?path=my-design.pen](http://localhost:8000/admin/design/preview?path=my-design.pen) | Preview endpoint — renders `.pen` file conversion as standalone HTML page with CSS in `<style>` tag |
+| 24 | [http://localhost:8000/admin/design/browser](http://localhost:8000/admin/design/browser) | Design file browser — grid of `.pen` files with thumbnail preview iframes, file name, modification date, size, and Edit/Duplicate/Delete actions |
+| 24a | [http://localhost:8000/admin/content/create?type=page](http://localhost:8000/admin/content/create?type=page) | Content editor now has three radio modes: "HTML Editor", "Page Builder", "Design Editor". Design Editor mode shows embedded Pencil editor iframe with split preview pane, file selector, re-convert button |
+| 24b | `POST /admin/content/{id}/reconvert` | JSON endpoint — re-converts `.pen` design file to HTML+CSS and updates content body. Body: `{"design_file":"filename.pen","csrf_token":"..."}`. Returns `{"success":true,"html":"...","css":"..."}` |
+| 24c | `POST /admin/design/duplicate` | JSON endpoint — duplicates a `.pen` file. Body: `{"source":"original.pen","target":"copy.pen","csrf_token":"..."}`. Returns `{"success":true}` |
+| 24d | `POST /admin/design/delete` | JSON endpoint — deletes a `.pen` file (blocks if referenced by content). Body: `{"path":"filename.pen","csrf_token":"..."}`. Returns `{"success":true}` or error with usage count |
+| 25 | [http://localhost:8000/admin/contact-submissions](http://localhost:8000/admin/contact-submissions) | Contact submissions list — table of contact form messages with name, email, subject, message preview, date, and View/Delete actions. Pagination if many entries. Empty state message if none |
+| 25a | [http://localhost:8000/admin/contact-submissions/1](http://localhost:8000/admin/contact-submissions/1) | View single submission — detail table showing name, email, subject, IP address, date, and full message body with Delete button |
 
 ### Authentication Flow
 
@@ -314,6 +322,57 @@ The design system file (`designs/litecms-system.pen`) is a component library —
 - **Variable CSS** — PenConverter generates `:root { --primary: #2563eb; ... }` and `[data-theme-mode="dark"] { ... }` blocks
 - **Preview** — load `litecms-system.pen` in the Design Editor (`/admin/design/editor`) to view components visually; preview via `/admin/design/preview?path=litecms-system.pen` (renders empty since all components are reusable templates)
 - **Documentation** — `designs/README.md` documents component IDs, slot nodes, variables, and usage
+
+### AI Design Pipeline (Chunk 7.4)
+
+The AI page generator now supports a "Visual Design" mode that produces `.pen` design files:
+- **Design mode toggle** — third button "Visual Design" alongside "HTML Editor" and "Page Builder" in the generator wizard
+- **Design-aware prompts** — gathering prompt references design system components by name; generation prompt instructs AI to output `pen_page` JSON with `ref` nodes and path-based `descendants` overrides
+- **Component summary** — `formatDesignSystemComponents()` parses the design system file and lists all reusable components with their overridable slot paths (e.g., `hero-cta/hero-cta-text`)
+- **pen_page assembly** — AI outputs only the page frame with component refs; PHP merges with the full design system (variables + component definitions) before saving
+- **Design file persistence** — `.pen` files saved to `designs/pages/{slug}.pen`; path stored in `content.design_file` column
+- **Pre-converted HTML** — PenConverter produces HTML+CSS at save time; HTML stored in `content.body` for fast public rendering
+- **Preview endpoint** (`POST /admin/content/preview-pen`) — converts pen_page JSON on the fly for the generator preview pane
+- **Path-based descendants** — slot overrides use slash-separated paths (e.g., `text-content-wrapper/text-heading`) matching PenConverter's `findDescendant()` traversal
+
+### Admin Integration & Preview (Chunk 7.5)
+
+The Pencil design editor is now wired into the content editing workflow:
+- **Design Editor tab** — third radio option "Design Editor" alongside "HTML Editor" and "Page Builder" in the content editor
+- **Embedded editor + preview** — split-pane view with Pencil editor iframe (60%) and preview iframe (40%) showing converted HTML
+- **File selector** — dropdown to pick existing `.pen` files or type a new filename; hidden `design_file` input synced
+- **Re-convert button** — saves design file via bridge, POSTs to `/admin/content/{id}/reconvert`, updates body textarea and preview
+- **Form submit intercept** — in design mode, form submission is intercepted to save the `.pen` file via bridge before POST
+- **Design file browser** (`/admin/design/browser`) — grid of `.pen` file cards with thumbnail previews, Edit/Duplicate/Delete actions
+- **Duplicate endpoint** (`POST /admin/design/duplicate`) — copies a `.pen` file to a new name
+- **Delete endpoint** (`POST /admin/design/delete`) — deletes a `.pen` file only if no content references it
+- **Reconvert endpoint** (`POST /admin/content/{id}/reconvert`) — re-converts a `.pen` file to HTML+CSS and updates the content body in DB
+- **Design files in editor** — `edit()` and `create()` methods pass `designFiles` list to the template for the file selector
+- **Sidebar navigation** — "Design Files" link in the Design section navigates to the browser page
+
+### Template System & Theme Integration (Chunk 7.6)
+
+The design system now supports site-wide theming and design token management:
+- **Design System settings section** — new section in `/admin/settings` between Contact Form and AI Assistant with active `.pen` file selector, default theme (light/dark), theme toggle visibility checkbox, and design token override fields with color pickers
+- **Design token overrides** — each variable from the active `.pen` design system file is shown with its type, default value as placeholder, and optional override input; color-type variables include a color picker synced to the text input
+- **Variable override injection** — `PenConverter::buildVariableCss()` appends a second `:root` block after the design file's own `:root` with admin-overridden values (CSS cascade: later same-specificity rule wins)
+- **Theme switching** — `theme-toggle.js` IIFE runs immediately to prevent flash of wrong theme; reads theme from page override > localStorage > cookie > site default; sets `data-theme-mode` on `<html>` and `<body>`; toggle button switches sun/moon SVG icons
+- **Theme cascade** — priority: per-page `theme_override` > `?theme=dark` query param > cookie `litecms_theme_mode` > site default from settings
+- **Per-page theme override** — content editor sidebar has "Theme Override" dropdown (Site Default / Light / Dark); stored in `content.theme_override` column; when set, `data-theme-override` attribute on `<body>` disables toggle
+- **Dark theme CSS** — `style.css` includes `[data-theme-mode="dark"]` selectors for site chrome (header, footer, links, nav, forms, post cards) using CSS custom property fallbacks
+- **Layout `.pen` file assignment** — layout editor has `.pen` Design File dropdown to assign a design file as layout template source; stored in `layout_templates.pen_file` column
+- **`PenConverter::extractVariables()`** — new static method reads `.pen` JSON and returns variable metadata (type, themed flag, default/themed values) for settings UI
+
+### Final Polish, Error Handling & Documentation (Chunk 8.1)
+
+This chunk adds the final features and polish:
+- **Logger** (`App\Core\Logger`) — static file-based logger writing to `storage/logs/litecms.log` with auto-rotation at 5 MB (max 3 rotations)
+- **Global error handler** — `App::run()` wraps dispatch in try/catch; uncaught exceptions are logged, user sees a friendly error page (generic message unless `debug=true`)
+- **Error template** (`templates/public/error.php`) — styled error page using the public layout with error code, title, and message
+- **Contact submissions admin UI** (`/admin/contact-submissions`) — list, view, and delete contact form submissions from the admin panel
+- **Messages nav link** — "Messages" link with envelope icon added to admin sidebar in the System section
+- **Email notification** — when `contact_notification_email` setting is configured, sends an email via `mail()` on new contact form submissions; fails silently and logs a warning
+- **README.md** — complete project documentation with features, requirements, installation, first-time setup, usage guide, database info, and file structure
 
 ---
 

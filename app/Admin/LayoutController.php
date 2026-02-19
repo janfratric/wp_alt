@@ -66,20 +66,23 @@ class LayoutController
         }
 
         $elements = $this->getActiveElements();
+        $designFiles = $this->loadDesignFiles();
 
         $html = $this->app->template()->render('admin/layouts/edit', [
-            'title'     => 'Create Layout',
-            'activeNav' => 'layouts',
-            'isNew'     => true,
-            'layout'    => [
+            'title'       => 'Create Layout',
+            'activeNav'   => 'layouts',
+            'isNew'       => true,
+            'layout'      => [
                 'name' => '', 'slug' => '', 'is_default' => '0',
                 'header_visible' => '1', 'header_height' => 'auto',
                 'header_mode' => 'standard', 'header_element_id' => '',
                 'footer_visible' => '1', 'footer_height' => 'auto',
                 'footer_mode' => 'standard', 'footer_element_id' => '',
+                'pen_file' => '',
             ],
-            'elements'  => $elements,
-            'blocks'    => [],
+            'elements'    => $elements,
+            'blocks'      => [],
+            'designFiles' => $designFiles,
         ]);
 
         return $this->withSecurityHeaders(Response::html($html));
@@ -133,6 +136,7 @@ class LayoutController
             'footer_height'     => $data['footer_height'],
             'footer_mode'       => $data['footer_mode'],
             'footer_element_id' => $data['footer_mode'] === 'block' ? ($data['footer_element_id'] ?: null) : null,
+            'pen_file'          => $data['pen_file'] !== '' ? $data['pen_file'] : null,
         ]);
 
         $this->saveTemplateBlocks((int) $newId, $request);
@@ -163,14 +167,16 @@ class LayoutController
 
         $elements = $this->getActiveElements();
         $blocks = $this->loadTemplateBlocks((int) $id);
+        $designFiles = $this->loadDesignFiles();
 
         $html = $this->app->template()->render('admin/layouts/edit', [
-            'title'     => 'Edit: ' . $layout['name'],
-            'activeNav' => 'layouts',
-            'isNew'     => false,
-            'layout'    => $layout,
-            'elements'  => $elements,
-            'blocks'    => $blocks,
+            'title'       => 'Edit: ' . $layout['name'],
+            'activeNav'   => 'layouts',
+            'isNew'       => false,
+            'layout'      => $layout,
+            'elements'    => $elements,
+            'blocks'      => $blocks,
+            'designFiles' => $designFiles,
         ]);
 
         return $this->withSecurityHeaders(Response::html($html));
@@ -236,6 +242,7 @@ class LayoutController
                 'footer_height'     => $data['footer_height'],
                 'footer_mode'       => $data['footer_mode'],
                 'footer_element_id' => $data['footer_mode'] === 'block' ? ($data['footer_element_id'] ?: null) : null,
+                'pen_file'          => $data['pen_file'] !== '' ? $data['pen_file'] : null,
             ]);
 
         $this->saveTemplateBlocks((int) $id, $request);
@@ -359,6 +366,7 @@ class LayoutController
             'footer_height'     => trim((string) $request->input('footer_height', 'auto')),
             'footer_mode'       => trim((string) $request->input('footer_mode', 'standard')),
             'footer_element_id' => trim((string) $request->input('footer_element_id', '')),
+            'pen_file'          => trim((string) $request->input('pen_file', '')),
         ];
     }
 
@@ -473,6 +481,30 @@ class LayoutController
         }
 
         return $layout;
+    }
+
+    /**
+     * Scan designs/ directory for .pen files.
+     */
+    private function loadDesignFiles(): array
+    {
+        $designsDir = dirname(__DIR__, 2) . '/designs';
+        if (!is_dir($designsDir)) {
+            return [];
+        }
+
+        $files = [];
+        $iter = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($designsDir, \FilesystemIterator::SKIP_DOTS)
+        );
+        foreach ($iter as $fi) {
+            if ($fi->getExtension() !== 'pen') continue;
+            $rel = str_replace($designsDir . DIRECTORY_SEPARATOR, '', $fi->getPathname());
+            $rel = str_replace('\\', '/', $rel);
+            $files[] = $rel;
+        }
+        sort($files);
+        return $files;
     }
 
     /**

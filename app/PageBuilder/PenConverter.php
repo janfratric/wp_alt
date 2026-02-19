@@ -18,6 +18,9 @@ class PenConverter
     private int $refDepth = 0;
     private string $parentLayout = 'none';
 
+    /** @var array<string, string> Runtime variable overrides from settings */
+    private array $variableOverrides = [];
+
     private const MAX_REF_DEPTH = 10;
 
     private function __construct(array $document)
@@ -36,7 +39,7 @@ class PenConverter
      * @return array{html: string, css: string}
      * @throws \RuntimeException if file not found or unreadable
      */
-    public static function convertFile(string $penPath): array
+    public static function convertFile(string $penPath, array $variableOverrides = []): array
     {
         if (!file_exists($penPath)) {
             throw new \RuntimeException("PEN file not found: {$penPath}");
@@ -45,7 +48,8 @@ class PenConverter
         if ($contents === false) {
             throw new \RuntimeException("Failed to read PEN file: {$penPath}");
         }
-        return self::convertJson($contents);
+        $document = json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
+        return self::convertDocument($document, $variableOverrides);
     }
 
     /**
@@ -66,13 +70,76 @@ class PenConverter
      * @return array{html: string, css: string}
      * @throws \RuntimeException if document is invalid
      */
-    public static function convertDocument(array $document): array
+    public static function convertDocument(array $document, array $variableOverrides = []): array
     {
         if (!isset($document['children'])) {
             throw new \RuntimeException('Invalid .pen document: missing children');
         }
         $instance = new self($document);
+        if (!empty($variableOverrides)) {
+            $instance->setVariableOverrides($variableOverrides);
+        }
         return $instance->convert();
+    }
+
+    /**
+     * Set runtime variable overrides (from admin settings).
+     * Keys are variable names (without --), values are CSS values.
+     */
+    public function setVariableOverrides(array $overrides): void
+    {
+        $this->variableOverrides = $overrides;
+    }
+
+    /**
+     * Extract variable definitions from a .pen file.
+     * Returns array of variable metadata for settings UI.
+     */
+    public static function extractVariables(string $penPath): array
+    {
+        if (!file_exists($penPath)) {
+            return [];
+        }
+
+        $json = file_get_contents($penPath);
+        $doc = json_decode($json, true);
+        if (!$doc || !is_array($doc)) {
+            return [];
+        }
+
+        $variables = $doc['variables'] ?? [];
+        $result = [];
+
+        foreach ($variables as $name => $def) {
+            $type = $def['type'] ?? 'string';
+            $value = $def['value'] ?? null;
+
+            $entry = [
+                'type' => $type,
+                'themed' => false,
+                'values' => [],
+            ];
+
+            if (is_array($value) && isset($value[0]) && is_array($value[0])) {
+                // Themed variable
+                $entry['themed'] = true;
+                foreach ($value as $v) {
+                    $theme = $v['theme'] ?? [];
+                    $themeKey = empty($theme) ? 'default' : implode('/', array_map(
+                        fn($k, $val) => "{$k}:{$val}",
+                        array_keys($theme),
+                        array_values($theme)
+                    ));
+                    $entry['values'][$themeKey] = $v['value'] ?? '';
+                }
+            } else {
+                $entry['values']['default'] = $value;
+            }
+
+            $result[$name] = $entry;
+        }
+
+        return $result;
     }
 
     // --- Public methods called by PenNodeRenderer ---
@@ -271,6 +338,17 @@ class PenConverter
             $css .= "{$selector} {\n";
             foreach ($vars as $prop => $val) {
                 $css .= "  {$prop}: {$val};\n";
+            }
+            $css .= "}\n";
+        }
+
+        // Apply overrides from settings
+        if (!empty($this->variableOverrides)) {
+            $css .= "/* Settings overrides */\n:root {\n";
+            foreach ($this->variableOverrides as $name => $val) {
+                $safeName = preg_replace('/[^a-zA-Z0-9_-]/', '', $name);
+                $safeVal = str_replace([';', '{', '}', '<', '>'], '', (string) $val);
+                $css .= "  --{$safeName}: {$safeVal};\n";
             }
             $css .= "}\n";
         }

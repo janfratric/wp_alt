@@ -117,9 +117,9 @@ if ($sqlContent !== false &&
 // Test 3: Migration applies — design_file column exists
 // ---------------------------------------------------------------------------
 try {
-    Connection::initialize();
-    $pdo = Connection::get();
-    Migrator::run();
+    $pdo = Connection::getInstance();
+    $migrator = new Migrator($pdo);
+    $migrator->migrate();
 
     $stmt = $pdo->query("PRAGMA table_info(content)");
     $columns = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -482,11 +482,11 @@ try {
                 'hero-heading' => ['content' => 'Render Test Hero'],
             ]],
             ['id' => 'r-text', 'type' => 'ref', 'ref' => 'text-section', 'descendants' => [
-                'text-heading' => ['content' => 'Render Test Section'],
-                'text-body' => ['content' => 'This is render test body content.'],
+                'text-content-wrapper/text-heading' => ['content' => 'Render Test Section'],
+                'text-content-wrapper/text-body' => ['content' => 'This is render test body content.'],
             ]],
             ['id' => 'r-footer', 'type' => 'ref', 'ref' => 'footer-section', 'descendants' => [
-                'footer-copyright' => ['content' => '© 2026 Render Test'],
+                'footer-left/footer-copyright' => ['content' => '© 2026 Render Test'],
             ]],
         ],
     ];
@@ -567,7 +567,7 @@ try {
             ['id' => 'oh', 'type' => 'ref', 'ref' => 'hero-section', 'descendants' => [
                 'hero-heading' => ['content' => 'UNIQUE_OVERRIDE_TITLE_XYZ'],
                 'hero-subheading' => ['content' => 'UNIQUE_OVERRIDE_SUB_ABC'],
-                'hero-cta-text' => ['content' => 'UNIQUE_CTA_BTN'],
+                'hero-cta/hero-cta-text' => ['content' => 'UNIQUE_CTA_BTN'],
             ]],
         ],
     ];
@@ -634,10 +634,10 @@ try {
                     'hero-heading' => ['content' => 'Integration Hero'],
                 ]],
                 ['id' => 'int-text', 'type' => 'ref', 'ref' => 'text-section', 'descendants' => [
-                    'text-heading' => ['content' => 'Integration Section'],
+                    'text-content-wrapper/text-heading' => ['content' => 'Integration Section'],
                 ]],
                 ['id' => 'int-cta', 'type' => 'ref', 'ref' => 'cta-banner', 'descendants' => [
-                    'cta-heading' => ['content' => 'Integration CTA'],
+                    'cta-text-group/cta-heading' => ['content' => 'Integration CTA'],
                 ]],
             ],
         ],

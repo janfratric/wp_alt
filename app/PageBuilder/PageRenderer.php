@@ -397,8 +397,8 @@ class PageRenderer
      * @param string $penFilePath Absolute path to the .pen file.
      * @return array{html: string, css: string}
      */
-    public static function renderFromPen(string $penFilePath): array
+    public static function renderFromPen(string $penFilePath, array $variableOverrides = []): array
     {
-        return PenConverter::convertFile($penFilePath);
+        return PenConverter::convertFile($penFilePath, $variableOverrides);
     }
 }

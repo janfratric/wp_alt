@@ -142,6 +142,13 @@ If relevance is Low, recommend against adding but defer to user decision.
 
 ## Version History
 
+### 2026-02-19 — Major Update: Extended Thinking + Claude 4.x Best Practices
+- Updated `techniques.md`: Added 2 new major sections (Extended Thinking Tips, Claude 4.x Best Practices with 11 sub-techniques)
+- Updated `techniques.md`: Marked Prefill as deprecated on Claude 4.6 with migration strategies
+- Updated `techniques.md`: Enhanced 5 existing sections with Claude 4.x-specific notes
+- Added 2 new authoritative sources (extended-thinking-tips, claude-4-best-practices)
+- Sources fetched: platform.claude.com prompt engineering docs (3 pages)
+
 ### 2026-01-29 — Initial Release
 - Created Prompt Optimizer skill
 - Established core documentation structure

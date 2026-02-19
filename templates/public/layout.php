@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme-mode="<?= $this->e($activeTheme ?? 'light') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,7 +17,7 @@
     <style id="litecms-element-styles"><?= $elementCss ?></style>
 <?php endif; ?>
 </head>
-<body<?php if (!empty($gaId)): ?> data-ga-id="<?= $this->e($gaId) ?>"<?php endif; ?>>
+<body data-theme-mode="<?= $this->e($activeTheme ?? 'light') ?>"<?php if (!empty($themeOverride)): ?> data-theme-override="<?= $this->e($themeOverride) ?>"<?php endif; ?> data-default-theme="<?= $this->e($defaultTheme ?? 'light') ?>"<?php if (!empty($gaId)): ?> data-ga-id="<?= $this->e($gaId) ?>"<?php endif; ?>>
 <?php
     $lt = $layoutTemplate ?? [];
     $headerVisible = ((int)($lt['header_visible'] ?? 1)) === 1;
@@ -51,6 +51,13 @@
                     <li<?= (($title ?? '') === 'Contact') ? ' class="active"' : '' ?>><a href="/contact">Contact</a></li>
                 </ul>
             </nav>
+<?php if ($themeToggleEnabled ?? true): ?>
+                    <button type="button" class="theme-toggle-btn" aria-label="Toggle theme">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                    </button>
+<?php endif; ?>
         </div>
 <?php endif; ?>
     </header>
@@ -81,6 +88,7 @@
 ]) ?>
     <script src="/assets/js/cookie-consent.js"></script>
 <?php endif; ?>
+    <script src="/assets/js/theme-toggle.js"></script>
     <script>
     document.querySelector('.nav-toggle').addEventListener('click', function() {
         var nav = document.querySelector('.site-nav');

@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spolok Liečiteľov Slovenska</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg: #FAF8F4;
+            --surface: #FFFFFF;
+            --surface-warm: #F5F2EC;
+            --text-primary: #2C2C2C;
+            --text-secondary: #6B6B6B;
+            --text-muted: #9A9A9A;
+            --accent: #4A7C59;
+            --accent-light: rgba(74, 124, 89, 0.125);
+            --accent-warm: #C67A52;
+            --border: #E5E2DC;
+            --border-strong: #D0CCC4;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ===== NAVIGATION ===== */
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 120px;
+            height: 80px;
+            background: var(--surface);
+            width: 100%;
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-logo i {
+            color: var(--accent);
+            width: 32px;
+            height: 32px;
+        }
+
+        .nav-logo span {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: -0.3px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 36px;
+        }
+
+        .nav-links a {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--accent);
+            color: #fff;
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-primary-lg {
+            font-size: 16px;
+            padding: 16px 32px;
+            border-radius: 12px;
+        }
+
+        .btn-outline {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: none;
+            color: var(--text-primary);
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 16px;
+            font-weight: 500;
+            padding: 16px 32px;
+            border-radius: 12px;
+            border: 2px solid var(--border-strong);
+            text-decoration: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .btn-outline:hover {
+            border-color: var(--text-secondary);
+        }
+
+        /* ===== HERO ===== */
+        .hero {
+            display: flex;
+            align-items: center;
+            gap: 60px;
+            padding: 80px 120px;
+            width: 100%;
+        }
+
+        .hero-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        .hero-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent-light);
+            border-radius: 20px;
+            padding: 8px 16px;
+            width: fit-content;
+        }
+
+        .hero-tag i {
+            color: var(--accent);
+            width: 16px;
+            height: 16px;
+        }
+
+        .hero-tag span {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--accent);
+        }
+
+        .hero h1 {
+            font-size: 52px;
+            font-weight: 600;
+            line-height: 1.1;
+            letter-spacing: -0.5px;
+            color: var(--text-primary);
+        }
+
+        .hero p {
+            font-size: 18px;
+            font-weight: 400;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        .hero-buttons {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .hero-image {
+            width: 520px;
+            height: 460px;
+            border-radius: 24px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .hero-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* ===== DIVIDER ===== */
+        .divider {
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ===== SECTION HEADER ===== */
+        .section-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .section-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 2px;
+        }
+
+        .section-title {
+            font-size: 40px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            text-align: center;
+        }
+
+        .section-desc {
+            font-size: 17px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            text-align: center;
+        }
+
+        /* ===== ABOUT SECTION ===== */
+        .about {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 48px;
+            padding: 80px 120px;
+        }
+
+        .about-cards {
+            display: flex;
+            gap: 24px;
+            width: 100%;
+        }
+
+        .about-card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 28px;
+        }
+
+        .about-card-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 52px;
+            height: 52px;
+            background: var(--accent-light);
+            border-radius: 12px;
+        }
+
+        .about-card-icon i {
+            color: var(--accent);
+            width: 24px;
+            height: 24px;
+        }
+
+        .about-card h3 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .about-card p {
+            font-size: 15px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* ===== SERVICES SECTION ===== */
+        .services {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 48px;
+            padding: 80px 120px;
+            background: var(--surface-warm);
+        }
+
+        .services-grid {
+            display: flex;
+            gap: 24px;
+            width: 100%;
+        }
+
+        .service-card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--surface);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .service-card-img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+        }
+
+        .service-card-content {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .service-card-content h3 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .service-card-content p {
+            font-size: 14px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* ===== TESTIMONIALS ===== */
+        .testimonials {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 48px;
+            padding: 80px 120px;
+            background: var(--bg);
+        }
+
+        .testimonials-cards {
+            display: flex;
+            gap: 24px;
+            width: 100%;
+        }
+
+        .testimonial-card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 28px;
+        }
+
+        .testimonial-card .quote-icon {
+            color: var(--accent-light);
+            width: 28px;
+            height: 28px;
+        }
+
+        .testimonial-card .quote-text {
+            font-size: 15px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .testimonial-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 22px;
+            object-fit: cover;
+        }
+
+        .testimonial-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .testimonial-info .name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .testimonial-info .role {
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        /* ===== CTA SECTION ===== */
+        .cta-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 32px;
+            padding: 80px 200px;
+            background: var(--accent);
+        }
+
+        .cta-section h2 {
+            font-size: 44px;
+            font-weight: 600;
+            color: #fff;
+            letter-spacing: -0.5px;
+            text-align: center;
+        }
+
+        .cta-section p {
+            font-size: 18px;
+            font-weight: 400;
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+            text-align: center;
+            max-width: 700px;
+        }
+
+        .cta-buttons {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn-white {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #fff;
+            color: var(--accent);
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 16px 32px;
+            border-radius: 12px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-white:hover {
+            opacity: 0.9;
+        }
+
+        .btn-outline-white {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: none;
+            color: #fff;
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 16px;
+            font-weight: 500;
+            padding: 16px 32px;
+            border-radius: 12px;
+            border: 2px solid rgba(255,255,255,0.375);
+            text-decoration: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .btn-outline-white:hover {
+            border-color: rgba(255,255,255,0.6);
+        }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            padding: 60px 120px 40px;
+            background: #2C2C2C;
+        }
+
+        .footer-top {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .footer-brand {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 320px;
+        }
+
+        .footer-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .footer-logo i {
+            color: var(--accent);
+            width: 24px;
+            height: 24px;
+        }
+
+        .footer-logo span {
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .footer-brand p {
+            font-size: 14px;
+            font-weight: 400;
+            color: rgba(255,255,255,0.6);
+            line-height: 1.6;
+        }
+
+        .footer-col {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .footer-col h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .footer-col a,
+        .footer-col p {
+            font-size: 14px;
+            font-weight: 400;
+            color: rgba(255,255,255,0.6);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-col a:hover {
+            color: rgba(255,255,255,0.8);
+        }
+
+        .footer-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.125);
+        }
+
+        .footer-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-bottom p {
+            font-size: 13px;
+            color: rgba(255,255,255,0.4);
+        }
+
+        .footer-social {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .footer-social a {
+            color: rgba(255,255,255,0.6);
+            transition: color 0.2s;
+        }
+
+        .footer-social a:hover {
+            color: rgba(255,255,255,0.9);
+        }
+
+        .footer-social i {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .nav, .hero, .about, .services, .testimonials, .footer {
+                padding-left: 40px;
+                padding-right: 40px;
+            }
+            .cta-section {
+                padding-left: 40px;
+                padding-right: 40px;
+            }
+            .hero {
+                flex-direction: column;
+                height: auto;
+            }
+            .hero-image {
+                width: 100%;
+                height: 360px;
+            }
+            .services-grid {
+                flex-wrap: wrap;
+            }
+            .services-grid .service-card {
+                flex: 1 1 calc(50% - 12px);
+                min-width: 280px;
+            }
+            .testimonials-cards {
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links a:not(:last-child) {
+                display: none;
+            }
+            .hero h1 {
+                font-size: 36px;
+            }
+            .section-title {
+                font-size: 30px;
+            }
+            .about-cards {
+                flex-direction: column;
+            }
+            .services-grid {
+                flex-direction: column;
+            }
+            .services-grid .service-card {
+                flex: 1 1 100%;
+            }
+            .cta-section h2 {
+                font-size: 32px;
+            }
+            .footer-top {
+                flex-direction: column;
+                gap: 32px;
+            }
+            .footer-brand {
+                width: 100%;
+            }
+            .hero-buttons {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav">
+    <div class="nav-logo">
+        <i data-lucide="leaf"></i>
+        <span>Spolok Liečiteľov</span>
+    </div>
+    <div class="nav-links">
+        <a href="#about">O nás</a>
+        <a href="#services">Metódy</a>
+        <a href="#testimonials">Členovia</a>
+        <a href="#contact">Kontakt</a>
+        <a href="#contact" class="btn-primary">Staňte sa členom</a>
+    </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+    <div class="hero-content">
+        <div class="hero-tag">
+            <i data-lucide="heart-pulse"></i>
+            <span>Tradičné liečiteľstvo na Slovensku</span>
+        </div>
+        <h1>Spojení silou prírody a tradície</h1>
+        <p>Sme profesijný spolok liečiteľov, ktorý spája odborníkov na prírodné liečebné metódy. Podporujeme vzdelávanie, výskum a etickú prax v oblasti tradičného liečiteľstva.</p>
+        <div class="hero-buttons">
+            <a href="#contact" class="btn-primary btn-primary-lg">
+                Pridajte sa k nám
+                <i data-lucide="arrow-right" style="width:18px;height:18px;"></i>
+            </a>
+            <a href="#about" class="btn-outline">Zistiť viac</a>
+        </div>
+    </div>
+    <div class="hero-image">
+        <img src="https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=600&h=500&fit=crop" alt="Liečivá záhrada s bylinkárskymi rastlinami">
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- About -->
+<section class="about" id="about">
+    <div class="section-header">
+        <span class="section-label">O NÁS</span>
+        <h2 class="section-title">Naše poslanie</h2>
+        <p class="section-desc">Spolok liečiteľov Slovenska združuje odborníkov na prírodné liečebné metódy s cieľom podporovať zdravie a pohodu ľudí prostredníctvom tradičných aj moderných prístupov.</p>
+    </div>
+    <div class="about-cards">
+        <div class="about-card">
+            <div class="about-card-icon">
+                <i data-lucide="book-open"></i>
+            </div>
+            <h3>Tradícia a múdrosť</h3>
+            <p>Čerpáme zo stáročných skúseností liečiteľov a spájame ich s modernými poznatkami o zdraví.</p>
+        </div>
+        <div class="about-card">
+            <div class="about-card-icon">
+                <i data-lucide="graduation-cap"></i>
+            </div>
+            <h3>Vzdelávanie</h3>
+            <p>Organizujeme kurzy, semináre a konferencie pre liečiteľov aj verejnosť zaujímajúcu sa o prírodné metódy.</p>
+        </div>
+        <div class="about-card">
+            <div class="about-card-icon">
+                <i data-lucide="shield-check"></i>
+            </div>
+            <h3>Etická prax</h3>
+            <p>Dbáme na dodržiavanie etických štandardov a bezpečnosť klientov pri všetkých liečebných postupoch.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Services -->
+<section class="services" id="services">
+    <div class="section-header">
+        <span class="section-label">LIEČEBNÉ METÓDY</span>
+        <h2 class="section-title">Čím sa zaoberáme</h2>
+        <p class="section-desc">Naši členovia praktizujú širokú škálu prírodných liečebných metód, ktoré sa navzájom dopĺňajú a podporujú celostný prístup k zdraviu.</p>
+    </div>
+    <div class="services-grid">
+        <div class="service-card">
+            <img class="service-card-img" src="https://images.unsplash.com/photo-1471193945509-9ad0617afabf?w=400&h=200&fit=crop" alt="Bylinkárstvo">
+            <div class="service-card-content">
+                <h3>Bylinkárstvo</h3>
+                <p>Využitie liečivých bylín a rastlín na podporu zdravia a liečbu rôznych ochorení.</p>
+            </div>
+        </div>
+        <div class="service-card">
+            <img class="service-card-img" src="https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=400&h=200&fit=crop" alt="Akupunktúra">
+            <div class="service-card-content">
+                <h3>Akupunktúra</h3>
+                <p>Tradičná čínska metóda stimulácie bodov na tele na obnovenie energetickej rovnováhy.</p>
+            </div>
+        </div>
+        <div class="service-card">
+            <img class="service-card-img" src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=200&fit=crop" alt="Energetické liečenie">
+            <div class="service-card-content">
+                <h3>Energetické liečenie</h3>
+                <p>Práca s energetickým poľom tela na odstránenie blokád a obnovenie prirodzenej vitality.</p>
+            </div>
+        </div>
+        <div class="service-card">
+            <img class="service-card-img" src="https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?w=400&h=200&fit=crop" alt="Naturopatia">
+            <div class="service-card-content">
+                <h3>Naturopatia</h3>
+                <p>Celostný prístup k zdraviu využívajúci silu prírody — voda, slnko, vzduch a výživa.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Testimonials -->
+<section class="testimonials" id="testimonials">
+    <div class="section-header">
+        <span class="section-label">NAŠI ČLENOVIA</span>
+        <h2 class="section-title">Čo hovoria naši liečitelia</h2>
+    </div>
+    <div class="testimonials-cards">
+        <div class="testimonial-card">
+            <i data-lucide="quote" class="quote-icon"></i>
+            <p class="quote-text">Členstvo v spolku mi otvorilo dvere k novým poznatkom a spolupráci s kolegami z celého Slovenska. Som vďačná za túto komunitu.</p>
+            <div class="testimonial-author">
+                <img class="testimonial-avatar" src="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=88&h=88&fit=crop&crop=face" alt="Mária Kováčová">
+                <div class="testimonial-info">
+                    <span class="name">Mgr. Mária Kováčová</span>
+                    <span class="role">Bylinkárka, Banská Bystrica</span>
+                </div>
+            </div>
+        </div>
+        <div class="testimonial-card">
+            <i data-lucide="quote" class="quote-icon"></i>
+            <p class="quote-text">Spolok mi pomohol získať certifikáciu a dôveru klientov. Etické štandardy, ktoré presadzujeme, sú základom našej práce.</p>
+            <div class="testimonial-author">
+                <img class="testimonial-avatar" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=88&h=88&fit=crop&crop=face" alt="Ján Novák">
+                <div class="testimonial-info">
+                    <span class="name">PhDr. Ján Novák</span>
+                    <span class="role">Naturopat, Bratislava</span>
+                </div>
+            </div>
+        </div>
+        <div class="testimonial-card">
+            <i data-lucide="quote" class="quote-icon"></i>
+            <p class="quote-text">Vďaka spolku som spoznala rovnako zmýšľajúcich ľudí, ktorí veria v silu prírody. Spoločne meníme pohľad na zdravie.</p>
+            <div class="testimonial-author">
+                <img class="testimonial-avatar" src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=88&h=88&fit=crop&crop=face" alt="Elena Horvátová">
+                <div class="testimonial-info">
+                    <span class="name">Bc. Elena Horvátová</span>
+                    <span class="role">Energetická terapeutka, Košice</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="contact">
+    <h2>Pridajte sa k nám</h2>
+    <p>Staňte sa súčasťou najväčšieho spolku liečiteľov na Slovensku. Získajte prístup k vzdelávaniu, certifikáciám a komunite profesionálov.</p>
+    <div class="cta-buttons">
+        <a href="#" class="btn-white">
+            Registrovať sa
+            <i data-lucide="user-plus" style="width:18px;height:18px;"></i>
+        </a>
+        <a href="#" class="btn-outline-white">Kontaktujte nás</a>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-top">
+        <div class="footer-brand">
+            <div class="footer-logo">
+                <i data-lucide="leaf"></i>
+                <span>Spolok Liečiteľov</span>
+            </div>
+            <p>Profesijný spolok liečiteľov Slovenska, združujúci odborníkov na prírodné liečebné metódy od roku 2005.</p>
+        </div>
+        <div class="footer-col">
+            <h4>Navigácia</h4>
+            <a href="#about">O nás</a>
+            <a href="#services">Liečebné metódy</a>
+            <a href="#testimonials">Členovia</a>
+            <a href="#contact">Kontakt</a>
+        </div>
+        <div class="footer-col">
+            <h4>Kontakt</h4>
+            <p>info@spolok-liecitelov.sk</p>
+            <p>+421 2 1234 5678</p>
+            <p>Hlavná 15, 811 01 Bratislava</p>
+        </div>
+    </div>
+    <div class="footer-divider"></div>
+    <div class="footer-bottom">
+        <p>&copy; 2026 Spolok Liečiteľov Slovenska. Všetky práva vyhradené.</p>
+        <div class="footer-social">
+            <a href="#"><i data-lucide="facebook"></i></a>
+            <a href="#"><i data-lucide="instagram"></i></a>
+            <a href="#"><i data-lucide="youtube"></i></a>
+            <a href="#"><i data-lucide="mail"></i></a>
+        </div>
+    </div>
+</footer>
+
+<script>
+    lucide.createIcons();
+</script>
+
+</body>
+</html>

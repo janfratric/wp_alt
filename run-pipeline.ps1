@@ -132,26 +132,172 @@ try {
 
         ">>> Run $run started at $(Get-Date -Format o)" | Out-File $logFile -Encoding utf8
 
+        # Helper: safe property access for StrictMode compatibility
+        function Get-Prop ($obj, [string]$name) {
+            if ($null -eq $obj) { return $null }
+            if ($obj -is [System.Management.Automation.PSCustomObject] -and
+                $obj.PSObject.Properties.Match($name).Count -gt 0) {
+                return $obj.$name
+            }
+            if ($obj -is [hashtable] -and $obj.ContainsKey($name)) {
+                return $obj[$name]
+            }
+            return $null
+        }
+
+        function Truncate ([string]$s, [int]$max) {
+            if ($s.Length -gt $max) { return $s.Substring(0, $max) + "..." }
+            return $s
+        }
+
         & claude @claudeArgs 2>&1 | ForEach-Object {
             $line = $_
             $line | Out-File $logFile -Append -Encoding utf8
-            # Parse stream-json lines for human-readable progress
-            if ($line -match '"type"\s*:\s*"assistant"') {
-                # Assistant text output
-                if ($line -match '"content"\s*:\s*"([^"]*)"') {
-                    Write-Host "  [claude] $($Matches[1])" -ForegroundColor Gray
+
+            # Try parsing as JSON for structured output
+            $json = $null
+            try { $json = $line | ConvertFrom-Json -ErrorAction Stop } catch {}
+
+            if ($null -eq $json) {
+                $trimmed = "$line".Trim()
+                if ($trimmed.Length -gt 0) {
+                    Write-Host "  $trimmed" -ForegroundColor DarkGray
                 }
+                return
             }
-            elseif ($line -match '"tool"\s*:\s*"(\w+)"') {
-                $tool = $Matches[1]
-                $ts = Get-Date -Format "HH:mm:ss"
-                Write-Host "  [$ts] tool: $tool" -ForegroundColor DarkCyan
-            }
-            elseif ($line -match '"type"\s*:\s*"result"') {
-                Write-Host "  [result] Claude finished this turn" -ForegroundColor DarkGray
-            }
-            else {
-                # Log everything else silently (still goes to log file)
+
+            $ts = Get-Date -Format "HH:mm:ss"
+            $msgType = Get-Prop $json "type"
+
+            switch ($msgType) {
+                "assistant" {
+                    $msg = Get-Prop $json "message"
+                    $contentBlocks = Get-Prop $msg "content"
+                    if ($null -ne $contentBlocks) {
+                        foreach ($block in $contentBlocks) {
+                            $blockType = Get-Prop $block "type"
+                            if ($blockType -eq "text") {
+                                $text = Get-Prop $block "text"
+                                if ($text) {
+                                    foreach ($textLine in ($text -split "`n")) {
+                                        Write-Host "  [claude] $textLine" -ForegroundColor White
+                                    }
+                                }
+                            }
+                            elseif ($blockType -eq "tool_use") {
+                                $toolName = Get-Prop $block "name"
+                                $toolId = Get-Prop $block "id"
+                                $idSuffix = ""
+                                if ($toolId) { $idSuffix = " ($(Truncate $toolId 8))" }
+                                Write-Host "  [$ts] TOOL_CALL: $toolName$idSuffix" -ForegroundColor Cyan
+
+                                $inp = Get-Prop $block "input"
+                                if ($null -ne $inp) {
+                                    switch ($toolName) {
+                                        "Read" {
+                                            $fp = Get-Prop $inp "file_path"
+                                            if ($fp) { Write-Host "           file: $fp" -ForegroundColor DarkCyan }
+                                        }
+                                        "Write" {
+                                            $fp = Get-Prop $inp "file_path"
+                                            $ct = Get-Prop $inp "content"
+                                            $len = if ($ct) { $ct.Length } else { 0 }
+                                            if ($fp) { Write-Host "           file: $fp ($len chars)" -ForegroundColor DarkCyan }
+                                        }
+                                        "Edit" {
+                                            $fp = Get-Prop $inp "file_path"
+                                            $old = Get-Prop $inp "old_string"
+                                            if ($fp) { Write-Host "           file: $fp" -ForegroundColor DarkCyan }
+                                            if ($old) {
+                                                $oldClean = (Truncate ($old -replace "`n", " ") 60)
+                                                Write-Host "           old:  $oldClean" -ForegroundColor DarkGray
+                                            }
+                                        }
+                                        "Bash" {
+                                            $cmd = Get-Prop $inp "command"
+                                            $desc = Get-Prop $inp "description"
+                                            if ($cmd) { Write-Host "           cmd:  $(Truncate $cmd 120)" -ForegroundColor DarkCyan }
+                                            if ($desc) { Write-Host "           desc: $desc" -ForegroundColor DarkGray }
+                                        }
+                                        "Glob" {
+                                            $pat = Get-Prop $inp "pattern"
+                                            if ($pat) { Write-Host "           pattern: $pat" -ForegroundColor DarkCyan }
+                                        }
+                                        "Grep" {
+                                            $pat = Get-Prop $inp "pattern"
+                                            $gp = Get-Prop $inp "path"
+                                            if ($pat) { Write-Host "           pattern: $pat" -ForegroundColor DarkCyan }
+                                            if ($gp) { Write-Host "           path: $gp" -ForegroundColor DarkCyan }
+                                        }
+                                        "Task" {
+                                            $td = Get-Prop $inp "description"
+                                            $tt = Get-Prop $inp "subagent_type"
+                                            if ($td) { Write-Host "           desc: $td" -ForegroundColor DarkCyan }
+                                            if ($tt) { Write-Host "           type: $tt" -ForegroundColor DarkCyan }
+                                        }
+                                        "TodoWrite" {
+                                            $todos = Get-Prop $inp "todos"
+                                            if ($todos) {
+                                                foreach ($todo in $todos) {
+                                                    $st = Get-Prop $todo "status"
+                                                    $ct = Get-Prop $todo "content"
+                                                    $icon = switch ($st) { "completed" { "[done]" } "in_progress" { "[>>>> ]" } default { "[    ]" } }
+                                                    $color = switch ($st) { "completed" { "Green" } "in_progress" { "Yellow" } default { "Gray" } }
+                                                    Write-Host "           $icon $ct" -ForegroundColor $color
+                                                }
+                                            }
+                                        }
+                                        default {
+                                            $inpStr = ($inp | ConvertTo-Json -Depth 2 -Compress)
+                                            Write-Host "           input: $(Truncate $inpStr 200)" -ForegroundColor DarkGray
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                "tool_result" {
+                    $toolName = Get-Prop $json "tool_name"
+                    if (-not $toolName) { $toolName = "?" }
+                    $isError = (Get-Prop $json "is_error") -eq $true
+                    $content = Get-Prop $json "content"
+                    if ($isError) {
+                        Write-Host "  [$ts] TOOL_ERR: $toolName" -ForegroundColor Red
+                        if ($content) {
+                            $errText = Truncate ("$content".Trim()) 300
+                            foreach ($errLine in ($errText -split "`n" | Select-Object -First 5)) {
+                                Write-Host "           $errLine" -ForegroundColor Red
+                            }
+                        }
+                    } else {
+                        $contentLen = if ($content) { "$content".Length } else { 0 }
+                        Write-Host "  [$ts] TOOL_OK:  $toolName ($contentLen chars)" -ForegroundColor DarkGreen
+                    }
+                }
+                "result" {
+                    Write-Host "  [$ts] === Claude finished ===" -ForegroundColor Magenta
+                    $resText = Get-Prop $json "result"
+                    if ($resText) {
+                        foreach ($resLine in ("$resText".Trim() -split "`n" | Select-Object -First 10)) {
+                            Write-Host "  [result] $resLine" -ForegroundColor Gray
+                        }
+                    }
+                    $cost = Get-Prop $json "cost_usd"
+                    if ($cost) { Write-Host "  [cost] `$$cost" -ForegroundColor DarkYellow }
+                    $dur = Get-Prop $json "duration_ms"
+                    if ($dur) {
+                        $mins = [Math]::Round($dur / 60000, 1)
+                        Write-Host "  [time] $($mins)m" -ForegroundColor DarkYellow
+                    }
+                }
+                "system" {
+                    $sysMsg = Get-Prop $json "message"
+                    if ($sysMsg) { Write-Host "  [$ts] [system] $sysMsg" -ForegroundColor DarkMagenta }
+                }
+                default {
+                    if ($msgType) { Write-Host "  [$ts] [$msgType]" -ForegroundColor DarkGray }
+                }
             }
         }
 
@@ -164,7 +310,7 @@ try {
 
         # ── Refresh STATUS.md via test runner ──
         Write-Host "`nRefreshing STATUS.md..." -ForegroundColor DarkGray
-        & php (Join-Path $projectRoot "tests" "run-all.php") --quick 2>&1 |
+        & php (Join-Path (Join-Path $projectRoot "tests") "run-all.php") --quick 2>&1 |
             Tee-Object -FilePath $logFile -Append
 
         # ── Detect progress ──

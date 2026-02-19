@@ -561,3 +561,66 @@ p { margin: 0 0 var(--spacing-md); }
     clip: rect(0, 0, 0, 0);
     border: 0;
 }
+
+/* --- 18. Theme Toggle Button --- */
+.theme-toggle-btn {
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: inherit;
+    padding: 0;
+    margin-left: 0.75rem;
+    transition: background 0.2s, color 0.2s;
+}
+.theme-toggle-btn:hover {
+    background: rgba(128, 128, 128, 0.15);
+}
+
+/* --- 19. Dark Theme Overrides (site chrome) --- */
+[data-theme-mode="dark"] {
+    color-scheme: dark;
+}
+[data-theme-mode="dark"] body,
+[data-theme-mode="dark"] {
+    background-color: var(--background, #1a1a2e);
+    color: var(--foreground, #e0e0e0);
+}
+[data-theme-mode="dark"] .site-header {
+    background-color: var(--card, #16213e);
+    border-bottom-color: var(--border, #333);
+}
+[data-theme-mode="dark"] .site-footer {
+    background-color: var(--card, #16213e);
+    border-top-color: var(--border, #333);
+    color: var(--foreground, #e0e0e0);
+}
+[data-theme-mode="dark"] a {
+    color: var(--primary, #4fc3f7);
+}
+[data-theme-mode="dark"] .nav-list li a {
+    color: var(--foreground, #e0e0e0);
+}
+[data-theme-mode="dark"] .nav-list li.active a,
+[data-theme-mode="dark"] .nav-list li a:hover {
+    color: var(--primary, #4fc3f7);
+}
+[data-theme-mode="dark"] .theme-toggle-btn {
+    border-color: var(--border, #555);
+    color: var(--foreground, #e0e0e0);
+}
+[data-theme-mode="dark"] .post-card {
+    background: var(--card, #16213e);
+    border-color: var(--border, #333);
+}
+[data-theme-mode="dark"] .form-group input,
+[data-theme-mode="dark"] .form-group textarea {
+    background: var(--input, #1e293b);
+    border-color: var(--border, #333);
+    color: var(--foreground, #e0e0e0);
+}

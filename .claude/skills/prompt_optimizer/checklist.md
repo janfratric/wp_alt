@@ -19,11 +19,21 @@ Use when optimizing individual prompts or user requests.
 - [ ] **CoT needed** — Does this task require reasoning? Should thinking be made visible?
 - [ ] **XML beneficial** — Would XML tags help organize multiple components?
 - [ ] **Role helpful** — Would domain expertise framing improve quality?
+- [ ] **Extended thinking appropriate** — Would deep reasoning (STEM, optimization, analysis) benefit from extended thinking?
+- [ ] **Effort level considered** — For Claude 4.x, is the effort parameter set appropriately (low/medium/high)?
 
 ### Guardrails
 - [ ] **Uncertainty allowed** — Can Claude say "I don't know" when appropriate?
 - [ ] **Grounding present** — For document tasks, is quote extraction required?
 - [ ] **Sources cited** — Should Claude cite sources for claims?
+- [ ] **Investigate-before-answering** — For agentic/coding tasks, does Claude read files before speculating?
+
+### Claude 4.x Compatibility
+- [ ] **No anti-laziness prompts** — Removed "be thorough", "think carefully", "do not be lazy" (causes overthinking on 4.6)?
+- [ ] **Softened tool-use language** — Using "Use [tool] when helpful" instead of "You MUST use [tool]"?
+- [ ] **No prefill reliance** — Migrated away from prefilled responses (deprecated on 4.6)?
+- [ ] **Anti-overengineering present** — For coding tasks, does the prompt constrain scope?
+- [ ] **Action vs. suggestion clear** — Is it explicit whether Claude should act or just suggest?
 
 ### Scoring Priority
 
@@ -34,13 +44,15 @@ High-impact improvements (fix first):
 
 Medium-impact improvements:
 4. Missing context that affects output
-5. No CoT for reasoning tasks
+5. No CoT / extended thinking for reasoning tasks
 6. Unstructured multi-part prompt
+7. Claude 4.x anti-patterns present (anti-laziness, aggressive tool language)
 
 Lower-impact refinements:
-7. Adding role framing
-8. XML structuring for organization
-9. Prefill optimization
+8. Adding role framing
+9. XML structuring for organization
+10. Effort level tuning
+11. Subagent orchestration guidance
 
 ---
 
@@ -110,3 +122,12 @@ Immediate issues to fix:
 - ❌ Output format left entirely to Claude's discretion
 - ❌ High-stakes task with no hallucination guardrails
 - ❌ Document-based task with no grounding requirement
+
+### Claude 4.x Red Flags (NEW)
+
+- ❌ Uses "CRITICAL", "MUST", "ALWAYS" for tool triggering (causes overtriggering on 4.6)
+- ❌ Contains anti-laziness prompts like "be thorough" or "do not be lazy" (causes runaway thinking)
+- ❌ Relies on prefilled assistant responses (deprecated on 4.6)
+- ❌ Uses explicit think-tool instructions like "use the think tool to plan" (causes over-planning)
+- ❌ Says "suggest changes" when action is intended (Claude 4.6 follows literally)
+- ❌ No autonomy/safety guidance for agentic tasks (risky actions without confirmation)

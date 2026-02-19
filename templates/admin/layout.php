@@ -67,11 +67,19 @@ $imgSettings = json_encode([
                    class="<?= ($activeNav ?? '') === 'design-editor' ? 'active' : '' ?>">
                     <span class="nav-icon">&#9997;</span> Design Editor
                 </a>
+                <a href="/admin/design/browser"
+                   class="<?= ($activeNav ?? '') === 'design-browser' ? 'active' : '' ?>">
+                    <span class="nav-icon">&#128193;</span> Design Files
+                </a>
 
                 <div class="nav-section">System</div>
                 <a href="/admin/users"
                    class="<?= ($activeNav ?? '') === 'users' ? 'active' : '' ?>">
                     <span class="nav-icon">&#128101;</span> Users
+                </a>
+                <a href="/admin/contact-submissions"
+                   class="<?= ($activeNav ?? '') === 'messages' ? 'active' : '' ?>">
+                    <span class="nav-icon">&#9993;</span> Messages
                 </a>
                 <a href="/admin/settings"
                    class="<?= ($activeNav ?? '') === 'settings' ? 'active' : '' ?>">

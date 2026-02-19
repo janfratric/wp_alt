@@ -218,6 +218,36 @@
         setText('preview-meta-title', data.meta_title || '');
         setText('preview-meta-desc', data.meta_description || '');
 
+        // Design mode preview via PenConverter
+        if (data.editor_mode === 'design' || (editorMode === 'design' && data.pen_page)) {
+            var penPage = data.pen_page;
+            if (penPage) {
+                var csrf = document.getElementById('generator-app').dataset.csrf;
+                fetch('/admin/content/preview-pen', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrf
+                    },
+                    body: JSON.stringify({ pen_page: penPage })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(result) {
+                    if (result.success) {
+                        var frame = document.getElementById('preview-design-frame');
+                        if (frame) {
+                            frame.innerHTML = '<style>' + result.css + '</style>' + result.html;
+                        }
+                        var designEl = document.getElementById('preview-design');
+                        if (designEl) designEl.classList.remove('hidden');
+                        var bodyHide = document.getElementById('preview-body');
+                        if (bodyHide) bodyHide.classList.add('hidden');
+                    }
+                });
+            }
+            return;
+        }
+
         var bodyEl = document.getElementById('preview-body');
         if (bodyEl) {
             if (data.editor_mode === 'elements' && data.elements && data.elements.length > 0) {
@@ -301,6 +331,9 @@
         };
         if (editorMode === 'elements' && generatedData.elements) {
             createPayload.elements = generatedData.elements;
+        }
+        if (editorMode === 'design' && generatedData.pen_page) {
+            createPayload.pen_page = generatedData.pen_page;
         }
 
         apiCall('/admin/generator/create', createPayload).then(function(data) {

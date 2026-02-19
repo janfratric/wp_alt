@@ -8,6 +8,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Database\QueryBuilder;
 use App\Auth\Session;
+use App\PageBuilder\PenConverter;
 use App\PageBuilder\StyleRenderer;
 
 class ContentController
@@ -78,8 +79,7 @@ class ContentController
     /**
      * GET /admin/content/create — Show empty content editor.
      */
-    public function create(Request $request): Response
-    {
+    public function create(Request $request): Response {
         $type = (string) $request->query('type', 'page');
         $validTypes = ['page', 'post'];
         $contentTypes = QueryBuilder::query('content_types')
@@ -126,6 +126,9 @@ class ContentController
             ->orderBy('name', 'ASC')
             ->get();
 
+        // Load design files for design mode selector
+        $designFiles = $this->loadDesignFiles();
+
         $html = $this->app->template()->render('admin/content/edit', [
             'title'                  => 'Create Content',
             'activeNav'              => 'content',
@@ -139,6 +142,7 @@ class ContentController
             'csrfToken'              => Session::get('csrf_token', ''),
             'layoutTemplates'        => $layoutTemplates,
             'templateBlocks'         => [],
+            'designFiles'            => $designFiles,
         ]);
 
         return $this->withSecurityHeaders(Response::html($html));
@@ -160,10 +164,12 @@ class ContentController
         $data['slug'] = $this->ensureUniqueSlug($data['slug']);
         $data['published_at'] = $this->resolvePublishedAt($data['status'], $data['published_at']);
 
-        $editorMode = in_array($data['editor_mode'], ['html', 'elements'], true)
+        $editorMode = in_array($data['editor_mode'], ['html', 'elements', 'design'], true)
             ? $data['editor_mode'] : 'html';
 
         $layoutTemplateId = $data['layout_template_id'] !== '' ? (int) $data['layout_template_id'] : null;
+
+        $themeOverride = $data['theme_override'] !== '' ? $data['theme_override'] : null;
 
         $id = QueryBuilder::query('content')->insert([
             'type'               => $data['type'],
@@ -181,6 +187,9 @@ class ContentController
             'updated_at'         => date('Y-m-d H:i:s'),
             'editor_mode'        => $editorMode,
             'layout_template_id' => $layoutTemplateId,
+            'design_file'        => ($editorMode === 'design' && !empty($data['design_file']))
+                                    ? $data['design_file'] : null,
+            'theme_override'     => $themeOverride,
         ]);
 
         // Save page elements if in elements mode
@@ -261,6 +270,9 @@ class ContentController
         // Load template blocks for the page builder
         $templateBlocks = $this->loadTemplateBlocks($content);
 
+        // Load design files for design mode selector
+        $designFiles = $this->loadDesignFiles();
+
         $html = $this->app->template()->render('admin/content/edit', [
             'title'                  => 'Edit: ' . $content['title'],
             'activeNav'              => 'content',
@@ -274,6 +286,8 @@ class ContentController
             'csrfToken'              => Session::get('csrf_token', ''),
             'layoutTemplates'        => $layoutTemplates,
             'templateBlocks'         => $templateBlocks,
+            'designFile'             => $content['design_file'] ?? null,
+            'designFiles'            => $designFiles,
         ]);
 
         return $this->withSecurityHeaders(Response::html($html));
@@ -305,10 +319,11 @@ class ContentController
         $data['slug'] = $this->ensureUniqueSlug($data['slug'], (int) $id);
         $data['published_at'] = $this->resolvePublishedAt($data['status'], $data['published_at']);
 
-        $editorMode = in_array($data['editor_mode'], ['html', 'elements'], true)
+        $editorMode = in_array($data['editor_mode'], ['html', 'elements', 'design'], true)
             ? $data['editor_mode'] : 'html';
 
         $layoutTemplateId = $data['layout_template_id'] !== '' ? (int) $data['layout_template_id'] : null;
+        $themeOverride = $data['theme_override'] !== '' ? $data['theme_override'] : null;
 
         QueryBuilder::query('content')->where('id', (int) $id)->update([
             'type'               => $data['type'],
@@ -325,6 +340,9 @@ class ContentController
             'updated_at'         => date('Y-m-d H:i:s'),
             'editor_mode'        => $editorMode,
             'layout_template_id' => $layoutTemplateId,
+            'design_file'        => ($editorMode === 'design' && !empty($data['design_file']))
+                                    ? $data['design_file'] : null,
+            'theme_override'     => $themeOverride,
         ]);
 
         // Save page elements if in elements mode
@@ -415,6 +433,57 @@ class ContentController
         return Response::redirect('/admin/content');
     }
 
+    /**
+     * POST /admin/content/{id}/reconvert — Re-convert .pen file and update content body.
+     */
+    public function reconvert(Request $request, string $id): Response
+    {
+        $db = $this->app->resolve('db');
+        $stmt = $db->prepare('SELECT * FROM content WHERE id = ?');
+        $stmt->execute([(int) $id]);
+        $content = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$content) {
+            return Response::json(['success' => false, 'error' => 'Content not found'], 404);
+        }
+
+        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+        $designFile = $body['design_file'] ?? ($content['design_file'] ?? '');
+
+        if (empty($designFile)) {
+            return Response::json(['success' => false, 'error' => 'No design file specified'], 400);
+        }
+
+        $designsDir = dirname(__DIR__, 2) . '/designs';
+        $fullPath = $designsDir . '/' . $designFile;
+
+        if (!file_exists($fullPath)) {
+            return Response::json(['success' => false, 'error' => 'Design file not found'], 404);
+        }
+
+        try {
+            $result = PenConverter::convertFile($fullPath);
+
+            $update = $db->prepare(
+                'UPDATE content SET body = ?, design_file = ?, updated_at = ? WHERE id = ?'
+            );
+            $update->execute([
+                $result['html'],
+                $designFile,
+                date('Y-m-d H:i:s'),
+                (int) $id,
+            ]);
+
+            return Response::json([
+                'success' => true,
+                'html'    => $result['html'],
+                'css'     => $result['css'],
+            ]);
+        } catch (\Throwable $e) {
+            return Response::json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
     // -------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------
@@ -435,6 +504,8 @@ class ContentController
             'sort_order'       => (int) $request->input('sort_order', '0'),
             'editor_mode'      => (string) $request->input('editor_mode', 'html'),
             'layout_template_id' => trim((string) $request->input('layout_template_id', '')),
+            'design_file'      => (string) $request->input('design_file', ''),
+            'theme_override'   => trim((string) $request->input('theme_override', '')),
         ];
     }
 
@@ -696,6 +767,82 @@ class ContentController
             ->where('layout_template_id', (string) $templateId)
             ->orderBy('sort_order')
             ->get();
+    }
+
+    /**
+     * POST /admin/content/preview-pen
+     * Convert .pen page data to HTML for preview.
+     * Accepts: { "pen_page": { ... } } or { "pen_document": { ... } }
+     */
+    public function previewPen(Request $request): Response
+    {
+        try {
+            $body = json_decode(file_get_contents('php://input'), true);
+
+            if (!is_array($body)) {
+                return Response::json(['success' => false, 'error' => 'Invalid request'], 400);
+            }
+
+            if (isset($body['pen_document'])) {
+                $document = $body['pen_document'];
+            } elseif (isset($body['pen_page'])) {
+                $rootDir = dirname(__DIR__, 2);
+                $dsPath = $rootDir . '/designs/litecms-system.pen';
+                if (!file_exists($dsPath)) {
+                    return Response::json(['success' => false, 'error' => 'Design system not found'], 500);
+                }
+                $dsDoc = json_decode(file_get_contents($dsPath), true);
+
+                $document = [
+                    'version'   => '2.7',
+                    'variables' => $dsDoc['variables'] ?? [],
+                    'children'  => array_merge(
+                        $dsDoc['children'] ?? [],
+                        [$body['pen_page']]
+                    ),
+                ];
+            } else {
+                return Response::json(['success' => false, 'error' => 'Provide pen_document or pen_page'], 400);
+            }
+
+            $result = PenConverter::convertDocument($document);
+
+            return Response::json([
+                'success' => true,
+                'html'    => $result['html'],
+                'css'     => $result['css'],
+            ]);
+        } catch (\Throwable $e) {
+            return Response::json([
+                'success' => false,
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Scan designs/ directory for .pen files.
+     */
+    private function loadDesignFiles(): array
+    {
+        $designsDir = dirname(__DIR__, 2) . '/designs';
+        if (!is_dir($designsDir)) {
+            return [];
+        }
+
+        $files = [];
+        $iter = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($designsDir, \FilesystemIterator::SKIP_DOTS)
+        );
+        foreach ($iter as $fi) {
+            if ($fi->getExtension() !== 'pen') continue;
+            $rel = str_replace($designsDir . DIRECTORY_SEPARATOR, '', $fi->getPathname());
+            $rel = str_replace('\\', '/', $rel);
+            $files[] = ['name' => $fi->getBasename('.pen'), 'path' => $rel];
+        }
+        usort($files, fn($a, $b) => strcmp($a['name'], $b['name']));
+
+        return $files;
     }
 
     private function withSecurityHeaders(Response $response): Response

@@ -242,6 +242,103 @@ class DesignController
     }
 
     /**
+     * GET /admin/design/browser — Design file browser page.
+     */
+    public function browser(Request $request): Response
+    {
+        $designFiles = $this->getDesignFileList();
+        $csrfToken = Session::get('csrf_token', '');
+
+        $html = $this->app->template()->render('admin/design/browser', [
+            'title'       => 'Design Files',
+            'activeNav'   => 'design-browser',
+            'designFiles' => $designFiles,
+            'csrfToken'   => $csrfToken,
+        ]);
+
+        return Response::html($html);
+    }
+
+    /**
+     * POST /admin/design/duplicate — Duplicate an existing .pen file.
+     * Body: { "source": "original.pen", "target": "copy.pen" }
+     */
+    public function duplicate(Request $request): Response
+    {
+        $body = json_decode(file_get_contents('php://input'), true);
+        if (!$body) {
+            return Response::json(['success' => false, 'error' => 'Invalid request'], 400);
+        }
+
+        $source = $this->sanitizePath($body['source'] ?? '');
+        $target = $this->sanitizePath($body['target'] ?? '');
+
+        if ($source === null || $target === null) {
+            return Response::json(['success' => false, 'error' => 'Invalid path'], 400);
+        }
+
+        $sourceFull = $this->designsDir . '/' . $source;
+        $targetFull = $this->designsDir . '/' . $target;
+
+        if (!file_exists($sourceFull)) {
+            return Response::json(['success' => false, 'error' => 'Source file not found'], 404);
+        }
+
+        if (file_exists($targetFull)) {
+            return Response::json(['success' => false, 'error' => 'Target file already exists'], 409);
+        }
+
+        $dir = dirname($targetFull);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        copy($sourceFull, $targetFull);
+
+        return Response::json(['success' => true]);
+    }
+
+    /**
+     * POST /admin/design/delete — Delete a .pen file.
+     * Body: { "path": "filename.pen" }
+     */
+    public function deleteFile(Request $request): Response
+    {
+        $body = json_decode(file_get_contents('php://input'), true);
+        if (!$body) {
+            return Response::json(['success' => false, 'error' => 'Invalid request'], 400);
+        }
+
+        $path = $this->sanitizePath($body['path'] ?? '');
+        if ($path === null) {
+            return Response::json(['success' => false, 'error' => 'Invalid path'], 400);
+        }
+
+        $fullPath = $this->designsDir . '/' . $path;
+        if (!file_exists($fullPath)) {
+            return Response::json(['success' => false, 'error' => 'File not found'], 404);
+        }
+
+        // Check if any content items reference this design_file
+        $db = $this->app->resolve('db');
+        $stmt = $db->prepare('SELECT COUNT(*) FROM content WHERE design_file = ?');
+        $stmt->execute([$path]);
+        $usageCount = (int) $stmt->fetchColumn();
+
+        if ($usageCount > 0) {
+            return Response::json([
+                'success'     => false,
+                'error'       => "File is used by {$usageCount} content item(s). Remove references first.",
+                'usage_count' => $usageCount,
+            ], 409);
+        }
+
+        unlink($fullPath);
+
+        return Response::json(['success' => true]);
+    }
+
+    /**
      * Validate and sanitize a file path to prevent directory traversal.
      */
     private function sanitizePath(string $path): ?string

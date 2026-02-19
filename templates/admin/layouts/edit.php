@@ -45,6 +45,20 @@
                 </label>
                 <small>The default layout is used for pages that don't specify one.</small>
             </div>
+
+            <div class="form-group">
+                <label for="pen_file">.pen Design File (optional)</label>
+                <select name="pen_file" id="pen_file">
+                    <option value="">None — use standard layout</option>
+                    <?php foreach ($designFiles ?? [] as $df): ?>
+                    <option value="<?= $this->e($df) ?>"
+                        <?= ($layout['pen_file'] ?? '') === $df ? 'selected' : '' ?>>
+                        <?= $this->e($df) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <small>Assign a .pen design file to use its components for this layout's header and footer.</small>
+            </div>
         </div>
 
         <!-- Header Section -->
